@@ -1,0 +1,35 @@
+# Stitch experiment / diagnostic artifacts (not production)
+stitch-mcp-debug/
+
+# Gradle build outputs and caches
+**/build/
+**/.gradle/
+.gradle/
+
+# Local Android SDK path (machine-specific)
+local.properties
+**/local.properties
+
+# Signing secrets (keys live outside this repository)
+*.jks
+*.keystore
+release-secrets.properties
+**/release-secrets.properties
+
+# Environment and credential files
+.env
+.env.*
+*.pem
+credentials.json
+**/credentials.json
+
+# IDE and editor artifacts
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db

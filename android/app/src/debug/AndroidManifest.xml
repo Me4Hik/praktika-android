@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 05.08.2026 Main Navigation Fix cursor by Me4Hik START - Activity для isolated Compose UI tests -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="com.me4hik.praktika.ui.practice.PracticeComposeTestActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Praktika" />
+    </application>
+
+</manifest>
+<!-- 05.08.2026 Main Navigation Fix cursor by Me4Hik END -->

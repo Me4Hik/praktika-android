@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 04.08.2026 Reminder App cursor by Me4Hik START - строковые ресурсы -->
+<resources>
+    <string name="app_name">Практика</string>
+    <!-- 05.08.2026 Main Screen cursor by Me4Hik START - строки главного экрана -->
+    <string name="practice_starting">Запуск…</string>
+    <string name="practice_error_start_failed">Не удалось запустить практику</string>
+    <string name="practice_error_load_failed">Не удалось загрузить состояние</string>
+    <string name="practice_error_corruption">Данные практики повреждены</string>
+    <string name="practice_retry">Повторить</string>
+    <string name="practice_started_title">Практика началась</string>
+    <string name="practice_paused_title">Практика на паузе</string>
+    <string name="practice_question_position">Вопрос %1$d из 21</string>
+    <string name="practice_next_question">Следующий вопрос:</string>
+    <string name="practice_available_until">Доступен до:</string>
+    <string name="practice_planned_time">Запланированное время:</string>
+    <string name="practice_saved_deadline">Сохранённый дедлайн:</string>
+    <!-- 05.08.2026 Stage 6 Boundary cursor by Me4Hik START - DEC-023 «Ответить», отложенный первый запуск -->
+    <string name="practice_answer">Ответить</string>
+    <string name="practice_first_launch_deferred">Запуск практики будет подключён на этапе первого запуска.</string>
+    <string name="onboarding_description">Несколько раз в день приложение будет задавать вам вопрос. Остановитесь на несколько секунд, почувствуйте свой ответ и сохраните его. Через время вопрос повторится, и вы сможете увидеть, как изменилось ваше восприятие.</string>
+    <string name="onboarding_schedule_title">Расписание</string>
+    <string name="onboarding_start_practice">Начать практику</string>
+    <!-- 05.08.2026 Stage 6 Boundary cursor by Me4Hik END -->
+    <string name="practice_open_question">Открыть вопрос</string>
+    <string name="practice_question_placeholder">Экран вопроса будет подключён на следующем этапе.</string>
+    <string name="practice_back">Назад</string>
+    <string name="practice_archive">Архив ответов</string>
+    <string name="practice_settings">Настройки</string>
+    <!-- 05.08.2026 Question And Skip cursor by Me4Hik START - строки экрана вопроса и заглушки ответа -->
+    <string name="question_skip">Пропустить</string>
+    <string name="question_back_home">На главный экран</string>
+    <string name="question_blocked_not_found_title">Вопрос не найден</string>
+    <string name="question_blocked_not_found_message">Этот показ вопроса больше недоступен.</string>
+    <string name="question_blocked_not_available_title">Вопрос ещё недоступен</string>
+    <string name="question_blocked_not_available_message">Вопрос станет доступен в запланированное время.</string>
+    <string name="question_blocked_completed_title">Вопрос уже завершён</string>
+    <string name="question_blocked_completed_message">На этот показ больше нельзя ответить или пропустить.</string>
+    <string name="question_blocked_not_current_title">Это не текущий вопрос</string>
+    <string name="question_blocked_not_current_message">Активен другой показ. Вернитесь на главный экран.</string>
+    <string name="question_blocked_paused_message">Действия недоступны, пока практика на паузе.</string>
+    <string name="answer_placeholder_title">Ваш ответ</string>
+    <string name="answer_placeholder_deferred">Ввод и сохранение ответа будут подключены на следующем этапе.</string>
+    <!-- 05.08.2026 Answer Save cursor by Me4Hik START - строки экрана ответа -->
+    <string name="answer_title">Ваш ответ</string>
+    <string name="answer_input_label">Ваш ответ</string>
+    <string name="answer_input_placeholder">Опишите, что вы замечаете…</string>
+    <string name="answer_save">Сохранить ответ</string>
+    <string name="answer_saved_confirmation">Ответ сохранён</string>
+    <!-- 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik START - snackbar history action -->
+    <string name="answer_view_history_action">Посмотреть историю</string>
+    <!-- 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik END -->
+    <string name="answer_error_blank">Введите текст ответа.</string>
+    <string name="answer_error_save_failed">Не удалось сохранить ответ. Попробуйте ещё раз.</string>
+    <string name="answer_error_occurrence_changed">Этот показ уже завершён. Вернитесь на главный экран.</string>
+    <string name="answer_blocked_not_found_title">Показ не найден</string>
+    <string name="answer_blocked_not_found_message">Этот показ вопроса больше недоступен.</string>
+    <!-- 05.08.2026 Answer Save cursor by Me4Hik END -->
+    <!-- 05.08.2026 Question And Skip cursor by Me4Hik END -->
+    <!-- 05.08.2026 Main Screen cursor by Me4Hik END -->
+    <!-- 06.08.2026 Settings Schedule cursor by Me4Hik START - строки экрана настроек -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_schedule_section">Время вопросов</string>
+    <!-- 06.08.2026 Settings Time Affordance cursor by Me4Hik START - подписи slot controls -->
+    <string name="settings_slot_label">Время %1$d</string>
+    <string name="settings_slot_change">Изменить</string>
+    <string name="settings_slot_content_description">Изменить время %1$d, сейчас %2$s</string>
+    <!-- 06.08.2026 Settings Time Affordance cursor by Me4Hik END -->
+    <string name="settings_save_schedule">Сохранить расписание</string>
+    <string name="settings_schedule_duplicate_error">Времена слотов должны различаться.</string>
+    <string name="settings_schedule_save_error">Не удалось сохранить расписание.</string>
+    <string name="settings_schedule_validation_error">Проверьте время слотов.</string>
+    <string name="settings_schedule_saved">Расписание сохранено</string>
+    <string name="settings_sound_section">Звук уведомлений</string>
+    <string name="settings_sound_label">Звук включён</string>
+    <string name="settings_sound_error">Не удалось изменить настройку звука.</string>
+    <string name="settings_practice_section">Практика</string>
+    <string name="settings_pause_practice">Приостановить практику</string>
+    <string name="settings_resume_practice">Продолжить практику</string>
+    <string name="settings_pause_error">Не удалось изменить состояние практики.</string>
+    <string name="settings_practice_paused">Практика приостановлена</string>
+    <string name="settings_practice_resumed">Практика продолжена</string>
+    <string name="settings_about_section">О приложении</string>
+    <string name="settings_about_version">Версия %1$s</string>
+    <string name="settings_dirty_back_title">Сохранить изменения?</string>
+    <string name="settings_dirty_back_message">Расписание изменено, но не сохранено.</string>
+    <string name="settings_stay">Остаться</string>
+    <string name="settings_discard">Выйти без сохранения</string>
+    <string name="settings_time_picker_confirm">Готово</string>
+    <string name="settings_time_picker_cancel">Отмена</string>
+    <string name="settings_fatal_error">Не удалось загрузить настройки.</string>
+    <!-- 06.08.2026 Settings Schedule cursor by Me4Hik END -->
+    <!-- 06.08.2026 Stage 12 Notifications cursor by Me4Hik START -->
+    <string name="home_notification_request_message">Разрешите уведомления, чтобы получать вопросы по расписанию.</string>
+    <string name="home_notification_request_action">Разрешить уведомления</string>
+    <string name="home_notification_disabled_message">Уведомления выключены</string>
+    <string name="home_notification_enable_action">Включить</string>
+    <string name="settings_notification_settings">Настройки уведомлений</string>
+    <string name="notification_channel_sound_name">Вопросы со звуком</string>
+    <string name="notification_channel_sound_description">Уведомления о доступных вопросах со стандартным звуком.</string>
+    <string name="notification_channel_silent_name">Вопросы без звука</string>
+    <string name="notification_channel_silent_description">Тихие уведомления о доступных вопросах.</string>
+    <string name="notification_public_title">Практика</string>
+    <string name="notification_public_body">Доступен новый вопрос</string>
+    <!-- 06.08.2026 Stage 12 Notifications cursor by Me4Hik END -->
+    <!-- 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - строки архива -->
+    <string name="archive_title">Архив</string>
+    <string name="archive_empty">Архив пока пуст</string>
+    <string name="archive_day_empty">За этот день ответов нет</string>
+    <string name="archive_back">Назад</string>
+    <string name="archive_question_label">Вопрос</string>
+    <string name="archive_answer_label">Ответ</string>
+    <!-- 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - строки архива по вопросам -->
+    <string name="archive_open_questions">Архив по вопросам</string>
+    <string name="archive_questions_title">Архив по вопросам</string>
+    <string name="archive_question_history_title">История ответов</string>
+    <string name="archive_question_answer_count">Ответов: %1$d</string>
+    <string name="archive_cycle_label">Цикл %1$d</string>
+    <!-- 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END -->
+    <!-- 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - строки удаления Answer -->
+    <string name="archive_delete_action">Удалить</string>
+    <string name="archive_delete_title">Удалить ответ?</string>
+    <string name="archive_delete_message">Это действие нельзя отменить.</string>
+    <string name="archive_delete_cancel">Отмена</string>
+    <string name="archive_delete_confirm">Удалить</string>
+    <string name="archive_delete_error">Не удалось удалить ответ</string>
+    <!-- 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END -->
+    <!-- 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik START - строки export -->
+    <string name="archive_export_all">Экспорт всего</string>
+    <string name="archive_export_period">Экспорт периода</string>
+    <string name="archive_export_day">Экспорт дня</string>
+    <string name="archive_export_history">Экспорт истории</string>
+    <string name="archive_export_period_dialog_title">Выберите период</string>
+    <string name="archive_export_period_confirm">Экспортировать</string>
+    <string name="archive_export_period_cancel">Отмена</string>
+    <string name="archive_export_no_answers">Нет ответов для экспорта</string>
+    <string name="archive_export_saved">Файл сохранён</string>
+    <string name="archive_export_write_error">Не удалось сохранить файл</string>
+    <!-- 07.08.2026 Stage 20 CSV Export cursor by Me4Hik START - format selection dialog -->
+    <string name="archive_export_format_dialog_title">Формат файла</string>
+    <string name="archive_export_format_markdown">Markdown</string>
+    <string name="archive_export_format_csv">CSV</string>
+    <string name="archive_export_format_cancel">Отмена</string>
+    <!-- 07.08.2026 Stage 20 CSV Export cursor by Me4Hik END -->
+    <!-- 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik END -->
+    <!-- 07.08.2026 Stage 21 Share cursor by Me4Hik START - строки share -->
+    <string name="archive_share_action">Поделиться</string>
+    <string name="archive_share_all">Поделиться всем</string>
+    <string name="archive_share_period">Поделиться периодом</string>
+    <string name="archive_share_day">Поделиться архивом</string>
+    <string name="archive_share_history">Поделиться историей</string>
+    <string name="archive_share_period_dialog_title">Выберите период</string>
+    <string name="archive_share_period_confirm">Поделиться</string>
+    <string name="archive_share_format_dialog_title">Формат файла</string>
+    <string name="archive_share_no_answers">Нет ответов для отправки</string>
+    <string name="archive_share_prepare_error">Не удалось подготовить файл</string>
+    <string name="archive_share_chooser_error">Не удалось открыть меню отправки</string>
+    <string name="archive_share_text_chooser_title">Поделиться</string>
+    <string name="archive_share_file_chooser_title">Отправить файл</string>
+    <string name="archive_entry_share_dialog_title">Поделиться</string>
+    <string name="archive_entry_share_question_only">Только вопрос</string>
+    <string name="archive_entry_share_question_and_answer">Вопрос и ответ</string>
+    <string name="archive_entry_share_cancel">Отмена</string>
+    <!-- 07.08.2026 Stage 21 Share cursor by Me4Hik END -->
+    <!-- 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END -->
+</resources>
+<!-- 04.08.2026 Reminder App cursor by Me4Hik END -->

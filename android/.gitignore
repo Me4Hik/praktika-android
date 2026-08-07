@@ -1,0 +1,5 @@
+# Local Android SDK path (not committed with secrets)
+/local.properties
+
+# Release signing secrets live outside this repository:
+# local-release-secrets/
