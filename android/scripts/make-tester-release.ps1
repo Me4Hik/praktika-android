@@ -29,8 +29,6 @@ $ExpectedCertSha256 = 'd35140e9c25902b0b865600bc594dee6debb3e3e8270744d69edc5e86
 $ExpectedVersionName = '1.0'
 $BaselineVersionCode = 7
 $ArchiveNameRegex = '^t(?<seq>\d{3})-vc(?<vc>\d+)-(?<date>\d{4}-\d{2}-\d{2})$'
-$DefaultJbr = '<JAVA_HOME>'
-$DefaultSdkFallback = '<ANDROID_SDK>'
 
 # --- Path resolution (independent of cwd) ------------------------------------
 $ScriptDir = $PSScriptRoot
@@ -57,6 +55,7 @@ function Normalize-Sha256([string]$Raw) {
 }
 
 function Get-SdkDir {
+    # 14.08.2026 DB Refactoring cursor by Me4Hik START - remove machine-specific Java/Android SDK fallbacks
     if (-not [string]::IsNullOrWhiteSpace($env:ANDROID_SDK_ROOT) -and (Test-Path $env:ANDROID_SDK_ROOT)) {
         return $env:ANDROID_SDK_ROOT
     }
@@ -74,8 +73,8 @@ function Get-SdkDir {
             }
         }
     }
-    if (Test-Path $DefaultSdkFallback) { return $DefaultSdkFallback }
     return $null
+    # 14.08.2026 DB Refactoring cursor by Me4Hik END
 }
 
 function Get-BuildToolsBin {
@@ -110,15 +109,21 @@ function Get-BuildToolsBin {
 }
 
 function Ensure-JavaHome {
+    # 14.08.2026 DB Refactoring cursor by Me4Hik START - remove machine-specific Java/Android SDK fallbacks
     if (-not [string]::IsNullOrWhiteSpace($env:JAVA_HOME) -and (Test-Path (Join-Path $env:JAVA_HOME 'bin\java.exe'))) {
         return
     }
-    if (Test-Path (Join-Path $DefaultJbr 'bin\java.exe')) {
-        $env:JAVA_HOME = $DefaultJbr
-        $env:PATH = "$DefaultJbr\bin;$env:PATH"
-        return
+    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+    if ($javaCmd -and $javaCmd.Source) {
+        $javaBin = Split-Path -Parent $javaCmd.Source
+        $maybeHome = Split-Path -Parent $javaBin
+        if (Test-Path (Join-Path $maybeHome 'bin\java.exe')) {
+            $env:JAVA_HOME = $maybeHome
+            return
+        }
     }
-    Write-Fail 'JAVA_HOME_MISSING' "JAVA_HOME not set and default JBR missing: $DefaultJbr"
+    Write-Fail 'JAVA_HOME_MISSING' 'JAVA_HOME not set and java was not found on PATH. Set JAVA_HOME to a JDK (for example the Android Studio JBR).'
+    # 14.08.2026 DB Refactoring cursor by Me4Hik END
 }
 
 function Get-GitMeta {
@@ -360,7 +365,7 @@ Assert-DirectoryLayout
 
 $sdkDir = Get-SdkDir
 if (-not $sdkDir) {
-    Write-Fail 'SDK_MISSING' 'Android SDK not found (ANDROID_SDK_ROOT / ANDROID_HOME / local.properties / fallback).'
+    Write-Fail 'SDK_MISSING' 'Android SDK not found (ANDROID_SDK_ROOT / ANDROID_HOME / local.properties sdk.dir).'
 }
 $tools = Get-BuildToolsBin -SdkDir $sdkDir
 $history = Get-ArchiveHistory

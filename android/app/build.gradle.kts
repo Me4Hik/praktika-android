@@ -17,14 +17,6 @@ room {
 }
 // 04.08.2026 DB Refactoring cursor by Me4Hik END
 
-// 07.08.2026 Stage 26 Release cursor by Me4Hik START - production signing from external secrets
-val releaseSecretsFile = file("local-release-secrets/release-secrets.properties")
-val releaseSecrets = Properties().apply {
-    if (releaseSecretsFile.exists()) {
-        releaseSecretsFile.inputStream().use { load(it) }
-    }
-}
-
 // 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
 val localPropertiesFile = rootProject.file("local.properties")
 val localProperties = Properties().apply {
@@ -36,6 +28,23 @@ val sentryDsn = localProperties.getProperty("sentry.dsn").orEmpty()
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
 // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
+// 07.08.2026 Stage 26 Release cursor by Me4Hik START - production signing from external secrets
+// 14.08.2026 DB Refactoring cursor by Me4Hik START - make release signing path machine-independent
+val releaseSecretsPath = localProperties.getProperty("release.secrets.file").orEmpty().trim()
+val releaseSecretsFile = if (releaseSecretsPath.isBlank()) {
+    null
+} else {
+    rootProject.file(releaseSecretsPath)
+}
+val releaseSecrets = Properties().apply {
+    val secretsFile = releaseSecretsFile
+    if (secretsFile != null && secretsFile.exists()) {
+        secretsFile.inputStream().use { load(it) }
+    }
+}
+// 14.08.2026 DB Refactoring cursor by Me4Hik END
+// 07.08.2026 Stage 26 Release cursor by Me4Hik END
 
 android {
     namespace = "com.me4hik.praktika"

@@ -1,17 +1,47 @@
 # -*- coding: utf-8 -*-
 """Accelerated-only validation for diagnostics bug report MVP."""
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-ADB = r"<ANDROID_SDK>\platform-tools\adb.exe"
+# 14.08.2026 DB Refactoring cursor by Me4Hik START - make diagnostics validator portable
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def resolve_adb() -> str:
+    which = shutil.which("adb")
+    if which:
+        return which
+    for env_name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        root = os.environ.get(env_name)
+        if root:
+            candidate = Path(root) / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")
+            if candidate.exists():
+                return str(candidate)
+    local_props = ROOT / "local.properties"
+    if local_props.exists():
+        for line in local_props.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith("sdk.dir="):
+                raw = line.split("=", 1)[1].strip()
+                decoded = raw.replace("\\\\", "\\").replace("\\:", ":")
+                candidate = Path(decoded) / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")
+                if candidate.exists():
+                    return str(candidate)
+    raise FileNotFoundError(
+        "adb not found. Install platform-tools and set PATH, ANDROID_HOME, ANDROID_SDK_ROOT, or sdk.dir in local.properties."
+    )
+
+
+ADB = resolve_adb()
 PKG = "com.me4hik.praktika.accelerated"
 ACTIVITY = f"{PKG}/com.me4hik.praktika.MainActivity"
-OUT_DIR = Path(r"<PROJECT_ROOT>\android\app\build\outputs\diagnostics-validation")
-
+OUT_DIR = ROOT / "app" / "build" / "outputs" / "diagnostics-validation"
+# 14.08.2026 DB Refactoring cursor by Me4Hik END
 
 def adb(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run([ADB, *args], check=check, capture_output=True, text=True)
@@ -112,7 +142,9 @@ def open_settings(xml: str) -> str:
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    apk = Path(r"<PROJECT_ROOT>\android\app\build\outputs\apk\accelerated\debug\app-accelerated-debug.apk")
+    # 14.08.2026 DB Refactoring cursor by Me4Hik START - make diagnostics validator portable
+    apk = ROOT / "app" / "build" / "outputs" / "apk" / "accelerated" / "debug" / "app-accelerated-debug.apk"
+    # 14.08.2026 DB Refactoring cursor by Me4Hik END
     if not apk.exists():
         print(f"FAIL: APK not found at {apk}", file=sys.stderr)
         sys.exit(1)

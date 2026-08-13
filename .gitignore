@@ -41,3 +41,51 @@ Thumbs.db
 /release/testers/.staging/
 /release/testers/CURRENT.next/
 /release/testers/CURRENT.bak-*/
+
+# 14.08.2026 DB Refactoring cursor by Me4Hik START - keep local build, test and portfolio-working artifacts out of Git
+
+# Binaries / releases
+*.apk
+*.aab
+/release/internal-long-term/
+
+# Local DBs / dumps
+/android/prod_db/
+/android/*.db
+/android/*.db-wal
+/android/*.db-shm
+/android/praktika_prod_check.db
+
+# Tooling caches / dumps
+/android/.kotlin/
+/android/test-results/
+/android/ui_dump*.xml
+/android/after_start.xml
+/android/before_start.xml
+/android/clean_regression_039.log
+/android/manual_after_start_practice.png
+/android/scripts/*.log
+/android/scripts/__pycache__/
+/android/scripts/_ui_dump.xml
+/android/scripts/window_dump.xml
+/android/scripts/_stage24_*_ui.xml
+
+# Local process / design kitchen
+/баги/
+/скрины/
+/stitch-audit-temp/
+/stitch-audit-v2-temp/
+/stitch-reconstruction-audit-temp/
+/stitch_*.zip
+/design/**/*.psd
+/design/снимки/
+/design/сам сделал 1/
+/Podorozi TZ Growth Plan.docx
+/tz.md
+/prilogyha.md
+/itog_posledov.md
+/c;oze.md
+/Etap_0/
+/poslefovatelnosti/
+
+# 14.08.2026 DB Refactoring cursor by Me4Hik END

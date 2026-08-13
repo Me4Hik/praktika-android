@@ -15,8 +15,9 @@ Accelerated APK позволяет проверить полный цикл пр
 
 ## Сборка
 
+<!-- 14.08.2026 DB Refactoring cursor by Me4Hik START - remove machine-specific paths from accelerated docs -->
 ```powershell
-cd <PROJECT_ROOT>\android
+cd android
 .\gradlew.bat assembleProductionDebug assembleAcceleratedDebug assembleProductionRelease
 ```
 
@@ -32,15 +33,26 @@ APK:
 ## Установка
 
 ```powershell
-$adb = "<ANDROID_SDK>\platform-tools\adb.exe"
+# Prefer adb from PATH, or: Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+$adb = if (Get-Command adb -ErrorAction SilentlyContinue) {
+    (Get-Command adb).Source
+} else {
+    Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+}
 & $adb install -r app\build\outputs\apk\production\debug\app-production-debug.apk
 & $adb install -r app\build\outputs\apk\accelerated\debug\app-accelerated-debug.apk
 ```
+<!-- 14.08.2026 DB Refactoring cursor by Me4Hik END -->
 
 ## Управление через ADB
 
 ```powershell
-$adb = "<ANDROID_SDK>\platform-tools\adb.exe"
+# Prefer adb from PATH, or: Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+$adb = if (Get-Command adb -ErrorAction SilentlyContinue) {
+    (Get-Command adb).Source
+} else {
+    Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+}
 $package = "com.me4hik.praktika.accelerated"
 $receiver = "com.me4hik.praktika.AcceleratedCommandReceiver"
 $component = "$package/$receiver"
