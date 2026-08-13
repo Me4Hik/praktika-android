@@ -5,6 +5,8 @@ package com.me4hik.praktika.ui.practice
 
 import androidx.lifecycle.SavedStateHandle
 import com.me4hik.praktika.notification.NotificationDeliveryCapability
+import com.me4hik.praktika.notification.ExactAlarmCapability
+import com.me4hik.praktika.notification.ExactAlarmCapabilityPolicy
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
 import com.me4hik.praktika.notification.NotificationPermissionUiState
 import com.me4hik.praktika.data.cycle.CycleResult
@@ -25,6 +27,8 @@ import java.time.ZonedDateTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 
 internal object PracticeRootViewModelTestSupport {
@@ -167,8 +171,15 @@ internal object PracticeRootViewModelTestSupport {
 
     class FakeNotificationPermissionPolicy(
         private val requested: MutableStateFlow<Boolean> = MutableStateFlow(false),
-        private val uiState: NotificationPermissionUiState = NotificationPermissionUiState.NOT_REQUESTED,
+        private var uiState: NotificationPermissionUiState = NotificationPermissionUiState.NOT_REQUESTED,
     ) : NotificationPermissionPolicy {
+        private val _permissionStateRevision = MutableStateFlow(0L)
+        override val permissionStateRevision: StateFlow<Long> = _permissionStateRevision.asStateFlow()
+
+        override fun notifyPermissionStateChanged(source: String) {
+            _permissionStateRevision.value = _permissionStateRevision.value + 1L
+        }
+
         override val permissionRequested: Flow<Boolean> = requested
 
         override suspend fun markPermissionRequested() {
@@ -179,6 +190,10 @@ internal object PracticeRootViewModelTestSupport {
             permissionRequested: Boolean,
             soundEnabled: Boolean,
         ): NotificationPermissionUiState = uiState
+
+        fun setUiState(state: NotificationPermissionUiState) {
+            uiState = state
+        }
 
         override fun toDeliveryCapability(state: NotificationPermissionUiState): NotificationDeliveryCapability {
             return if (state == NotificationPermissionUiState.ENABLED) {
@@ -197,6 +212,32 @@ internal object PracticeRootViewModelTestSupport {
         override fun hasRuntimePermission(): Boolean = false
 
         override fun areAppNotificationsEnabled(): Boolean = false
+
+        override fun shouldShowRequestPermissionRationale(): Boolean = false
+
+        override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+    }
+
+    class FakeExactAlarmCapabilityPolicy(
+        private var capability: ExactAlarmCapability = ExactAlarmCapability.NOT_REQUIRED,
+    ) : ExactAlarmCapabilityPolicy {
+        private val _revision = MutableStateFlow(0L)
+        override val capabilityStateRevision: StateFlow<Long> = _revision.asStateFlow()
+
+        override fun currentCapability(): ExactAlarmCapability = capability
+
+        fun setCapability(value: ExactAlarmCapability) {
+            capability = value
+            _revision.value += 1L
+        }
+
+        override fun notifyCapabilityChanged(source: String): Boolean = false
+
+        override fun seedInitialCapability(source: String) = Unit
+
+        override fun createRequestExactAlarmIntent() = android.content.Intent()
+
+        override fun recordSettingsCta(source: String) = Unit
     }
 
     fun createViewModel(
@@ -207,9 +248,12 @@ internal object PracticeRootViewModelTestSupport {
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
         commandDispatcher: kotlinx.coroutines.CoroutineDispatcher,
         notificationPermissionRepository: NotificationPermissionPolicy = FakeNotificationPermissionPolicy(),
+        exactAlarmCapabilityRepository: ExactAlarmCapabilityPolicy = FakeExactAlarmCapabilityPolicy(),
         soundPreferenceRepository: FakeSoundPreferenceRepository = FakeSoundPreferenceRepository(),
         onRequestPostNotifications: () -> Unit = {},
-        onOpenNotificationSettings: () -> Unit = {},
+        onOpenAppNotificationSettings: () -> Unit = {},
+        onOpenChannelSettings: () -> Unit = {},
+        onOpenExactAlarmSettings: () -> Unit = {},
     ): PracticeRootViewModel {
         return PracticeRootViewModel(
             readRepository = readRepository,
@@ -217,9 +261,12 @@ internal object PracticeRootViewModelTestSupport {
             startPracticeCommand = startCommand,
             updateScheduleCommand = updateCommand,
             notificationPermissionRepository = notificationPermissionRepository,
+            exactAlarmCapabilityRepository = exactAlarmCapabilityRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             onRequestPostNotifications = onRequestPostNotifications,
-            onOpenNotificationSettings = onOpenNotificationSettings,
+            onOpenAppNotificationSettings = onOpenAppNotificationSettings,
+            onOpenChannelSettings = onOpenChannelSettings,
+            onOpenExactAlarmSettings = onOpenExactAlarmSettings,
             savedStateHandle = savedStateHandle,
             timeFormatter = PracticeTimeFormatter(),
             commandDispatcher = commandDispatcher,

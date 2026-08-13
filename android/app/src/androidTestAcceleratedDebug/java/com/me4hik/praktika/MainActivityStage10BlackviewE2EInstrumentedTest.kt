@@ -105,10 +105,6 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
 
             changeScheduleViaUi(630, 860, 1210)
             assertUiShowsTimes(630, 860, 1210)
-            Stage10BlackviewE2ESupport.assertSlotMinutes(runtime, 660, 900, 1140)
-
-            saveScheduleAndWaitClean()
-            SettingsComposeTestSupport.waitForSnackbarText(composeRule, "Расписание сохранено")
             Stage10BlackviewE2ESupport.assertSlotMinutes(runtime, 630, 860, 1210)
 
             val scheduledAfter = runtime.database.questionOccurrenceDao().getById(scheduledId)!!
@@ -138,8 +134,6 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
 
             openSettings()
             changeScheduleViaUi(555, 790, 1300)
-            saveScheduleAndWaitClean()
-            SettingsComposeTestSupport.waitForSnackbarText(composeRule, "Расписание сохранено")
             Stage10BlackviewE2ESupport.assertSlotMinutes(runtime, 555, 790, 1300)
 
             val availableAfter = runtime.database.questionOccurrenceDao().getById(scheduledId)!!
@@ -166,8 +160,6 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
             val remainingAtPause = oldAvailableUntil - pausedAt
 
             changeScheduleViaUi(505, 995, 1365)
-            saveScheduleAndWaitClean()
-            SettingsComposeTestSupport.waitForSnackbarText(composeRule, "Расписание сохранено")
             Stage10BlackviewE2ESupport.assertSlotMinutes(runtime, 505, 995, 1365)
             assertEquals(frozen, runtime.database.questionOccurrenceDao().getById(scheduledId)!!)
 
@@ -276,21 +268,15 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
 
     private fun changeScheduleViaUi(first: Int, second: Int, third: Int) {
         SettingsComposeTestSupport.changeSlotTime(composeRule, 1, first)
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
         SettingsComposeTestSupport.changeSlotTime(composeRule, 2, second)
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
         SettingsComposeTestSupport.changeSlotTime(composeRule, 3, third)
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsEnabled()
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
     }
 
     private fun saveScheduleAndWaitClean() {
-        SettingsComposeTestSupport.saveSchedule(composeRule)
-        composeRule.waitUntil(timeoutMillis = 15_000) {
-            try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsNotEnabled()
-                true
-            } catch (_: AssertionError) {
-                false
-            }
-        }
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
     }
 
     private suspend fun expectedStrictNextAvailableUntil(

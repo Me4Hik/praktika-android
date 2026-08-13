@@ -10,6 +10,7 @@ import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
 import com.me4hik.praktika.data.read.RoomPracticeReadRepository
 import com.me4hik.praktika.data.read.RoomScheduleReadRepository
+import com.me4hik.praktika.notification.ExactAlarmCapabilityRepository
 import com.me4hik.praktika.notification.NotificationOpenRequestStore
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
 import com.me4hik.praktika.notification.NotificationPermissionRepository
@@ -17,6 +18,10 @@ import com.me4hik.praktika.notification.NotificationSyncRequester
 import com.me4hik.praktika.notification.PracticeNotificationCoordinator
 import com.me4hik.praktika.notification.PracticeNotificationPresenter
 import com.me4hik.praktika.notification.PlatformAlarmScheduler
+import com.me4hik.praktika.data.backup.write.BackupIoSessionGate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 
 object TestPraktikaRuntimeBuilder {
@@ -33,18 +38,49 @@ object TestPraktikaRuntimeBuilder {
         permissionRepository: NotificationPermissionPolicy? = null,
     ): PraktikaRuntime {
         val appContext = context.applicationContext
-        val cycleRepository = CycleRepository(database, timeProvider)
+        val backupCoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val backupIoSessionGate = BackupIoSessionGate()
+        val backupWriteStateRepository =
+            com.me4hik.praktika.data.backup.write.DataStoreBackupWriteStateRepository(appContext)
+        val authorizedBackupService = RuntimeAuthorizedBackupFactory.create(
+            appContext = appContext,
+            database = database,
+            backupScope = backupCoroutineScope,
+            sharedIoGate = backupIoSessionGate,
+            writeStateRepository = backupWriteStateRepository,
+        )
+        val backupMutationRequestSink = com.me4hik.praktika.data.backup.write.AuthorizedBackupMutationRequestSink(
+            authorizedBackupService,
+        )
+        val backupFolderSetupCoordinator = RuntimeBackupSetupFactory.create(
+            appContext = appContext,
+            database = database,
+            backupScope = backupCoroutineScope,
+            sharedIoGate = backupIoSessionGate,
+            authorizedBackupService = authorizedBackupService,
+            writeStateRepository = backupWriteStateRepository,
+        )
+        val backupSettingsFacade = RuntimeBackupSettingsFacadeFactory.create(
+            appContext = appContext,
+            writeStateRepository = backupWriteStateRepository,
+            authorizedBackupService = authorizedBackupService,
+            setupCoordinator = backupFolderSetupCoordinator,
+            sharedIoGate = backupIoSessionGate,
+            backupScope = backupCoroutineScope,
+        )
+        val cycleRepository = CycleRepository(database, timeProvider, backupMutationRequestSink)
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
         val archiveReadRepository = RoomArchiveReadRepository(database)
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - test delete repository
-        val answerDeleteRepository = RoomAnswerDeleteRepository(database)
+        val answerDeleteRepository = RoomAnswerDeleteRepository(database, backupMutationRequestSink)
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END
         val openRequestStore = NotificationOpenRequestStore()
         val resolvedPermissionRepository = permissionRepository ?: NotificationPermissionRepository(
             context = appContext,
             soundEnabledFlow = soundPreferenceRepository.soundEnabled,
         )
+        val exactAlarmCapabilityRepository = ExactAlarmCapabilityRepository(appContext)
         lateinit var runtimeRef: PraktikaRuntime
         val initializer = PraktikaRuntimeInitializer(appContext) { runtimeRef }
         val coordinator = PracticeNotificationCoordinator(
@@ -75,9 +111,16 @@ object TestPraktikaRuntimeBuilder {
             answerDeleteRepository = answerDeleteRepository,
             notificationCoordinator = coordinator,
             notificationPermissionRepository = resolvedPermissionRepository,
+            exactAlarmCapabilityRepository = exactAlarmCapabilityRepository,
             notificationOpenRequestStore = openRequestStore,
             notificationSyncRequester = syncRequester,
             initializer = initializer,
+            backupCoroutineScope = backupCoroutineScope,
+            backupIoSessionGate = backupIoSessionGate,
+            authorizedBackupService = authorizedBackupService,
+            backupMutationRequestSink = backupMutationRequestSink,
+            backupFolderSetupCoordinator = backupFolderSetupCoordinator,
+            backupSettingsFacade = backupSettingsFacade,
         )
         return runtimeRef
     }

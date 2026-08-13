@@ -112,8 +112,10 @@ interface AnswerDao {
     ): Flow<List<AnswerArchiveRow>>
     // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END
 
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C delete row-count signal
     @Query("DELETE FROM answers WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     @Query("DELETE FROM answers WHERE occurrenceId = :occurrenceId")
     suspend fun deleteByOccurrenceId(occurrenceId: Long)

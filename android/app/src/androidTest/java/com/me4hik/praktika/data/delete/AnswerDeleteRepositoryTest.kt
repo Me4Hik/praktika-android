@@ -36,7 +36,7 @@ class AnswerDeleteRepositoryTest {
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
-        deleteRepository = RoomAnswerDeleteRepository(database)
+        deleteRepository = RoomAnswerDeleteRepository(database, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
         archiveRepository = RoomArchiveReadRepository(database)
     }
 

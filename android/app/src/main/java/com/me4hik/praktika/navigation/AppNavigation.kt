@@ -4,15 +4,17 @@
 // 05.08.2026 Question And Skip cursor by Me4Hik START - route конкретного occurrence и skip
 // 05.08.2026 Stage 7 Connected Harness Fix cursor by Me4Hik START - lifecycle-aware root state collection
 // 05.08.2026 Answer Save cursor by Me4Hik START - AnswerViewModel, save navigation и Snackbar
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
 package com.me4hik.praktika.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -30,12 +32,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.me4hik.praktika.R
+import com.me4hik.praktika.diagnostics.DiagnosticCategory
+import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
+import com.me4hik.praktika.diagnostics.NavigationRouteTracker
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
+import com.me4hik.praktika.diagnostics.DiagnosticReportCoordinator
 import com.me4hik.praktika.export.ArchiveExportUseCase
 import com.me4hik.praktika.export.ContentResolverExportDocumentWriter
 import com.me4hik.praktika.export.ExportFormat
 import com.me4hik.praktika.export.ExportSelection
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.runtime.PraktikaRuntime
+import androidx.activity.ComponentActivity
+import com.me4hik.praktika.ui.components.PracticeSnackbarHost
 import com.me4hik.praktika.ui.archive.ArchiveDatesScreen
 import com.me4hik.praktika.ui.archive.ArchiveDatesViewModel
 import com.me4hik.praktika.ui.archive.ArchiveDayScreen
@@ -65,9 +74,11 @@ import com.me4hik.praktika.ui.OnboardingScreen
 import com.me4hik.praktika.ui.QuestionHistoryScreen
 import com.me4hik.praktika.ui.QuestionScreen
 import com.me4hik.praktika.ui.SettingsScreen
+import com.me4hik.praktika.ui.settings.SettingsBackupEffects
 import com.me4hik.praktika.ui.settings.SettingsNavigationEvent
 import com.me4hik.praktika.ui.settings.SettingsSnackbarEvent
 import com.me4hik.praktika.ui.settings.SettingsTestTags
+import com.me4hik.praktika.ui.settings.BugReportUiState
 import com.me4hik.praktika.ui.settings.SettingsViewModel
 import com.me4hik.praktika.ui.settings.SettingsViewModelFactory
 import com.me4hik.praktika.ui.practice.AnswerBlockedReason
@@ -87,6 +98,10 @@ import com.me4hik.praktika.ui.practice.QuestionNavigationEvent
 import com.me4hik.praktika.ui.practice.QuestionUiState
 import com.me4hik.praktika.ui.practice.QuestionViewModel
 import com.me4hik.praktika.ui.practice.QuestionViewModelFactory
+import com.me4hik.praktika.ui.restore.ProductionRestoreEffects
+import com.me4hik.praktika.ui.restore.ProductionRestoreSessionHost
+import com.me4hik.praktika.ui.restore.ProductionRestoreViewModel
+import com.me4hik.praktika.ui.restore.ProductionRestoreViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -140,6 +155,29 @@ fun AppNavigation(
         return
     }
     val navController = rememberNavController()
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - centralized screen_open diagnostics
+    DisposableEffect(navController) {
+        val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
+            val route = destination.route ?: "unknown"
+            val previousRoute = NavigationRouteTracker.currentRoute
+            NavigationRouteTracker.onRouteChanged(route)
+            if (DiagnosticsRecorder.isInitialized()) {
+                DiagnosticsRecorder.get().record(
+                    category = DiagnosticCategory.APP,
+                    name = "screen_open",
+                    metadata = TargetedBugDiagnostics.screenOpenMetadata(
+                        route = route,
+                        previousRoute = previousRoute,
+                    ),
+                )
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingSaveConfirmation by remember { mutableStateOf<PendingSaveConfirmation?>(null) }
@@ -149,6 +187,12 @@ fun AppNavigation(
     val context = LocalContext.current
     val archiveZoneIdProvider = remember(runtime) {
         com.me4hik.praktika.ui.archive.TimeProviderArchiveZoneIdProvider(runtime.timeProvider)
+    }
+    val diagnosticReportSubmitter = remember(runtime) {
+        DiagnosticReportCoordinator(
+            context = context.applicationContext,
+            runtimeProvider = { runtime },
+        )
     }
     val archiveExportCoordinator = remember(runtime, context, coroutineScope) {
         ArchiveExportCoordinator(
@@ -165,6 +209,28 @@ fun AppNavigation(
     val archiveExportNoAnswersMessage = stringResource(R.string.archive_export_no_answers)
     val archiveExportSavedMessage = stringResource(R.string.archive_export_saved)
     val archiveExportWriteErrorMessage = stringResource(R.string.archive_export_write_error)
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 5.2 single restore ViewModel owner
+    val activity = context as ComponentActivity
+    val restoreFactory = remember(activity, runtime) {
+        ProductionRestoreViewModelFactory(
+            owner = activity,
+            applicationContext = activity.applicationContext,
+            runtime = runtime,
+        )
+    }
+    val restoreViewModel: ProductionRestoreViewModel = viewModel(
+        viewModelStoreOwner = activity,
+        factory = restoreFactory,
+    )
+    ProductionRestoreEffects(
+        viewModel = restoreViewModel,
+        onRestoreCommitted = { practiceStarted ->
+            if (!practiceStarted) {
+                viewModel.discardOnboardingDraftFromPersistedSchedule()
+            }
+        },
+    )
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
     ArchiveExportEffects(
         coordinator = archiveExportCoordinator,
         snackbarHostState = snackbarHostState,
@@ -295,7 +361,6 @@ fun AppNavigation(
     // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik START - snackbar action label
     val viewHistoryActionLabel = stringResource(R.string.answer_view_history_action)
     // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik END
-    val settingsScheduleSavedMessage = stringResource(R.string.settings_schedule_saved)
     val settingsPracticePausedMessage = stringResource(R.string.settings_practice_paused)
     val settingsPracticeResumedMessage = stringResource(R.string.settings_practice_resumed)
     val settingsScheduleSaveFailedMessage = stringResource(R.string.settings_schedule_save_error)
@@ -361,20 +426,29 @@ fun AppNavigation(
     }
 
     Scaffold(
+        // 09.08.2026 Post-release fixes cursor by Me4Hik START - dark Snackbar host
         snackbarHost = {
             Box(modifier = Modifier.testTag(SettingsTestTags.SETTINGS_SNACKBAR)) {
-                SnackbarHost(
+                PracticeSnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier.testTag(PracticeTestTags.ANSWER_SAVED_SNACKBAR),
                 )
             }
         },
+        // 09.08.2026 Post-release fixes cursor by Me4Hik END
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding),
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 5.1 restore overlay host
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
         ) {
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
             composable(Routes.ONBOARDING) {
                 when (val notStarted = uiState) {
                     is PracticeUiState.NotStarted -> {
@@ -382,6 +456,7 @@ fun AppNavigation(
                             state = notStarted,
                             onSlotTimeChange = viewModel::onSlotTimeChanged,
                             onStartPractice = viewModel::onStartPracticeClicked,
+                            onRestoreBackup = restoreViewModel::onOpenRestore,
                         )
                     }
                     is PracticeUiState.Started -> {
@@ -398,7 +473,9 @@ fun AppNavigation(
                     HomeScreen(
                         content = started.content,
                         notificationCard = started.notificationCard,
+                        exactAlarmCard = started.exactAlarmCard,
                         onNotificationCardAction = viewModel::onNotificationCardActionClicked,
+                        onExactAlarmCardAction = viewModel::onExactAlarmCardActionClicked,
                         onOpenQuestion = { occurrenceId ->
                             // 06.08.2026 Stage 12 Connected Navigation Fix cursor by Me4Hik START - navigate before IO mutation sync
                             navController.navigate(Routes.question(occurrenceId))
@@ -716,20 +793,29 @@ fun AppNavigation(
                 val context = LocalContext.current
                 val settingsViewModel: SettingsViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
-                    factory = SettingsViewModelFactory(backStackEntry, runtime),
+                    factory = SettingsViewModelFactory(
+                        owner = backStackEntry,
+                        runtime = runtime,
+                        diagnosticReportSubmitter = diagnosticReportSubmitter,
+                    ),
                 )
                 val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                val bugReportState by settingsViewModel.bugReportState.collectAsStateWithLifecycle()
                 var showDirtyDialog by remember { mutableStateOf(false) }
+                var showBugReportDialog by remember { mutableStateOf(false) }
 
                 LaunchedEffect(settingsViewModel) {
                     settingsViewModel.snackbar.collect { event ->
                         pendingSettingsSnackbarMessage = when (event) {
-                            SettingsSnackbarEvent.ScheduleSaved -> settingsScheduleSavedMessage
                             SettingsSnackbarEvent.PracticePaused -> settingsPracticePausedMessage
                             SettingsSnackbarEvent.PracticeResumed -> settingsPracticeResumedMessage
                             SettingsSnackbarEvent.ScheduleSaveFailed -> settingsScheduleSaveFailedMessage
                             SettingsSnackbarEvent.SoundChangeFailed -> settingsSoundChangeFailedMessage
                             SettingsSnackbarEvent.PauseStateChangeFailed -> settingsPauseChangeFailedMessage
+                            // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+                            is SettingsSnackbarEvent.BackupMessage ->
+                                context.getString(event.messageResId)
+                            // 10.08.2026 Post-release fixes cursor by Me4Hik END
                         }
                     }
                 }
@@ -751,10 +837,13 @@ fun AppNavigation(
                     }
                 }
 
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+                SettingsBackupEffects(viewModel = settingsViewModel)
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
                 SettingsScreen(
                     uiState = settingsUiState,
                     onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
-                    onSaveSchedule = settingsViewModel::saveSchedule,
                     onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
                     onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
                     onTogglePauseState = settingsViewModel::togglePauseState,
@@ -765,9 +854,39 @@ fun AppNavigation(
                         settingsViewModel.confirmDiscardChanges()
                     },
                     showDirtyDialog = showDirtyDialog,
+                    onOpenBugReport = { showBugReportDialog = true },
+                    showBugReportDialog = showBugReportDialog,
+                    bugReportState = bugReportState,
+                    onDismissBugReport = {
+                        showBugReportDialog = false
+                        settingsViewModel.resetBugReportState()
+                    },
+                    onSubmitBugReport = settingsViewModel::submitBugReport,
+                    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+                    onBackupSetup = settingsViewModel::onBackupSetupRequested,
+                    onBackupNow = settingsViewModel::onBackupNowRequested,
+                    onBackupChangeFolder = settingsViewModel::onBackupReplacementRequested,
+                    onBackupReconnect = settingsViewModel::onBackupReconnectRequested,
+                    onBackupDisable = settingsViewModel::onBackupDisableRequested,
+                    onBackupDisclosureConfirm = settingsViewModel::onBackupDisclosureConfirmed,
+                    onBackupDisclosureCancel = settingsViewModel::onBackupDisclosureCancelled,
+                    onBackupCandidateConfirm = settingsViewModel::onBackupCandidateConfirmed,
+                    onBackupCandidateCancel = settingsViewModel::onBackupCandidateCancelled,
+                    onBackupChooseAnother = settingsViewModel::onBackupChooseAnotherFolder,
+                    onBackupCommitRetry = settingsViewModel::onBackupCommitRetry,
+                    onBackupDisableConfirm = settingsViewModel::onBackupDisableConfirmed,
+                    onBackupDisableCancel = settingsViewModel::onBackupDisableCancelled,
+                    onBackupReconnectDifferentUseAsNew = settingsViewModel::onBackupReconnectDifferentUseAsNew,
+                    onBackupReconnectDifferentCancel = settingsViewModel::onBackupReconnectDifferentCancelled,
+                    // 10.08.2026 Post-release fixes cursor by Me4Hik END
                 )
             }
         }
+        ProductionRestoreSessionHost(
+            viewModel = restoreViewModel,
+        )
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+    }
     }
 }
 // 05.08.2026 Answer Save cursor by Me4Hik END

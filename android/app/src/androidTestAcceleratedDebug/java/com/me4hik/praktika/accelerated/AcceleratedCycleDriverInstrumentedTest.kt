@@ -155,7 +155,7 @@ class AcceleratedCycleDriverInstrumentedTest {
         val database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
         seedInMemory(database)
         val clock = RecordingClockController()
-        val repository = CycleRepository(database, clock)
+        val repository = CycleRepository(database, clock, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
         val driver = AcceleratedCycleDriver(repository, clock)
 
         driver.tickOnce()

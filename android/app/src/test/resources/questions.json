@@ -1,0 +1,145 @@
+{
+  "seedVersion": 1,
+  "questions": [
+    {
+      "id": 1,
+      "cyclePosition": 1,
+      "text": "Как мои стопы ощущают контакт с землёй?",
+      "isActive": true
+    },
+    {
+      "id": 2,
+      "cyclePosition": 2,
+      "text": "Какой настоящий я сейчас по цвету?",
+      "isActive": true
+    },
+    {
+      "id": 3,
+      "cyclePosition": 3,
+      "text": "Что я чувствую, когда представляю себя в центре Вселенной?",
+      "isActive": true
+    },
+    {
+      "id": 4,
+      "cyclePosition": 4,
+      "text": "Как моя спина чувствует поддержку?",
+      "isActive": true
+    },
+    {
+      "id": 5,
+      "cyclePosition": 5,
+      "text": "Какой настоящий я сейчас по запаху?",
+      "isActive": true
+    },
+    {
+      "id": 6,
+      "cyclePosition": 6,
+      "text": "Как и где я воспринимаю свою внутреннюю тишину?",
+      "isActive": true
+    },
+    {
+      "id": 7,
+      "cyclePosition": 7,
+      "text": "Как мой живот реагирует на мои эмоции?",
+      "isActive": true
+    },
+    {
+      "id": 8,
+      "cyclePosition": 8,
+      "text": "Какой настоящий я сейчас по звуку?",
+      "isActive": true
+    },
+    {
+      "id": 9,
+      "cyclePosition": 9,
+      "text": "Как я сегодня могу найти мир и покой внутри себя?",
+      "isActive": true
+    },
+    {
+      "id": 10,
+      "cyclePosition": 10,
+      "text": "Как я ощущаю связь с Природой?",
+      "isActive": true
+    },
+    {
+      "id": 11,
+      "cyclePosition": 11,
+      "text": "Какой настоящий я сейчас на ощупь?",
+      "isActive": true
+    },
+    {
+      "id": 12,
+      "cyclePosition": 12,
+      "text": "Как сегодня я прощаю и отпускаю обиды?",
+      "isActive": true
+    },
+    {
+      "id": 13,
+      "cyclePosition": 13,
+      "text": "Как я реагирую на препятствия на моём пути?",
+      "isActive": true
+    },
+    {
+      "id": 14,
+      "cyclePosition": 14,
+      "text": "Как я позволяю себе расслабиться и отдохнуть?",
+      "isActive": true
+    },
+    {
+      "id": 15,
+      "cyclePosition": 15,
+      "text": "Как я могу отпустить контроль и довериться процессу жизни?",
+      "isActive": true
+    },
+    {
+      "id": 16,
+      "cyclePosition": 16,
+      "text": "Что я могу сделать сегодня, чтобы больше ценить каждый момент времени?",
+      "isActive": true
+    },
+    {
+      "id": 17,
+      "cyclePosition": 17,
+      "text": "Как я могу использовать свои мечты как источник вдохновения?",
+      "isActive": true
+    },
+    {
+      "id": 18,
+      "cyclePosition": 18,
+      "text": "Как сегодня выглядит для меня моя свобода?",
+      "isActive": true
+    },
+    {
+      "id": 19,
+      "cyclePosition": 19,
+      "text": "Как я могу выражать благодарность этому миру каждый день?",
+      "isActive": true
+    },
+    {
+      "id": 20,
+      "cyclePosition": 20,
+      "text": "Что я могу сделать сегодня, чтобы укрепить свою веру в себя?",
+      "isActive": true
+    },
+    {
+      "id": 21,
+      "cyclePosition": 21,
+      "text": "Как я могу привлечь больше изобилия в свою жизнь?",
+      "isActive": true
+    }
+  ],
+  "defaultSlots": [
+    {
+      "slotIndex": 1,
+      "timeOfDayMinutes": 660
+    },
+    {
+      "slotIndex": 2,
+      "timeOfDayMinutes": 900
+    },
+    {
+      "slotIndex": 3,
+      "timeOfDayMinutes": 1140
+    }
+  ]
+}

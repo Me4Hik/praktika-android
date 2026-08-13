@@ -13,13 +13,15 @@ object PracticeComposeTestHarness {
         owner: SavedStateRegistryOwner,
         runtime: PraktikaRuntime,
         onRequestPostNotifications: () -> Unit = {},
-        onOpenNotificationSettings: () -> Unit = {},
+        onOpenAppNotificationSettings: () -> Unit = {},
+        onOpenChannelSettings: () -> Unit = {},
     ): PracticeRootViewModel {
         return PracticeRootViewModelFactory(
             owner = owner,
             runtime = runtime,
             onRequestPostNotifications = onRequestPostNotifications,
-            onOpenNotificationSettings = onOpenNotificationSettings,
+            onOpenAppNotificationSettings = onOpenAppNotificationSettings,
+            onOpenChannelSettings = onOpenChannelSettings,
         ).create(PracticeRootViewModel::class.java)
     }
 

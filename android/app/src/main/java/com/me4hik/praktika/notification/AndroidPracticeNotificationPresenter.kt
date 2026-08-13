@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.me4hik.praktika.MainActivity
 import com.me4hik.praktika.R
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 
 object PracticeNotificationChannels {
     const val SOUND = "practice_sound"
@@ -89,7 +90,25 @@ class AndroidPracticeNotificationPresenter(
             .setShowWhen(true)
             .setContentIntent(contentIntent)
             .build()
-        notificationManager.notify(NOTIFICATION_TAG, notificationId(plan.occurrenceId), notification)
+        TargetedBugDiagnostics.recordNotificationPostAttempt(
+            occurrenceId = plan.occurrenceId,
+            channelId = channelId,
+            capability = TargetedBugDiagnostics.NotificationTraceContext.deliveryCapability,
+        )
+        try {
+            notificationManager.notify(NOTIFICATION_TAG, notificationId(plan.occurrenceId), notification)
+            TargetedBugDiagnostics.recordNotificationPostResult(
+                occurrenceId = plan.occurrenceId,
+                result = "posted",
+            )
+        } catch (exception: Exception) {
+            TargetedBugDiagnostics.recordNotificationPostResult(
+                occurrenceId = plan.occurrenceId,
+                result = "failed",
+                exceptionClass = exception.javaClass.simpleName,
+            )
+            throw exception
+        }
     }
 
     override fun cancelPracticeNotification(occurrenceId: Long) {

@@ -76,10 +76,25 @@ object SettingsComposeTestSupport {
     // 06.08.2026 Stage 11 Onboarding cursor by Me4Hik END
 
     fun saveSchedule(composeRule: ComposeContentTestRule) {
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE)
-            .performScrollTo()
-            .assertIsDisplayed()
-            .performClick()
+        waitForScheduleAutosaveIdle(composeRule)
+    }
+
+    fun waitForScheduleAutosaveIdle(
+        composeRule: ComposeContentTestRule,
+        timeoutMillis: Long = 15_000,
+    ) {
+        composeRule.waitUntil(timeoutMillis) {
+            !hasNodeWithTag(composeRule, SettingsTestTags.SETTINGS_SCHEDULE_PROGRESS)
+        }
+        composeRule.waitForIdle()
+    }
+
+    fun assertSaveScheduleButtonAbsent(composeRule: ComposeContentTestRule) {
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertDoesNotExist()
+    }
+
+    fun cancelTimePicker(composeRule: ComposeContentTestRule) {
+        composeRule.onNodeWithText("Отмена").performClick()
         composeRule.waitForIdle()
     }
 

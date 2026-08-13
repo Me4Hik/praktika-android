@@ -1,4 +1,5 @@
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - permission repository
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - split recovery state machine
 package com.me4hik.praktika.notification
 
 import android.app.NotificationChannel
@@ -15,7 +16,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import com.me4hik.praktika.diagnostics.DiagnosticCategory
+import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -27,10 +33,36 @@ class NotificationPermissionRepository(
     private val context: Context,
     private val soundEnabledFlow: Flow<Boolean>,
 ) : NotificationPermissionPolicy {
+    private var rationaleChecker: () -> Boolean = { false }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - permission UI refresh trigger
+    private val _permissionStateRevision = MutableStateFlow(0L)
+    override val permissionStateRevision: StateFlow<Long> = _permissionStateRevision.asStateFlow()
+
+    override fun notifyPermissionStateChanged(source: String) {
+        val nextRevision = _permissionStateRevision.value + 1L
+        _permissionStateRevision.value = nextRevision
+        if (DiagnosticsRecorder.isInitialized()) {
+            DiagnosticsRecorder.get().record(
+                category = DiagnosticCategory.PERMISSION,
+                name = "permission_ui_refresh_trigger",
+                metadata = mapOf(
+                    "source" to source,
+                    "revision" to nextRevision.toString(),
+                ),
+            )
+        }
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
     override val permissionRequested: Flow<Boolean> = context.notificationPermissionDataStore.data
         .map { preferences ->
             preferences[PERMISSION_REQUESTED_KEY] ?: false
         }
+
+    fun bindRationaleChecker(checker: () -> Boolean) {
+        rationaleChecker = checker
+    }
 
     override suspend fun markPermissionRequested() {
         context.notificationPermissionDataStore.edit { preferences ->
@@ -47,29 +79,23 @@ class NotificationPermissionRepository(
         permissionRequested: Boolean,
         soundEnabled: Boolean,
     ): NotificationPermissionUiState {
-        if (!areAppNotificationsEnabled()) {
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionRequested) {
-                NotificationPermissionUiState.NOT_REQUESTED
-            } else {
-                NotificationPermissionUiState.DENIED_OR_DISABLED
-            }
-        }
-        val channelId = if (soundEnabled) {
-            PracticeNotificationChannels.SOUND
-        } else {
-            PracticeNotificationChannels.SILENT
-        }
-        if (isChannelBlocked(channelId)) {
-            return NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED
-        }
-        return NotificationPermissionUiState.ENABLED
+        val channelId = selectedChannelId(soundEnabled)
+        return NotificationPermissionStateResolver.resolve(
+            supportsRuntimePermission = shouldRequestRuntimePermission(),
+            runtimeGranted = hasRuntimePermission(),
+            permissionEverRequested = permissionRequested,
+            shouldShowRequestPermissionRationale = shouldShowRequestPermissionRationale(),
+            appNotificationsEnabled = areAppNotificationsEnabled(),
+            selectedChannelBlocked = isChannelBlocked(channelId),
+        )
     }
 
     override fun toDeliveryCapability(state: NotificationPermissionUiState): NotificationDeliveryCapability {
         return when (state) {
             NotificationPermissionUiState.ENABLED -> NotificationDeliveryCapability.ENABLED
             NotificationPermissionUiState.NOT_REQUESTED,
-            NotificationPermissionUiState.DENIED_OR_DISABLED,
+            NotificationPermissionUiState.RUNTIME_PERMISSION_REQUIRED,
+            NotificationPermissionUiState.APP_NOTIFICATIONS_DISABLED,
             NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED,
             -> NotificationDeliveryCapability.DISABLED
         }
@@ -77,6 +103,17 @@ class NotificationPermissionRepository(
 
     override fun areAppNotificationsEnabled(): Boolean {
         return NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    override fun shouldShowRequestPermissionRationale(): Boolean {
+        if (!shouldRequestRuntimePermission()) {
+            return false
+        }
+        return rationaleChecker()
+    }
+
+    override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean {
+        return !isChannelBlocked(selectedChannelId(soundEnabled))
     }
 
     fun isChannelBlocked(channelId: String): Boolean {
@@ -101,11 +138,7 @@ class NotificationPermissionRepository(
     }
 
     override fun createChannelSettingsIntent(soundEnabled: Boolean): Intent {
-        val channelId = if (soundEnabled) {
-            PracticeNotificationChannels.SOUND
-        } else {
-            PracticeNotificationChannels.SILENT
-        }
+        val channelId = selectedChannelId(soundEnabled)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -130,8 +163,17 @@ class NotificationPermissionRepository(
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
+    private fun selectedChannelId(soundEnabled: Boolean): String {
+        return if (soundEnabled) {
+            PracticeNotificationChannels.SOUND
+        } else {
+            PracticeNotificationChannels.SILENT
+        }
+    }
+
     private companion object {
         val PERMISSION_REQUESTED_KEY = booleanPreferencesKey("notification_permission_requested")
     }
 }
+// 10.08.2026 Post-release fixes cursor by Me4Hik END
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

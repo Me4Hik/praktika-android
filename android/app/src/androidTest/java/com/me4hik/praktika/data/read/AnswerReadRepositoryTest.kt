@@ -42,7 +42,7 @@ class AnswerReadRepositoryTest {
         repository = RoomAnswerReadRepository(database)
         runBlocking { seedBase() }
         timeProvider = FakeTimeProvider(epochAt(8, 0), ZONE)
-        cycleRepository = CycleRepository(database, timeProvider)
+        cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
     }
 
     @After

@@ -1,6 +1,7 @@
 // 05.08.2026 Main Screen cursor by Me4Hik START - root ViewModel практики
 // 06.08.2026 Stage 11 Onboarding cursor by Me4Hik START - schedule draft и start-flow
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - Home permission card
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - permission flow diagnostics
 package com.me4hik.praktika.ui.practice
 
 import android.util.Log
@@ -21,6 +22,12 @@ import com.me4hik.praktika.data.read.ScheduleReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleSlotReadModel
 import com.me4hik.praktika.data.seed.SeedCorruptionException
+import com.me4hik.praktika.diagnostics.DiagnosticCategory
+import com.me4hik.praktika.diagnostics.DiagnosticPermissionRecorder
+import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
+import com.me4hik.praktika.diagnostics.NavigationRouteTracker
+import com.me4hik.praktika.notification.ExactAlarmCapability
+import com.me4hik.praktika.notification.ExactAlarmCapabilityPolicy
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
 import com.me4hik.praktika.notification.NotificationPermissionUiState
 import com.me4hik.praktika.ui.settings.UpdateScheduleCommand
@@ -45,9 +52,12 @@ class PracticeRootViewModel(
     private val startPracticeCommand: StartPracticeCommand,
     private val updateScheduleCommand: UpdateScheduleCommand,
     private val notificationPermissionRepository: NotificationPermissionPolicy,
+    private val exactAlarmCapabilityRepository: ExactAlarmCapabilityPolicy,
     private val soundPreferenceRepository: SoundPreferenceRepository,
     private val onRequestPostNotifications: () -> Unit,
-    private val onOpenNotificationSettings: () -> Unit,
+    private val onOpenAppNotificationSettings: () -> Unit,
+    private val onOpenChannelSettings: () -> Unit,
+    private val onOpenExactAlarmSettings: () -> Unit,
     private val savedStateHandle: SavedStateHandle,
     private val timeFormatter: PracticeTimeFormatter,
     private val commandDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -73,7 +83,9 @@ class PracticeRootViewModel(
                             draftRevision,
                             notificationPermissionRepository.permissionRequested,
                             soundPreferenceRepository.soundEnabled,
-                        ) { _, permissionRequested, soundEnabled ->
+                            notificationPermissionRepository.permissionStateRevision,
+                            exactAlarmCapabilityRepository.capabilityStateRevision,
+                        ) { _, permissionRequested, soundEnabled, _, _ ->
                             permissionRequested to soundEnabled
                         },
                     ) { practiceResult, scheduleResult, command, permissionAndSound ->
@@ -157,33 +169,82 @@ class PracticeRootViewModel(
         viewModelScope.launch {
             val soundEnabled = soundPreferenceRepository.soundEnabled.first()
             val permissionRequested = notificationPermissionRepository.permissionRequested.first()
-            when (
-                notificationPermissionRepository.evaluateUiState(
-                    permissionRequested = permissionRequested,
-                    soundEnabled = soundEnabled,
+            val uiState = notificationPermissionRepository.evaluateUiState(
+                permissionRequested = permissionRequested,
+                soundEnabled = soundEnabled,
+            )
+            if (DiagnosticsRecorder.isInitialized()) {
+                DiagnosticsRecorder.get().record(
+                    category = DiagnosticCategory.USER,
+                    name = "button_tap",
+                    metadata = mapOf(
+                        "screen" to (NavigationRouteTracker.currentRoute ?: "home"),
+                        "control_id" to "HOME_NOTIFICATION_ACTION",
+                    ),
                 )
-            ) {
+                DiagnosticsRecorder.get().record(
+                    category = DiagnosticCategory.PERMISSION,
+                    name = "notification_permission_cta",
+                    metadata = mapOf(
+                        "screen" to (NavigationRouteTracker.currentRoute ?: "home"),
+                        "card_state" to uiState.name,
+                    ),
+                )
+            }
+            when (uiState) {
                 NotificationPermissionUiState.NOT_REQUESTED -> {
-                    if (notificationPermissionRepository.shouldRequestRuntimePermission()) {
-                        withContext(commandDispatcher) {
-                            notificationPermissionRepository.markPermissionRequested()
-                        }
-                        onRequestPostNotifications()
-                    } else {
-                        onOpenNotificationSettings()
+                    withContext(commandDispatcher) {
+                        notificationPermissionRepository.markPermissionRequested()
                     }
+                    recordPermissionRequestStarted(soundEnabled)
+                    onRequestPostNotifications()
                 }
-                NotificationPermissionUiState.DENIED_OR_DISABLED,
-                NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED,
-                -> onOpenNotificationSettings()
+                NotificationPermissionUiState.RUNTIME_PERMISSION_REQUIRED -> {
+                    recordPermissionRequestStarted(soundEnabled)
+                    onRequestPostNotifications()
+                }
+                NotificationPermissionUiState.APP_NOTIFICATIONS_DISABLED -> {
+                    onOpenAppNotificationSettings()
+                }
+                NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED -> {
+                    onOpenChannelSettings()
+                }
                 NotificationPermissionUiState.ENABLED -> Unit
             }
         }
     }
 
+    fun onExactAlarmCardActionClicked() {
+        exactAlarmCapabilityRepository.recordSettingsCta("home_card")
+        onOpenExactAlarmSettings()
+    }
+
     fun retryRead() {
         readGeneration.value += 1
     }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - restore not-started draft authority
+    fun discardOnboardingDraftFromPersistedSchedule() {
+        val persisted = persistedMinutes ?: return
+        syncDraftFromMinutes(persisted)
+        draftRevision.value += 1
+        val current = _uiState.value as? PracticeUiState.NotStarted ?: return
+        val draftMinutes = currentDraftMinutesOrNull() ?: return
+        val duplicateError = duplicateDraftError(draftMinutes)
+        _uiState.value = current.copy(
+            slots = buildOnboardingSlotUiModels(
+                mapOf(
+                    1 to draftMinutes[0],
+                    2 to draftMinutes[1],
+                    3 to draftMinutes[2],
+                ),
+            ),
+            isScheduleDirty = false,
+            isScheduleValid = duplicateError == null && isDraftValid(draftMinutes),
+            scheduleError = duplicateError,
+        )
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private fun observePracticeReadResults(): Flow<ReadSnapshotResult> {
         return flow {
@@ -322,12 +383,27 @@ class PracticeRootViewModel(
             )
             val notificationCard = when (permissionState) {
                 NotificationPermissionUiState.ENABLED -> null
-                NotificationPermissionUiState.NOT_REQUESTED -> HomeNotificationCardState.REQUEST_PERMISSION
-                NotificationPermissionUiState.DENIED_OR_DISABLED,
-                NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED,
-                -> HomeNotificationCardState.OPEN_SETTINGS
+                NotificationPermissionUiState.NOT_REQUESTED,
+                NotificationPermissionUiState.RUNTIME_PERMISSION_REQUIRED,
+                -> HomeNotificationCardState.REQUEST_RUNTIME_PERMISSION
+                NotificationPermissionUiState.APP_NOTIFICATIONS_DISABLED ->
+                    HomeNotificationCardState.OPEN_APP_NOTIFICATION_SETTINGS
+                NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED ->
+                    HomeNotificationCardState.OPEN_CHANNEL_SETTINGS
             }
-            PracticeUiState.Started(content = content, notificationCard = notificationCard)
+            val exactAlarmCard = if (
+                permissionState == NotificationPermissionUiState.ENABLED &&
+                exactAlarmCapabilityRepository.currentCapability() == ExactAlarmCapability.SPECIAL_ACCESS_REQUIRED
+            ) {
+                HomeExactAlarmCardState.OPEN_EXACT_ALARM_SETTINGS
+            } else {
+                null
+            }
+            PracticeUiState.Started(
+                content = content,
+                notificationCard = notificationCard,
+                exactAlarmCard = exactAlarmCard,
+            )
         } catch (exception: PracticeTimeFormatException) {
             Log.e(TAG, "Time format failed", exception)
             PracticeUiState.FatalError(PracticeUiError.LOAD_FAILED)
@@ -451,6 +527,22 @@ class PracticeRootViewModel(
             status = occurrence.status,
             plannedAtText = timeFormatter.format(occurrence.plannedAtEpochMillis, occurrence.zoneId),
             availableUntilText = timeFormatter.format(occurrence.availableUntilEpochMillis, occurrence.zoneId),
+        )
+    }
+
+    private suspend fun recordPermissionRequestStarted(soundEnabled: Boolean) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        DiagnosticsRecorder.get().record(
+            category = DiagnosticCategory.PERMISSION,
+            name = "permission_request_started",
+            metadata = mapOf("permission" to "POST_NOTIFICATIONS"),
+        )
+        DiagnosticPermissionRecorder.recordState(
+            permissionRepository = notificationPermissionRepository,
+            soundEnabled = soundEnabled,
+            source = "permission_request_started",
         )
     }
 

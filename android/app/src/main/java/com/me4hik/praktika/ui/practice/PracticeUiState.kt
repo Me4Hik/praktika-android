@@ -26,6 +26,7 @@ sealed interface PracticeUiState {
     data class Started(
         val content: MainContentUiState,
         val notificationCard: HomeNotificationCardState? = null,
+        val exactAlarmCard: HomeExactAlarmCardState? = null,
     ) : PracticeUiState
 
     data class FatalError(
@@ -64,8 +65,13 @@ data class CurrentOccurrenceUiModel(
 )
 
 enum class HomeNotificationCardState {
-    REQUEST_PERMISSION,
-    OPEN_SETTINGS,
+    REQUEST_RUNTIME_PERMISSION,
+    OPEN_APP_NOTIFICATION_SETTINGS,
+    OPEN_CHANNEL_SETTINGS,
+}
+
+enum class HomeExactAlarmCardState {
+    OPEN_EXACT_ALARM_SETTINGS,
 }
 // 06.08.2026 Stage 11 Onboarding cursor by Me4Hik END
 // 05.08.2026 Main Screen cursor by Me4Hik END

@@ -35,7 +35,7 @@ class CycleRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(8, 0, 0), ZONE_KIEV)
-        repository = CycleRepository(database, timeProvider)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
     }
 
     @After
@@ -395,6 +395,7 @@ class CycleRepositoryTest {
             val persistentRepository = CycleRepository(
                 persistentDatabase,
                 FakeTimeProvider(epochAt(14, 0, 0), ZONE_KIEV),
+                com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
             )
             persistentRepository.startPractice()
             persistentRepository.reconcile()
@@ -425,6 +426,28 @@ class CycleRepositoryTest {
     @Test
     fun reconcileBeforeStartReturnsNotStarted() = runBlocking {
         assertEquals(CycleResult.ReconcileNotStarted, repository.reconcile())
+    }
+
+    @Test
+    fun reconcileScheduledWaitingDoesNotRewritePracticeState() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(8, 0, 0))
+        repository.startPractice()
+
+        val before = database.practiceStateDao().get()!!
+        timeProvider.setEpochMillis(epochAt(9, 0, 0))
+        assertEquals(CycleResult.ReconcileNoChanges, repository.reconcile())
+        assertEquals(before, database.practiceStateDao().get()!!)
+    }
+
+    @Test
+    fun reconcileAvailableWaitingDoesNotRewritePracticeState() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+
+        val before = database.practiceStateDao().get()!!
+        timeProvider.setEpochMillis(epochAt(12, 0, 0))
+        assertEquals(CycleResult.ReconcileNoChanges, repository.reconcile())
+        assertEquals(before, database.practiceStateDao().get()!!)
     }
 
     @Test

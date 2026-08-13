@@ -1,11 +1,10 @@
 // 06.08.2026 Settings Schedule cursor by Me4Hik START - production Settings Compose tests
+// 09.08.2026 Post-release fixes cursor by Me4Hik START - schedule autosave instrumented tests
 package com.me4hik.praktika.ui.settings
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -67,17 +66,7 @@ class SettingsNavigationProductionInstrumentedTest {
             composeRule.onNodeWithText(time).performScrollTo().assertIsDisplayed()
         }
         composeRule.onAllNodesWithText("Изменить").assertCountEquals(3)
-    }
-
-    @Test
-    fun saveDisabledWhenDraftClean() {
-        setPracticeNavigationContent {
-            setUp(initialHour = 8, initialMinute = 0)
-            startPractice()
-        }
-        PracticeComposeTestSupport.waitForHome(composeRule)
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_SETTINGS).performClick()
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsNotEnabled()
+        SettingsComposeTestSupport.assertSaveScheduleButtonAbsent(composeRule)
     }
 
     @Test
@@ -93,31 +82,42 @@ class SettingsNavigationProductionInstrumentedTest {
     }
 
     @Test
-    fun saveSchedulePersistsOnRealRoute() {
-        setDirtySettingsNavigationContent()
-        composeRule.waitUntil(timeoutMillis = 10_000) {
-            try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsEnabled()
-                true
-            } catch (_: AssertionError) {
-                false
-            }
+    fun timePickerOkAutosavesOnRealRoute() {
+        setPracticeNavigationContent {
+            setUp(initialHour = 8, initialMinute = 0)
+            startPractice()
         }
-        SettingsComposeTestSupport.saveSchedule(composeRule)
-        composeRule.waitUntil(timeoutMillis = 10_000) {
-            try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsNotEnabled()
-                true
-            } catch (_: AssertionError) {
-                false
-            }
-        }
+        PracticeComposeTestSupport.waitForHome(composeRule)
+        composeRule.onNodeWithTag(PracticeTestTags.HOME_SETTINGS).performClick()
+        SettingsComposeTestSupport.changeSlotTime(composeRule, 1, 630)
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
         runBlocking {
             assertEquals(
                 630,
                 harness.runtime.database.scheduleSlotDao().getByIndex(1)!!.timeOfDayMinutes,
             )
         }
+        SettingsComposeTestSupport.assertSaveScheduleButtonAbsent(composeRule)
+    }
+
+    @Test
+    fun timePickerCancelDoesNotPersist() {
+        setPracticeNavigationContent {
+            setUp(initialHour = 8, initialMinute = 0)
+            startPractice()
+        }
+        PracticeComposeTestSupport.waitForHome(composeRule)
+        composeRule.onNodeWithTag(PracticeTestTags.HOME_SETTINGS).performClick()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_1).performClick()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_TIME_PICKER).assertIsDisplayed()
+        SettingsComposeTestSupport.cancelTimePicker(composeRule)
+        runBlocking {
+            assertEquals(
+                660,
+                harness.runtime.database.scheduleSlotDao().getByIndex(1)!!.timeOfDayMinutes,
+            )
+        }
+        composeRule.onNodeWithText("11:00").assertIsDisplayed()
     }
 
     @Test
@@ -125,15 +125,7 @@ class SettingsNavigationProductionInstrumentedTest {
         setDirtySettingsNavigationContent()
         composeRule.waitUntil(timeoutMillis = 10_000) {
             try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCREEN).assertIsDisplayed()
-                true
-            } catch (_: AssertionError) {
-                false
-            }
-        }
-        composeRule.waitUntil(timeoutMillis = 10_000) {
-            try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsEnabled()
+                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_ERROR).assertIsDisplayed()
                 true
             } catch (_: AssertionError) {
                 false
@@ -150,6 +142,21 @@ class SettingsNavigationProductionInstrumentedTest {
             val slots = harness.runtime.database.scheduleSlotDao().getAllOrderedByTime()
             assertEquals(660, slots.first { it.slotIndex == 1 }.timeOfDayMinutes)
         }
+    }
+
+    @Test
+    fun validScheduleAutosavesWithoutDiscardDialogOnBack() {
+        setPracticeNavigationContent {
+            setUp(initialHour = 8, initialMinute = 0)
+            startPractice()
+        }
+        PracticeComposeTestSupport.waitForHome(composeRule)
+        composeRule.onNodeWithTag(PracticeTestTags.HOME_SETTINGS).performClick()
+        SettingsComposeTestSupport.changeSlotTime(composeRule, 1, 630)
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_BACK).performClick()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_DIRTY_DIALOG).assertDoesNotExist()
+        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
     }
 
     private fun setDirtySettingsNavigationContent(
@@ -184,7 +191,8 @@ class SettingsNavigationProductionInstrumentedTest {
                         owner = composeRule.activity,
                         runtime = harness.runtime,
                         onRequestPostNotifications = {},
-                        onOpenNotificationSettings = {},
+                        onOpenAppNotificationSettings = {},
+                        onOpenChannelSettings = {},
                     )
                 }
                 val viewModel: PracticeRootViewModel = viewModel(factory = factory)
@@ -200,4 +208,5 @@ class SettingsNavigationProductionInstrumentedTest {
         return checkNotNull(holder[0])
     }
 }
+// 09.08.2026 Post-release fixes cursor by Me4Hik END
 // 06.08.2026 Settings Schedule cursor by Me4Hik END

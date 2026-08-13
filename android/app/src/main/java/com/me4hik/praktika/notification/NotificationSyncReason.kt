@@ -13,6 +13,7 @@ enum class NotificationSyncReason {
     TIME_CHANGED,
     TIMEZONE_CHANGED,
     PACKAGE_REPLACED,
+    EXACT_ALARM_PERMISSION_CHANGED,
     NOTIFICATION_TAP,
 }
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

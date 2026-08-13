@@ -15,6 +15,7 @@ import com.me4hik.praktika.data.read.AnswerOccurrenceReadModel
 import com.me4hik.praktika.data.read.AnswerReadRepository
 import com.me4hik.praktika.data.read.AnswerReadResult
 import com.me4hik.praktika.data.read.AnswerReadSnapshot
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -87,8 +88,17 @@ class AnswerViewModel(
             return
         }
         val draft = state.draftText
+        TargetedBugDiagnostics.recordAnswerSaveAttempt(
+            occurrenceId = occurrenceId,
+            draftBlank = draft.isBlank(),
+        )
         if (draft.isBlank()) {
             _uiState.value = state.copy(saveError = AnswerSaveError.BLANK)
+            TargetedBugDiagnostics.recordAnswerSaveResult(
+                occurrenceId = occurrenceId,
+                result = "blank",
+                reasonEnum = CycleAnswerNotAllowedReason.BLANK.name,
+            )
             return
         }
 
@@ -121,6 +131,11 @@ class AnswerViewModel(
                     )
                 }
                 savedStateHandle[AnswerSavedStateKeys.DRAFT_TEXT] = ""
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "success",
+                    reasonEnum = "SUCCESS",
+                )
                 // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik START - history offer event
                 navigationEvents.tryEmit(
                     AnswerNavigationEvent.ReturnHomeAfterSave(
@@ -131,11 +146,21 @@ class AnswerViewModel(
             } catch (exception: CycleAnswerNotAllowedException) {
                 handleSaveNotAllowed(exception)
             } catch (_: CycleAlreadyPausedException) {
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "practice_paused",
+                    reasonEnum = "PRACTICE_PAUSED",
+                )
                 _uiState.value = AnswerUiState.Blocked(
                     questionText = state.questionText,
                     reason = AnswerBlockedReason.PRACTICE_PAUSED,
                 )
             } catch (_: CycleNotStartedException) {
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "not_started",
+                    reasonEnum = "NOT_STARTED",
+                )
                 _uiState.value = AnswerUiState.Blocked(
                     questionText = null,
                     reason = AnswerBlockedReason.NOT_FOUND,
@@ -145,6 +170,7 @@ class AnswerViewModel(
                 throw exception
             } catch (exception: Exception) {
                 Log.e(TAG, "Save failed", exception)
+                TargetedBugDiagnostics.recordAnswerSaveFailed(occurrenceId, exception)
                 restoreInteractiveAfterFailure(
                     state = state,
                     draft = draft,
@@ -159,13 +185,35 @@ class AnswerViewModel(
     private fun handleSaveNotAllowed(exception: CycleAnswerNotAllowedException) {
         when (exception.reason) {
             CycleAnswerNotAllowedReason.BLANK -> {
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "blank",
+                    reasonEnum = exception.reason.name,
+                )
                 updateInteractiveSaveError(AnswerSaveError.BLANK)
             }
             CycleAnswerNotAllowedReason.EXPECTED_ID_MISMATCH,
             CycleAnswerNotAllowedReason.NO_AVAILABLE_OCCURRENCE,
+            -> {
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "occurrence_changed",
+                    reasonEnum = exception.reason.name,
+                )
+                _uiState.value = AnswerUiState.Blocked(
+                    questionText = currentQuestionText(),
+                    reason = AnswerBlockedReason.NOT_CURRENT,
+                )
+                navigationEvents.tryEmit(AnswerNavigationEvent.ReturnHomeAfterStale)
+            }
             CycleAnswerNotAllowedReason.WINDOW_EXPIRED,
             CycleAnswerNotAllowedReason.ALREADY_COMPLETED,
             -> {
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "already_completed",
+                    reasonEnum = exception.reason.name,
+                )
                 _uiState.value = AnswerUiState.Blocked(
                     questionText = currentQuestionText(),
                     reason = AnswerBlockedReason.NOT_CURRENT,
@@ -173,6 +221,11 @@ class AnswerViewModel(
                 navigationEvents.tryEmit(AnswerNavigationEvent.ReturnHomeAfterStale)
             }
             CycleAnswerNotAllowedReason.ANSWER_ALREADY_EXISTS -> {
+                TargetedBugDiagnostics.recordAnswerSaveResult(
+                    occurrenceId = occurrenceId,
+                    result = "blocked",
+                    reasonEnum = exception.reason.name,
+                )
                 _uiState.value = AnswerUiState.FatalError(AnswerFatalError.CORRUPTION)
             }
         }

@@ -37,7 +37,7 @@ class CycleRepositoryUpdateScheduleTest {
         database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(8, 0, 0), ZONE_KIEV)
-        repository = CycleRepository(database, timeProvider)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
     }
 
     @After
@@ -386,7 +386,7 @@ class CycleRepositoryUpdateScheduleTest {
         database.close()
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
-        repository = CycleRepository(database, timeProvider)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
         val assetJson = context.assets.open("questions.json").bufferedReader().use { it.readText() }
         DatabaseSeeder().seedFromJson(assetJson, database, ZONE_KIEV)
         repository.updateSchedule(defaultUpdates(480, 720, 1020))

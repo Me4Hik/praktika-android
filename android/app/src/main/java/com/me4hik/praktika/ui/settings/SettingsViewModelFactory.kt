@@ -1,5 +1,6 @@
 // 06.08.2026 Settings Schedule cursor by Me4Hik START - factory для SettingsViewModel
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - sync hooks
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
 package com.me4hik.praktika.ui.settings
 
 import androidx.lifecycle.AbstractSavedStateViewModelFactory
@@ -7,12 +8,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.savedstate.SavedStateRegistryOwner
 import com.me4hik.praktika.data.read.RoomPracticeReadRepository
+import com.me4hik.praktika.diagnostics.DiagnosticReportSubmitter
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.runtime.PraktikaRuntime
 
 class SettingsViewModelFactory(
     owner: SavedStateRegistryOwner,
     private val runtime: PraktikaRuntime,
+    private val diagnosticReportSubmitter: DiagnosticReportSubmitter,
 ) : AbstractSavedStateViewModelFactory(owner, null) {
 
     @Suppress("UNCHECKED_CAST")
@@ -43,6 +46,10 @@ class SettingsViewModelFactory(
                 soundPreferenceRepository = runtime.soundPreferenceRepository,
                 notificationPermissionRepository = runtime.notificationPermissionRepository,
                 notificationSyncRequester = runtime.notificationSyncRequester,
+                diagnosticReportSubmitter = diagnosticReportSubmitter,
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+                backupSettingsActions = FacadeBackupSettingsActions(runtime.backupSettingsFacade),
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
                 savedStateHandle = handle,
             ) as T
         }

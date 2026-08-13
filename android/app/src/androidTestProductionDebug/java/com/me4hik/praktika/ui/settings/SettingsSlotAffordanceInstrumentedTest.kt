@@ -1,12 +1,11 @@
 // 06.08.2026 Settings Time Affordance cursor by Me4Hik START - slot affordance Compose tests
+// 09.08.2026 Post-release fixes cursor by Me4Hik START - schedule autosave affordance tests
 package com.me4hik.praktika.ui.settings
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -65,6 +64,7 @@ class SettingsSlotAffordanceInstrumentedTest {
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_2).assertIsDisplayed()
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_3).assertIsDisplayed()
         composeRule.onAllNodesWithText("Изменить").assertCountEquals(3)
+        SettingsComposeTestSupport.assertSaveScheduleButtonAbsent(composeRule)
     }
 
     @Test
@@ -83,7 +83,7 @@ class SettingsSlotAffordanceInstrumentedTest {
     }
 
     @Test
-    fun draftChangeUpdatesVisibleValueWithoutRoomChange() {
+    fun autosaveUpdatesVisibleValueWithoutManualSave() {
         setDraftNavigationContent(
             applyDraftChanges = mapOf(1 to 630),
         )
@@ -95,17 +95,18 @@ class SettingsSlotAffordanceInstrumentedTest {
                 false
             }
         }
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsEnabled()
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
+        SettingsComposeTestSupport.assertSaveScheduleButtonAbsent(composeRule)
         runBlocking {
             assertEquals(
-                660,
+                630,
                 harness.runtime.database.scheduleSlotDao().getByIndex(1)!!.timeOfDayMinutes,
             )
         }
     }
 
     @Test
-    fun savePersistsSelectedDraftValues() {
+    fun autosavePersistsSelectedDraftValues() {
         setDraftNavigationContent(
             applyDraftChanges = mapOf(
                 1 to 630,
@@ -113,15 +114,7 @@ class SettingsSlotAffordanceInstrumentedTest {
                 3 to 1210,
             ),
         )
-        composeRule.waitUntil(timeoutMillis = 10_000) {
-            try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsEnabled()
-                true
-            } catch (_: AssertionError) {
-                false
-            }
-        }
-        SettingsComposeTestSupport.saveSchedule(composeRule)
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
         runBlocking {
             val slots = harness.runtime.database.scheduleSlotDao().getAllOrderedByTime()
                 .associateBy { it.slotIndex }
@@ -132,14 +125,13 @@ class SettingsSlotAffordanceInstrumentedTest {
     }
 
     @Test
-    fun slotsDisabledWhileSaving() {
+    fun slotsRemainClickableWhileSaving() {
         PracticeComposeTestSupport.ensureTestActivityResumed(composeRule)
         composeRule.setContent {
             PraktikaTheme {
                 SettingsScreen(
                     uiState = sampleContent(isSavingSchedule = true),
                     onSlotTimeChange = { _, _ -> },
-                    onSaveSchedule = {},
                     onSoundEnabledChanged = {},
                     onOpenNotificationSettings = {},
                     onTogglePauseState = {},
@@ -150,9 +142,9 @@ class SettingsSlotAffordanceInstrumentedTest {
                 )
             }
         }
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_1).assertIsNotEnabled()
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_2).assertIsNotEnabled()
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_3).assertIsNotEnabled()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_1).assertHasClickAction()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_2).assertHasClickAction()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SLOT_3).assertHasClickAction()
     }
 
     @Test
@@ -166,15 +158,21 @@ class SettingsSlotAffordanceInstrumentedTest {
                 false
             }
         }
-        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsNotEnabled()
+        SettingsComposeTestSupport.assertSaveScheduleButtonAbsent(composeRule)
+        runBlocking {
+            assertEquals(
+                900,
+                harness.runtime.database.scheduleSlotDao().getByIndex(2)!!.timeOfDayMinutes,
+            )
+        }
     }
 
     @Test
-    fun dirtyBackStillWorksAfterAffordanceChange() {
+    fun dirtyBackStillWorksForInvalidDraft() {
         setDirtySettingsNavigationContent()
         composeRule.waitUntil(timeoutMillis = 10_000) {
             try {
-                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE).assertIsEnabled()
+                composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCHEDULE_ERROR).assertIsDisplayed()
                 true
             } catch (_: AssertionError) {
                 false
@@ -228,7 +226,8 @@ class SettingsSlotAffordanceInstrumentedTest {
                         owner = composeRule.activity,
                         runtime = harness.runtime,
                         onRequestPostNotifications = {},
-                        onOpenNotificationSettings = {},
+                        onOpenAppNotificationSettings = {},
+                        onOpenChannelSettings = {},
                     )
                 }
                 val viewModel: PracticeRootViewModel = viewModel(factory = factory)
@@ -285,4 +284,5 @@ class SettingsSlotAffordanceInstrumentedTest {
         )
     }
 }
+// 09.08.2026 Post-release fixes cursor by Me4Hik END
 // 06.08.2026 Settings Time Affordance cursor by Me4Hik END

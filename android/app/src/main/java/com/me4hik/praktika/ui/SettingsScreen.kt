@@ -1,5 +1,6 @@
 // 04.08.2026 Reminder App cursor by Me4Hik START - экран настроек
 // 06.08.2026 Settings Schedule cursor by Me4Hik START - полноценный Settings screen
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
 package com.me4hik.praktika.ui
 
 import android.text.format.DateFormat
@@ -18,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PauseCircle
@@ -57,10 +59,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import com.me4hik.praktika.ui.components.PracticePrimaryButton
 import com.me4hik.praktika.ui.components.PracticeSectionHeader
 import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.components.ScheduleSlotRow
+import com.me4hik.praktika.ui.settings.BugReportDialog
+import com.me4hik.praktika.ui.settings.BugReportUiState
+import com.me4hik.praktika.ui.settings.SettingsBackupDialogs
+import com.me4hik.praktika.ui.settings.SettingsBackupSection
 import com.me4hik.praktika.ui.settings.SettingsScheduleError
 import com.me4hik.praktika.ui.settings.SettingsSlotUiModel
 import com.me4hik.praktika.ui.settings.SettingsTestTags
@@ -76,7 +81,6 @@ import com.me4hik.praktika.ui.theme.TitleSerifStyle
 fun SettingsScreen(
     uiState: SettingsUiState,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
-    onSaveSchedule: () -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onTogglePauseState: () -> Unit,
@@ -84,6 +88,28 @@ fun SettingsScreen(
     onStayOnDirtyBack: () -> Unit,
     onDiscardChanges: () -> Unit,
     showDirtyDialog: Boolean,
+    onOpenBugReport: () -> Unit = {},
+    showBugReportDialog: Boolean = false,
+    bugReportState: BugReportUiState = BugReportUiState.Idle,
+    onDismissBugReport: () -> Unit = {},
+    onSubmitBugReport: (String) -> Unit = {},
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+    onBackupSetup: () -> Unit = {},
+    onBackupNow: () -> Unit = {},
+    onBackupChangeFolder: () -> Unit = {},
+    onBackupReconnect: () -> Unit = {},
+    onBackupDisable: () -> Unit = {},
+    onBackupDisclosureConfirm: () -> Unit = {},
+    onBackupDisclosureCancel: () -> Unit = {},
+    onBackupCandidateConfirm: () -> Unit = {},
+    onBackupCandidateCancel: () -> Unit = {},
+    onBackupChooseAnother: () -> Unit = {},
+    onBackupCommitRetry: () -> Unit = {},
+    onBackupDisableConfirm: () -> Unit = {},
+    onBackupDisableCancel: () -> Unit = {},
+    onBackupReconnectDifferentUseAsNew: () -> Unit = {},
+    onBackupReconnectDifferentCancel: () -> Unit = {},
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 ) {
     when (uiState) {
         SettingsUiState.Loading -> {
@@ -123,12 +149,32 @@ fun SettingsScreen(
             SettingsContentScreen(
                 content = uiState,
                 onSlotTimeChange = onSlotTimeChange,
-                onSaveSchedule = onSaveSchedule,
                 onSoundEnabledChanged = onSoundEnabledChanged,
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onTogglePauseState = onTogglePauseState,
+                onOpenBugReport = onOpenBugReport,
                 onBack = onBack,
+                onBackupSetup = onBackupSetup,
+                onBackupNow = onBackupNow,
+                onBackupChangeFolder = onBackupChangeFolder,
+                onBackupReconnect = onBackupReconnect,
+                onBackupDisable = onBackupDisable,
             )
+            // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+            SettingsBackupDialogs(
+                backup = uiState.backup,
+                onDisclosureConfirm = onBackupDisclosureConfirm,
+                onDisclosureCancel = onBackupDisclosureCancel,
+                onCandidateConfirm = onBackupCandidateConfirm,
+                onCandidateCancel = onBackupCandidateCancel,
+                onChooseAnother = onBackupChooseAnother,
+                onCommitRetry = onBackupCommitRetry,
+                onDisableConfirm = onBackupDisableConfirm,
+                onDisableCancel = onBackupDisableCancel,
+                onReconnectDifferentUseAsNew = onBackupReconnectDifferentUseAsNew,
+                onReconnectDifferentCancel = onBackupReconnectDifferentCancel,
+            )
+            // 10.08.2026 Post-release fixes cursor by Me4Hik END
         }
     }
 
@@ -156,17 +202,32 @@ fun SettingsScreen(
             },
         )
     }
+
+    if (showBugReportDialog) {
+        BugReportDialog(
+            bugReportState = bugReportState,
+            onDismiss = onDismissBugReport,
+            onSubmit = onSubmitBugReport,
+        )
+    }
 }
 
 @Composable
 private fun SettingsContentScreen(
     content: SettingsUiState.Content,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
-    onSaveSchedule: () -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onTogglePauseState: () -> Unit,
+    onOpenBugReport: () -> Unit,
     onBack: () -> Unit,
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+    onBackupSetup: () -> Unit,
+    onBackupNow: () -> Unit,
+    onBackupChangeFolder: () -> Unit,
+    onBackupReconnect: () -> Unit,
+    onBackupDisable: () -> Unit,
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 ) {
     var pickerSlotIndex by remember { mutableIntStateOf(-1) }
 
@@ -221,19 +282,20 @@ private fun SettingsContentScreen(
                         }
                         SettingsScheduleSlotRow(
                             slot = slot,
-                            enabled = !content.isSavingSchedule,
+                            enabled = true,
                             onClick = { pickerSlotIndex = slot.slotIndex },
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    PracticePrimaryButton(
-                        text = stringResource(R.string.settings_save_schedule),
-                        onClick = onSaveSchedule,
-                        enabled = content.isDirty && content.isScheduleValid && !content.isSavingSchedule,
-                        showProgress = content.isSavingSchedule,
-                        progressTestTag = SettingsTestTags.SETTINGS_SCHEDULE_PROGRESS,
-                        modifier = Modifier.testTag(SettingsTestTags.SETTINGS_SCHEDULE_SAVE),
-                    )
+                    // 09.08.2026 Post-release fixes cursor by Me4Hik START - schedule autosave, no Save button
+                    if (content.isSavingSchedule) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .testTag(SettingsTestTags.SETTINGS_SCHEDULE_PROGRESS),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                    // 09.08.2026 Post-release fixes cursor by Me4Hik END
                 }
                 content.scheduleError?.let { error ->
                     Text(
@@ -335,6 +397,26 @@ private fun SettingsContentScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
+            }
+
+            // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+            SettingsBackupSection(
+                backup = content.backup,
+                onSetup = onBackupSetup,
+                onBackupNow = onBackupNow,
+                onChangeFolder = onBackupChangeFolder,
+                onReconnect = onBackupReconnect,
+                onDisable = onBackupDisable,
+            )
+            // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
+            PracticeSurface {
+                PracticeGlassActionRow(
+                    title = stringResource(R.string.settings_bug_report),
+                    icon = Icons.Outlined.BugReport,
+                    onClick = onOpenBugReport,
+                    modifier = Modifier.testTag(SettingsTestTags.SETTINGS_BUG_REPORT),
+                )
             }
 
             Column(

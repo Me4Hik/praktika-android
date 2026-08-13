@@ -2,6 +2,10 @@
 package com.me4hik.praktika.data.cycle
 
 import android.util.Log
+import com.me4hik.praktika.data.backup.write.BackupMutationRequestSink
+import com.me4hik.praktika.data.backup.write.BackupRequestReason
+import com.me4hik.praktika.diagnostics.DiagnosticCategory
+import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.local.entity.AnswerEntity
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
@@ -10,6 +14,7 @@ import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import com.me4hik.praktika.data.seed.SeedDataValidator
 import java.util.concurrent.Callable
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,12 +22,15 @@ import kotlinx.coroutines.sync.withLock
 class CycleRepository(
     private val database: PraktikaDatabase,
     private val timeProvider: TimeProvider,
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C mutation sink
+    private val backupMutationRequestSink: BackupMutationRequestSink,
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
     private val scheduleCalculator: ScheduleCalculator = ScheduleCalculator(),
 ) {
     private val mutex = Mutex()
 
     suspend fun startPractice(): CycleResult = mutex.withLock {
-        runCycleTransaction {
+        val result = runCycleTransaction {
             val now = timeProvider.nowEpochMillis()
             val zoneId = timeProvider.currentZoneId()
             scheduleCalculator.parseZone(zoneId)
@@ -84,62 +92,109 @@ class CycleRepository(
             validateInvariants(loadValidatedSlots())
             CycleResult.PracticeStarted
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C PRACTICE_STARTED
+        if (result is CycleResult.PracticeStarted) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STARTED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        result
     }
 
     suspend fun reconcile(): CycleResult = mutex.withLock {
-        runCycleTransaction {
-            reconcileWithinTransaction()
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C reconcile change signal
+        lateinit var outcome: InternalReconcileOutcome
+        val result = runCycleTransaction {
+            outcome = reconcileWithinTransaction()
+            outcome.publicResult
         }
+        if (outcome.backedUpStateChanged) {
+            requestMutationBackup(BackupRequestReason.RUNTIME_RECONCILED)
+        }
+        result
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
 
     // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - timezone sync + reconcile
     suspend fun syncEnvironmentAndReconcile(): CycleResult = mutex.withLock {
-        runCycleTransaction {
-            val state = loadPracticeState()
-            val now = timeProvider.nowEpochMillis()
-            val systemZoneId = timeProvider.currentZoneId()
-
-            if (!state.isPracticeStarted) {
-                if (state.activeZoneId != systemZoneId) {
-                    database.practiceStateDao().update(state.copy(activeZoneId = systemZoneId))
-                }
-                return@runCycleTransaction CycleResult.ReconcileNotStarted
-            }
-            if (state.isPaused) {
-                if (state.activeZoneId != systemZoneId) {
-                    database.practiceStateDao().update(state.copy(activeZoneId = systemZoneId))
-                }
-                return@runCycleTransaction CycleResult.ReconcilePaused
-            }
-
-            val slots = loadValidatedSlots()
-            val zoneId = state.activeZoneId
-            scheduleCalculator.parseZone(zoneId)
-            var changed = reconcileInternal(state, slots, zoneId, now)
-            if (zoneId != systemZoneId) {
-                changed = applyTimezoneChange(systemZoneId, now, slots) || changed
-                changed = reconcileInternal(loadPracticeState(), loadValidatedSlots(), systemZoneId, now) || changed
-            }
-            if (changed) {
-                validateInvariants(loadValidatedSlots())
-                CycleResult.ReconcileChanged
-            } else {
-                CycleResult.ReconcileNoChanges
-            }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C timezone + reconcile backup
+        lateinit var outcome: InternalReconcileOutcome
+        val result = runCycleTransaction {
+            outcome = syncEnvironmentAndReconcileWithinTransaction()
+            outcome.publicResult
         }
+        if (outcome.backedUpStateChanged) {
+            requestMutationBackup(BackupRequestReason.RUNTIME_RECONCILED)
+        }
+        result
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
 
     suspend fun markOccurrenceOpened(expectedOccurrenceId: Long): Boolean = mutex.withLock {
-        runCycleTransaction {
+        val changed = runCycleTransaction {
             val now = timeProvider.nowEpochMillis()
             database.questionOccurrenceDao().markOpenedIfNull(expectedOccurrenceId, now) == 1
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C open occurrence backup
+        if (changed) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        changed
     }
 
     suspend fun getOccurrenceById(id: Long): QuestionOccurrenceEntity? {
         return database.questionOccurrenceDao().getById(id)
     }
     // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C reconcile backup carrier
+    private data class InternalReconcileOutcome(
+        val publicResult: CycleResult,
+        val backedUpStateChanged: Boolean,
+    )
+
+    private suspend fun syncEnvironmentAndReconcileWithinTransaction(): InternalReconcileOutcome {
+        val state = loadPracticeState()
+        val now = timeProvider.nowEpochMillis()
+        val systemZoneId = timeProvider.currentZoneId()
+
+        if (!state.isPracticeStarted) {
+            val zoneChanged = persistActiveZoneIfChanged(state, systemZoneId)
+            return InternalReconcileOutcome(CycleResult.ReconcileNotStarted, zoneChanged)
+        }
+        if (state.isPaused) {
+            val zoneChanged = persistActiveZoneIfChanged(state, systemZoneId)
+            return InternalReconcileOutcome(CycleResult.ReconcilePaused, zoneChanged)
+        }
+
+        val slots = loadValidatedSlots()
+        val zoneId = state.activeZoneId
+        scheduleCalculator.parseZone(zoneId)
+        var changed = reconcileInternal(state, slots, zoneId, now)
+        if (zoneId != systemZoneId) {
+            changed = applyTimezoneChange(systemZoneId, now, slots) || changed
+            changed = reconcileInternal(loadPracticeState(), loadValidatedSlots(), systemZoneId, now) || changed
+        }
+        val publicResult = if (changed) {
+            validateInvariants(loadValidatedSlots())
+            CycleResult.ReconcileChanged
+        } else {
+            CycleResult.ReconcileNoChanges
+        }
+        return InternalReconcileOutcome(publicResult, changed)
+    }
+
+    private suspend fun persistActiveZoneIfChanged(
+        state: PracticeStateEntity,
+        systemZoneId: String,
+    ): Boolean {
+        if (state.activeZoneId == systemZoneId) {
+            return false
+        }
+        database.practiceStateDao().update(state.copy(activeZoneId = systemZoneId))
+        return true
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private suspend fun applyTimezoneChange(
         newZoneId: String,
@@ -178,13 +233,13 @@ class CycleRepository(
         }
     }
 
-    private suspend fun reconcileWithinTransaction(): CycleResult {
+    private suspend fun reconcileWithinTransaction(): InternalReconcileOutcome {
         val state = loadPracticeState()
         if (!state.isPracticeStarted) {
-            return CycleResult.ReconcileNotStarted
+            return InternalReconcileOutcome(CycleResult.ReconcileNotStarted, backedUpStateChanged = false)
         }
         if (state.isPaused) {
-            return CycleResult.ReconcilePaused
+            return InternalReconcileOutcome(CycleResult.ReconcilePaused, backedUpStateChanged = false)
         }
 
         val now = timeProvider.nowEpochMillis()
@@ -193,24 +248,37 @@ class CycleRepository(
         scheduleCalculator.parseZone(zoneId)
 
         val changed = reconcileInternal(state, slots, zoneId, now)
-        return if (changed) {
+        val publicResult = if (changed) {
             validateInvariants(slots)
             CycleResult.ReconcileChanged
         } else {
             CycleResult.ReconcileNoChanges
         }
+        return InternalReconcileOutcome(publicResult, changed)
     }
 
     suspend fun skipAvailableByUser(): CycleResult = mutex.withLock {
-        runCycleTransaction {
+        val result = runCycleTransaction {
             skipAvailableByUserInternal(expectedOccurrenceId = null)
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C skip backup
+        if (result is CycleResult.SkipCompleted) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        result
     }
 
     suspend fun skipAvailableByUser(expectedOccurrenceId: Long): CycleResult = mutex.withLock {
-        runCycleTransaction {
+        val result = runCycleTransaction {
             skipAvailableByUserInternal(expectedOccurrenceId = expectedOccurrenceId)
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C skip backup
+        if (result is CycleResult.SkipCompleted) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        result
     }
 
     // 05.08.2026 Answer Save cursor by Me4Hik START - атомарное сохранение ответа
@@ -218,12 +286,18 @@ class CycleRepository(
         expectedOccurrenceId: Long,
         answerText: String,
     ): CycleResult = mutex.withLock {
-        runCycleTransaction {
+        val result = runCycleTransaction {
             saveAnswerInternal(
                 expectedOccurrenceId = expectedOccurrenceId,
                 answerText = answerText,
             )
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C ANSWER_SAVED
+        if (result is CycleResult.AnswerSaved) {
+            requestMutationBackup(BackupRequestReason.ANSWER_SAVED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        result
     }
 
     // 06.08.2026 Settings Schedule cursor by Me4Hik START - атомарное обновление расписания
@@ -231,59 +305,75 @@ class CycleRepository(
         updates: List<ScheduleSlotUpdate>,
     ): ScheduleUpdateResult = mutex.withLock {
         val validatedUpdates = validateScheduleUpdates(updates)
-        runCycleTransaction {
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C schedule overall change oracle
+        var backupReason: BackupRequestReason? = null
+        val result = runCycleTransaction {
             val now = timeProvider.nowEpochMillis()
             val state = loadPracticeState()
             scheduleCalculator.parseZone(state.activeZoneId)
             val oldSlots = loadValidatedSlots()
+            val scheduleChanged = hasSemanticScheduleChange(oldSlots, validatedUpdates)
 
+            var reconcileChanged = false
             if (state.isPracticeStarted && !state.isPaused) {
-                reconcileInternal(state, oldSlots, state.activeZoneId, now)
+                reconcileChanged = reconcileInternal(state, oldSlots, state.activeZoneId, now)
             }
 
             applyStagedSlotUpdates(validatedUpdates)
             val newSlots = loadValidatedSlots()
 
+            var occurrenceAdjustChanged = false
             if (!state.isPracticeStarted || state.isPaused) {
                 validateInvariants(newSlots)
-                return@runCycleTransaction ScheduleUpdateResult.Success
-            }
-
-            val incomplete = database.questionOccurrenceDao().getIncompleteOrdered()
-            if (incomplete.size != 1) {
-                throw CycleCorruptionException(
-                    "Expected exactly one incomplete occurrence during schedule update, found ${incomplete.size}",
-                )
-            }
-
-            val current = incomplete.single()
-            when (current.status) {
-                QuestionOccurrenceStatus.SCHEDULED -> {
-                    adjustScheduledOccurrenceForScheduleUpdate(
-                        occurrence = current,
-                        now = now,
-                        zoneId = state.activeZoneId,
-                        slots = newSlots,
+            } else {
+                val incomplete = database.questionOccurrenceDao().getIncompleteOrdered()
+                if (incomplete.size != 1) {
+                    throw CycleCorruptionException(
+                        "Expected exactly one incomplete occurrence during schedule update, found ${incomplete.size}",
                     )
                 }
 
-                QuestionOccurrenceStatus.AVAILABLE -> {
-                    adjustAvailableOccurrenceForScheduleUpdate(
-                        occurrence = current,
-                        now = now,
-                        zoneId = state.activeZoneId,
-                        slots = newSlots,
+                val current = incomplete.single()
+                occurrenceAdjustChanged = when (current.status) {
+                    QuestionOccurrenceStatus.SCHEDULED -> {
+                        adjustScheduledOccurrenceForScheduleUpdate(
+                            occurrence = current,
+                            now = now,
+                            zoneId = state.activeZoneId,
+                            slots = newSlots,
+                        )
+                    }
+
+                    QuestionOccurrenceStatus.AVAILABLE -> {
+                        adjustAvailableOccurrenceForScheduleUpdate(
+                            occurrence = current,
+                            now = now,
+                            zoneId = state.activeZoneId,
+                            slots = newSlots,
+                        )
+                    }
+
+                    else -> throw CycleCorruptionException(
+                        "Unexpected incomplete status during schedule update: ${current.status}",
                     )
                 }
 
-                else -> throw CycleCorruptionException(
-                    "Unexpected incomplete status during schedule update: ${current.status}",
-                )
+                validateInvariants(newSlots)
             }
 
-            validateInvariants(newSlots)
+            val overallChanged = scheduleChanged || reconcileChanged || occurrenceAdjustChanged
+            if (overallChanged) {
+                backupReason = if (scheduleChanged) {
+                    BackupRequestReason.SCHEDULE_CHANGED
+                } else {
+                    BackupRequestReason.RUNTIME_RECONCILED
+                }
+            }
             ScheduleUpdateResult.Success
         }
+        backupReason?.let { requestMutationBackup(it) }
+        result
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
 
     private fun validateScheduleUpdates(updates: List<ScheduleSlotUpdate>): List<ScheduleSlotUpdate> {
@@ -339,7 +429,9 @@ class CycleRepository(
         now: Long,
         zoneId: String,
         slots: List<ScheduleSlotEntity>,
-    ) {
+    ): Boolean {
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C occurrence adjust change signal
+        val before = occurrence
         val startSlot = scheduleCalculator.findStartSlot(now, zoneId, slots)
         val availableUntil = scheduleCalculator.calculateAvailableUntil(startSlot, slots)
         val status = if (
@@ -363,6 +455,10 @@ class CycleRepository(
                 "Failed to reschedule SCHEDULED occurrence ${occurrence.id} during schedule update",
             )
         }
+        val after = database.questionOccurrenceDao().getById(occurrence.id)
+            ?: throw CycleCorruptionException("Occurrence ${occurrence.id} missing after schedule reschedule")
+        return hasOccurrenceBackupPayloadChange(before, after)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
 
     private suspend fun adjustAvailableOccurrenceForScheduleUpdate(
@@ -370,7 +466,9 @@ class CycleRepository(
         now: Long,
         zoneId: String,
         slots: List<ScheduleSlotEntity>,
-    ) {
+    ): Boolean {
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C occurrence adjust change signal
+        val before = occurrence
         val nextSlot = scheduleCalculator.findStrictlyNextSlot(
             afterEpochMillis = now,
             zoneId = zoneId,
@@ -390,8 +488,41 @@ class CycleRepository(
                 "Failed to update AVAILABLE deadline for ${occurrence.id} during schedule update",
             )
         }
+        val after = database.questionOccurrenceDao().getById(occurrence.id)
+            ?: throw CycleCorruptionException("Occurrence ${occurrence.id} missing after availableUntil update")
+        return hasOccurrenceBackupPayloadChange(before, after)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
     // 06.08.2026 Settings Schedule cursor by Me4Hik END
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C schedule/occurrence compare helpers
+    private fun hasSemanticScheduleChange(
+        oldSlots: List<ScheduleSlotEntity>,
+        updates: List<ScheduleSlotUpdate>,
+    ): Boolean {
+        val byIndex = oldSlots.associateBy { it.slotIndex }
+        return updates.any { update ->
+            byIndex[update.slotIndex]?.timeOfDayMinutes != update.timeOfDayMinutes
+        }
+    }
+
+    private fun hasOccurrenceBackupPayloadChange(
+        before: QuestionOccurrenceEntity,
+        after: QuestionOccurrenceEntity,
+    ): Boolean {
+        return before.copy(id = 0L) != after.copy(id = 0L)
+    }
+
+    private fun requestMutationBackup(reason: BackupRequestReason) {
+        try {
+            backupMutationRequestSink.requestBackup(reason)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Ordinary backup enqueue failure must not undo committed mutation.
+        }
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private suspend fun saveAnswerInternal(
         expectedOccurrenceId: Long,
@@ -550,7 +681,7 @@ class CycleRepository(
     }
 
     suspend fun pausePractice(): CycleResult = mutex.withLock {
-        runCycleTransaction {
+        val result = runCycleTransaction {
             val state = loadPracticeState()
             ensurePracticeActive(state)
             if (state.isPaused) {
@@ -584,10 +715,16 @@ class CycleRepository(
             validateInvariants(slots)
             CycleResult.PauseEnabled
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C pause backup
+        if (result is CycleResult.PauseEnabled) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        result
     }
 
     suspend fun resumePractice(): CycleResult = mutex.withLock {
-        runCycleTransaction {
+        val result = runCycleTransaction {
             val state = loadPracticeState()
             if (!state.isPracticeStarted) {
                 throw CycleNotStartedException("Practice has not been started")
@@ -669,6 +806,12 @@ class CycleRepository(
             validateInvariants(slots)
             CycleResult.PracticeResumed
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C resume backup
+        if (result is CycleResult.PracticeResumed) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        result
     }
 
     private suspend fun reconcileInternal(
@@ -677,11 +820,14 @@ class CycleRepository(
         zoneId: String,
         now: Long,
     ): Boolean {
-        validateInvariants(slots)
         var changed = false
-        var cursorState = state.copy(
-            lastProcessedAtEpochMillis = maxLastProcessed(state.lastProcessedAtEpochMillis, now),
-        )
+        var cursorState = state
+        val (repairedState, cursorRepaired) = repairCursorIfNeeded(state)
+        if (cursorRepaired) {
+            cursorState = repairedState
+            changed = true
+        }
+        validateInvariants(slots)
 
         var iterations = 0
         while (iterations++ < MAX_RECONCILE_ITERATIONS) {
@@ -700,7 +846,7 @@ class CycleRepository(
                 QuestionOccurrenceStatus.SCHEDULED -> {
                     when {
                         now < current.plannedAtEpochMillis -> {
-                            database.practiceStateDao().update(cursorState)
+                            persistPracticeStateIfNeeded(state, cursorState, changed, now)
                             return changed
                         }
 
@@ -726,7 +872,7 @@ class CycleRepository(
                             if (updatedRows == 1) {
                                 changed = true
                             }
-                            database.practiceStateDao().update(cursorState)
+                            persistPracticeStateIfNeeded(state, cursorState, changed, now)
                             return changed
                         }
                     }
@@ -735,7 +881,7 @@ class CycleRepository(
                 QuestionOccurrenceStatus.AVAILABLE -> {
                     when {
                         now < current.availableUntilEpochMillis -> {
-                            database.practiceStateDao().update(cursorState)
+                            persistPracticeStateIfNeeded(state, cursorState, changed, now)
                             return changed
                         }
 
@@ -765,8 +911,97 @@ class CycleRepository(
             )
         }
 
-        database.practiceStateDao().update(cursorState)
+        if (changed && hasLogicalPracticeStateChange(state, cursorState)) {
+            persistPracticeState(cursorState, now)
+        }
         return changed
+    }
+
+    private suspend fun persistPracticeStateIfNeeded(
+        originalState: PracticeStateEntity,
+        cursorState: PracticeStateEntity,
+        changed: Boolean,
+        now: Long,
+    ) {
+        if (changed && hasLogicalPracticeStateChange(originalState, cursorState)) {
+            persistPracticeState(cursorState, now)
+        }
+    }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - in-place cycle cursor recovery
+    private suspend fun repairCursorIfNeeded(
+        state: PracticeStateEntity,
+    ): Pair<PracticeStateEntity, Boolean> {
+        val analysis = CycleCursorConsistency.analyze(database, state)
+        return when (analysis.kind) {
+            CursorConsistencyKind.CONSISTENT -> state to false
+            CursorConsistencyKind.UNSAFE_CORRUPTION -> {
+                recordCursorRecoveryRejected(analysis)
+                throw CycleCorruptionException(
+                    analysis.detail ?: "Cursor recovery rejected: ${analysis.reason}",
+                )
+            }
+            CursorConsistencyKind.STALE_CURSOR_RECOVERABLE -> {
+                val repaired = analysis.repairedState ?: state
+                recordCursorRecovered(analysis)
+                repaired to true
+            }
+        }
+    }
+
+    private fun recordCursorRecovered(analysis: CursorConsistencyResult) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        val before = analysis.cursorBefore ?: return
+        val after = analysis.cursorAfter ?: return
+        DiagnosticsRecorder.get().record(
+            category = DiagnosticCategory.APP,
+            name = "cycle_cursor_recovered",
+            metadata = mapOf(
+                "cycle" to before.cycleNumber.toString(),
+                "cursor_before" to before.cyclePosition.toString(),
+                "cursor_after" to after.cyclePosition.toString(),
+                "existing_position_count" to analysis.existingPositionCount.toString(),
+                "first_missing_position" to (analysis.firstMissingPosition?.toString() ?: ""),
+                "recovery_reason" to "stale_cursor_existing_row",
+            ),
+        )
+    }
+
+    private fun recordCursorRecoveryRejected(analysis: CursorConsistencyResult) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        val before = analysis.cursorBefore
+        DiagnosticsRecorder.get().record(
+            category = DiagnosticCategory.APP,
+            name = "cycle_cursor_recovery_rejected",
+            metadata = buildMap {
+                put("reason_enum", analysis.reason?.name ?: "UNKNOWN")
+                put("cycle", (before?.cycleNumber ?: 0).toString())
+                put("cursor", (before?.cyclePosition ?: 0).toString())
+                if (!analysis.detail.isNullOrBlank()) {
+                    put("detail", analysis.detail.take(200))
+                }
+            },
+        )
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
+    private suspend fun persistPracticeState(state: PracticeStateEntity, now: Long) {
+        database.practiceStateDao().update(
+            state.copy(
+                lastProcessedAtEpochMillis = maxLastProcessed(state.lastProcessedAtEpochMillis, now),
+            ),
+        )
+    }
+
+    private fun hasLogicalPracticeStateChange(
+        before: PracticeStateEntity,
+        after: PracticeStateEntity,
+    ): Boolean {
+        return before.copy(lastProcessedAtEpochMillis = null) != after.copy(lastProcessedAtEpochMillis = null)
     }
 
     private suspend fun createFollowingOccurrenceChain(
@@ -834,10 +1069,9 @@ class CycleRepository(
         val cycleNumber = state.currentCycleNumber
         val cyclePosition = state.nextCyclePosition
 
-        if (database.questionOccurrenceDao().getByCycleAndPosition(cycleNumber, cyclePosition) != null) {
-            throw CycleCorruptionException(
-                "Occurrence already exists for cycle=$cycleNumber position=$cyclePosition",
-            )
+        val existing = database.questionOccurrenceDao().getByCycleAndPosition(cycleNumber, cyclePosition)
+        if (existing != null) {
+            return adoptExistingOccurrence(state, existing)
         }
 
         val question = database.questionDao().getByCyclePosition(cyclePosition)
@@ -867,6 +1101,24 @@ class CycleRepository(
         )
 
         val advanced = CycleCursor(cycleNumber, cyclePosition).advance()
+        return state.copy(
+            currentCycleNumber = advanced.cycleNumber,
+            nextCyclePosition = advanced.cyclePosition,
+        )
+    }
+
+    private suspend fun adoptExistingOccurrence(
+        state: PracticeStateEntity,
+        existing: QuestionOccurrenceEntity,
+    ): PracticeStateEntity {
+        val validation = CycleCursorConsistency.validateAdoptedRow(database, existing)
+        if (validation.kind == CursorConsistencyKind.UNSAFE_CORRUPTION) {
+            recordCursorRecoveryRejected(validation)
+            throw CycleCorruptionException(
+                validation.detail ?: "Cannot adopt existing occurrence (${existing.cycleNumber},${existing.cyclePosition})",
+            )
+        }
+        val advanced = CycleCursor(existing.cycleNumber, existing.cyclePosition).advance()
         return state.copy(
             currentCycleNumber = advanced.cycleNumber,
             nextCyclePosition = advanced.cyclePosition,

@@ -99,3 +99,39 @@ Logcat tags: `AcceleratedClock`, `AcceleratedCommand`, `AcceleratedDiag`, `Accel
 - Production release не содержит accelerated-классов
 - Reset не затрагивает production-данные
 - Ускоренный режим не включается в обычном `productionDebug`
+
+## PRODUCTION PACKAGE SAFETY RULE
+
+После Prompt134 (forensic removal of signed release через AGP uninstall-before-install):
+
+| Действие | Разрешено? |
+|----------|------------|
+| Device instrumentation tests | **Только** `com.me4hik.praktika.accelerated` |
+| Стандартная Gradle-команда для device tests | `:app:connectedAcceleratedDebugAndroidTest` |
+| `connectedProductionDebugAndroidTest` | **Запрещено** (hard guard) |
+| `connectedDebugAndroidTest` (umbrella) | **Запрещено** (hard guard) |
+| `installProductionDebug` на device с release | **Запрещено** без override |
+| Production release update | **Только** signed release APK, `adb install -r`, тот же certificate, `versionCode` выше |
+| `pm clear` / uninstall production | **Запрещено** в test/harness scripts |
+
+### Gradle override (редкий случай)
+
+Production device test допускается **только** с явным property:
+
+```powershell
+.\gradlew.bat :app:connectedProductionDebugAndroidTest -PALLOW_PRODUCTION_DEVICE_TESTS=true
+```
+
+Без `-PALLOW_PRODUCTION_DEVICE_TESTS=true` задача падает **до** install/uninstall phase с:
+
+`PRODUCTION_DEVICE_TEST_BLOCKED: Use accelerated variant for device tests.`
+
+При override Gradle дополнительно проверяет через `adb`: если на device установлен **signed release** (`com.me4hik.praktika`, не debuggable) — STOP до AGP install.
+
+### Script helpers
+
+- PowerShell device-test scripts: `scripts/ProductionPackageSafety.ps1` → `Initialize-DeviceTestSafety`
+- Production deploy scripts: `Initialize-ProductionDeploySafety`
+- Python: `scripts/production_package_safety.py`
+
+**Никогда** не использовать prefix matching `com.me4hik.praktika*` для cleanup — только exact package id.

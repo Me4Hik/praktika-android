@@ -61,7 +61,8 @@ class HomeNotificationCardProductionInstrumentedTest {
 
     private fun setContent(
         onRequestPostNotifications: () -> Unit = {},
-        onOpenNotificationSettings: () -> Unit = {},
+        onOpenAppNotificationSettings: () -> Unit = {},
+        onOpenChannelSettings: () -> Unit = {},
         setup: suspend PracticeUiTestHarness.() -> Unit = { setUp() },
     ) {
         PracticeComposeTestSupport.ensureTestActivityResumed(composeRule)
@@ -73,7 +74,8 @@ class HomeNotificationCardProductionInstrumentedTest {
                         owner = composeRule.activity,
                         runtime = harness.runtime,
                         onRequestPostNotifications = onRequestPostNotifications,
-                        onOpenNotificationSettings = onOpenNotificationSettings,
+                        onOpenAppNotificationSettings = onOpenAppNotificationSettings,
+                        onOpenChannelSettings = onOpenChannelSettings,
                     )
                 }
                 val viewModel: PracticeRootViewModel = viewModel(factory = factory)

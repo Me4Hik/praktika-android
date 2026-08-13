@@ -22,6 +22,9 @@ sealed interface SettingsUiState {
         val scheduleError: SettingsScheduleError?,
         val soundError: SettingsSoundError?,
         val pauseError: SettingsPauseError?,
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+        val backup: BackupSettingsUiState = BackupSettingsUiState(),
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     ) : SettingsUiState
 
     data class FatalError(
@@ -50,12 +53,14 @@ enum class SettingsFatalError {
 }
 
 sealed interface SettingsSnackbarEvent {
-    data object ScheduleSaved : SettingsSnackbarEvent
     data object PracticePaused : SettingsSnackbarEvent
     data object PracticeResumed : SettingsSnackbarEvent
     data object ScheduleSaveFailed : SettingsSnackbarEvent
     data object SoundChangeFailed : SettingsSnackbarEvent
     data object PauseStateChangeFailed : SettingsSnackbarEvent
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+    data class BackupMessage(val messageResId: Int) : SettingsSnackbarEvent
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 }
 
 sealed interface SettingsNavigationEvent {
@@ -92,6 +97,27 @@ object SettingsTestTags {
     const val SETTINGS_STAY = "settings_stay"
     const val SETTINGS_SNACKBAR = "settings_snackbar"
     const val SETTINGS_FATAL_ERROR = "settings_fatal_error"
+    const val SETTINGS_BUG_REPORT = "settings_bug_report"
+    const val SETTINGS_BUG_REPORT_COMMENT = "settings_bug_report_comment"
+    const val SETTINGS_BUG_REPORT_SEND = "settings_bug_report_send"
+    const val SETTINGS_BUG_REPORT_CANCEL = "settings_bug_report_cancel"
+    const val SETTINGS_BUG_REPORT_CLOSE = "settings_bug_report_close"
+    const val SETTINGS_BUG_REPORT_PROGRESS = "settings_bug_report_progress"
+    const val SETTINGS_BUG_REPORT_RESULT = "settings_bug_report_result"
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+    const val SETTINGS_BACKUP_SECTION = "settings_backup_section"
+    const val SETTINGS_BACKUP_STATUS = "settings_backup_status"
+    const val SETTINGS_BACKUP_LAST_SUCCESS = "settings_backup_last_success"
+    const val SETTINGS_BACKUP_PRIMARY = "settings_backup_primary"
+    const val SETTINGS_BACKUP_CHANGE_FOLDER = "settings_backup_change_folder"
+    const val SETTINGS_BACKUP_DISABLE = "settings_backup_disable"
+    const val SETTINGS_BACKUP_PROGRESS = "settings_backup_progress"
+    const val SETTINGS_BACKUP_DISCLOSURE = "settings_backup_disclosure"
+    const val SETTINGS_BACKUP_CANDIDATE = "settings_backup_candidate"
+    const val SETTINGS_BACKUP_DISABLE_DIALOG = "settings_backup_disable_dialog"
+    const val SETTINGS_BACKUP_COMMIT_RETRY = "settings_backup_commit_retry"
+    const val SETTINGS_BACKUP_RECONNECT_DIFFERENT = "settings_backup_reconnect_different"
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 }
 
 fun formatTimeOfDayMinutes(minutes: Int): String {

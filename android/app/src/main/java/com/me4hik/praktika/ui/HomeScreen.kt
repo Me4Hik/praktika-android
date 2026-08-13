@@ -39,6 +39,7 @@ import com.me4hik.praktika.ui.components.PracticeGlassActionRow
 import com.me4hik.praktika.ui.components.PracticeHeroAccent
 import com.me4hik.praktika.ui.components.PracticePrimaryButton
 import com.me4hik.praktika.ui.components.PracticeSurface
+import com.me4hik.praktika.ui.practice.HomeExactAlarmCardState
 import com.me4hik.praktika.ui.practice.HomeNotificationCardState
 import com.me4hik.praktika.ui.practice.MainContentUiState
 import com.me4hik.praktika.ui.practice.PracticeTestTags
@@ -53,7 +54,9 @@ import com.me4hik.praktika.ui.theme.TextSecondary
 fun HomeScreen(
     content: MainContentUiState,
     notificationCard: HomeNotificationCardState?,
+    exactAlarmCard: HomeExactAlarmCardState? = null,
     onNotificationCardAction: () -> Unit,
+    onExactAlarmCardAction: () -> Unit = {},
     onOpenQuestion: (occurrenceId: Long) -> Unit,
     onOpenArchive: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -80,6 +83,9 @@ fun HomeScreen(
                     card = card,
                     onAction = onNotificationCardAction,
                 )
+            }
+            exactAlarmCard?.let {
+                HomeExactAlarmCard(onAction = onExactAlarmCardAction)
             }
 
             PracticeHeroAccent(widthFraction = heroWidthFraction)
@@ -275,16 +281,18 @@ private fun HomeNotificationCard(
     onAction: () -> Unit,
 ) {
     val message = when (card) {
-        HomeNotificationCardState.REQUEST_PERMISSION ->
+        HomeNotificationCardState.REQUEST_RUNTIME_PERMISSION ->
             stringResource(R.string.home_notification_request_message)
-        HomeNotificationCardState.OPEN_SETTINGS ->
-            stringResource(R.string.home_notification_disabled_message)
+        HomeNotificationCardState.OPEN_APP_NOTIFICATION_SETTINGS,
+        HomeNotificationCardState.OPEN_CHANNEL_SETTINGS,
+        -> stringResource(R.string.home_notification_disabled_message)
     }
     val actionLabel = when (card) {
-        HomeNotificationCardState.REQUEST_PERMISSION ->
+        HomeNotificationCardState.REQUEST_RUNTIME_PERMISSION ->
             stringResource(R.string.home_notification_request_action)
-        HomeNotificationCardState.OPEN_SETTINGS ->
-            stringResource(R.string.home_notification_enable_action)
+        HomeNotificationCardState.OPEN_APP_NOTIFICATION_SETTINGS,
+        HomeNotificationCardState.OPEN_CHANNEL_SETTINGS,
+        -> stringResource(R.string.home_notification_enable_action)
     }
     PracticeSurface(
         modifier = Modifier
@@ -319,6 +327,52 @@ private fun HomeNotificationCard(
                 ) {
                     Text(
                         text = actionLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AccentViolet.copy(alpha = 0.90f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeExactAlarmCard(
+    onAction: () -> Unit,
+) {
+    PracticeSurface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(PracticeTestTags.HOME_EXACT_ALARM_CARD),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = Icons.Outlined.Event,
+                contentDescription = null,
+                tint = AccentViolet.copy(alpha = 0.70f),
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(20.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.home_exact_alarm_message),
+                    modifier = Modifier.testTag(PracticeTestTags.HOME_EXACT_ALARM_STATUS),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+                TextButton(
+                    onClick = onAction,
+                    modifier = Modifier.testTag(PracticeTestTags.HOME_EXACT_ALARM_ACTION),
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_exact_alarm_action),
                         style = MaterialTheme.typography.labelLarge,
                         color = AccentViolet.copy(alpha = 0.90f),
                     )

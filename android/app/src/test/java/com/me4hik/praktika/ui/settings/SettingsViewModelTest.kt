@@ -1,8 +1,10 @@
 // 06.08.2026 Settings Schedule cursor by Me4Hik START - JVM tests SettingsViewModel
+// 09.08.2026 Post-release fixes cursor by Me4Hik START - schedule autosave tests
 package com.me4hik.praktika.ui.settings
 
 import androidx.lifecycle.SavedStateHandle
 import com.me4hik.praktika.data.cycle.CycleResult
+import com.me4hik.praktika.data.cycle.ScheduleSlotUpdate
 import com.me4hik.praktika.data.cycle.ScheduleUpdateResult
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
@@ -18,14 +20,17 @@ import com.me4hik.praktika.notification.NotificationPermissionUiState
 import com.me4hik.praktika.notification.NotificationDeliveryCapability
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.notification.NotificationSyncRequester
+import com.me4hik.praktika.diagnostics.BugReportSendResult
+import com.me4hik.praktika.diagnostics.DiagnosticReportSubmitter
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -51,6 +56,7 @@ class SettingsViewModelTest {
     private lateinit var soundRepository: MutableFakeSoundPreferenceRepository
     private lateinit var notificationPermissionRepository: FakeNotificationPermissionPolicy
     private lateinit var notificationSyncRequester: RecordingNotificationSyncRequester
+    private lateinit var diagnosticReportSubmitter: FakeDiagnosticReportSubmitter
     private lateinit var savedStateHandle: SavedStateHandle
     private lateinit var viewModel: SettingsViewModel
 
@@ -65,6 +71,7 @@ class SettingsViewModelTest {
         soundRepository = MutableFakeSoundPreferenceRepository()
         notificationPermissionRepository = FakeNotificationPermissionPolicy()
         notificationSyncRequester = RecordingNotificationSyncRequester()
+        diagnosticReportSubmitter = FakeDiagnosticReportSubmitter()
         savedStateHandle = SavedStateHandle()
     }
 
@@ -83,7 +90,9 @@ class SettingsViewModelTest {
             soundPreferenceRepository = soundRepository,
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
+            diagnosticReportSubmitter = diagnosticReportSubmitter,
             savedStateHandle = savedStateHandle,
+            backupSettingsActions = RecordingBackupSettingsActions(),
             commandDispatcher = testDispatcher,
         )
     }
@@ -97,18 +106,19 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun editSlotMarksDirtyAndEnablesSave() = runTest {
+    fun timeChangeValidDraftAutosaves() = runTest {
         createViewModel()
         advanceUntilIdle()
         viewModel.onSlotTimeChanged(1, 630)
         advanceUntilIdle()
         val content = viewModel.uiState.value as SettingsUiState.Content
-        assertTrue(content.isDirty)
-        assertTrue(content.isScheduleValid)
+        assertFalse(content.isDirty)
+        assertEquals(1, updateScheduleCommand.calls)
+        assertEquals(listOf(630, 900, 1140), updateScheduleCommand.lastUpdatesMinutes())
     }
 
     @Test
-    fun duplicateValidationBlocksSave() = runTest {
+    fun duplicateDraftDoesNotPersist() = runTest {
         createViewModel()
         advanceUntilIdle()
         viewModel.onSlotTimeChanged(2, 660)
@@ -116,39 +126,161 @@ class SettingsViewModelTest {
         val content = viewModel.uiState.value as SettingsUiState.Content
         assertFalse(content.isScheduleValid)
         assertEquals(SettingsScheduleError.DUPLICATE_TIME, content.scheduleError)
+        assertEquals(0, updateScheduleCommand.calls)
+        assertTrue(content.isDirty)
     }
 
     @Test
-    fun saveSuccessClearsDirtyAndRunsCommand() = runTest {
+    fun duplicateResolvedLaterAutosavesFullTriple() = runTest {
         createViewModel()
         advanceUntilIdle()
-        viewModel.onSlotTimeChanged(1, 630)
-        viewModel.saveSchedule()
+        viewModel.onSlotTimeChanged(1, 900)
+        advanceUntilIdle()
+        assertEquals(0, updateScheduleCommand.calls)
+        viewModel.onSlotTimeChanged(2, 660)
         advanceUntilIdle()
         val content = viewModel.uiState.value as SettingsUiState.Content
         assertFalse(content.isDirty)
         assertEquals(1, updateScheduleCommand.calls)
+        assertEquals(listOf(900, 660, 1140), updateScheduleCommand.lastUpdatesMinutes())
     }
 
     @Test
-    fun doubleSaveRunsOneCommand() = runTest {
+    fun rapidValidChangesLatestDraftWins() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        updateScheduleCommand = RecordingUpdateScheduleCommand().apply {
+            suspendUntilGate = CompletableDeferred()
+        }
+        viewModel = SettingsViewModel(
+            scheduleReadRepository = scheduleRepository,
+            practiceReadRepository = practiceRepository,
+            updateScheduleCommand = updateScheduleCommand,
+            pausePracticeCommand = pausePracticeCommand,
+            resumePracticeCommand = resumePracticeCommand,
+            soundPreferenceRepository = soundRepository,
+            notificationPermissionRepository = notificationPermissionRepository,
+            notificationSyncRequester = notificationSyncRequester,
+            diagnosticReportSubmitter = diagnosticReportSubmitter,
+            savedStateHandle = savedStateHandle,
+            backupSettingsActions = RecordingBackupSettingsActions(),
+            commandDispatcher = dispatcher,
+        )
+        advanceUntilIdle()
+
+        viewModel.onSlotTimeChanged(1, 630)
+        advanceUntilIdle()
+        assertEquals(1, updateScheduleCommand.calls)
+        assertTrue((viewModel.uiState.value as SettingsUiState.Content).isSavingSchedule)
+
+        viewModel.onSlotTimeChanged(2, 860)
+        viewModel.onSlotTimeChanged(3, 1210)
+        updateScheduleCommand.suspendUntilGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, updateScheduleCommand.calls)
+        assertEquals(listOf(630, 860, 1210), updateScheduleCommand.lastUpdatesMinutes())
+        val content = viewModel.uiState.value as SettingsUiState.Content
+        assertFalse(content.isDirty)
+        assertFalse(content.isSavingSchedule)
+    }
+
+    @Test
+    fun saveFailureLeavesDraftDirtyAndShowsError() = runTest {
         createViewModel()
         advanceUntilIdle()
+        updateScheduleCommand.shouldFail = true
         viewModel.onSlotTimeChanged(1, 630)
-        viewModel.saveSchedule()
-        viewModel.saveSchedule()
         advanceUntilIdle()
+        val content = viewModel.uiState.value as SettingsUiState.Content
+        assertTrue(content.isDirty)
+        assertEquals(SettingsScheduleError.SAVE_FAILED, content.scheduleError)
         assertEquals(1, updateScheduleCommand.calls)
     }
 
     @Test
-    fun dirtyBackLeavesDraftDirty() = runTest {
+    fun externalRoomEmissionDoesNotOverwriteDirtyInvalidDraft() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onSlotTimeChanged(2, 660)
+        scheduleRepository.emit(defaultSnapshot().copy(
+            slots = listOf(
+                ScheduleSlotReadModel(1, 480),
+                ScheduleSlotReadModel(2, 900),
+                ScheduleSlotReadModel(3, 1140),
+            ),
+        ))
+        advanceUntilIdle()
+        val content = viewModel.uiState.value as SettingsUiState.Content
+        assertEquals(660, content.slots.first { it.slotIndex == 2 }.timeOfDayMinutes)
+        assertTrue(content.isDirty)
+        assertFalse(content.isScheduleValid)
+    }
+
+    @Test
+    fun successfulAutosaveSynchronizesPersistedSnapshot() = runTest {
         createViewModel()
         advanceUntilIdle()
         viewModel.onSlotTimeChanged(1, 630)
         advanceUntilIdle()
         val content = viewModel.uiState.value as SettingsUiState.Content
-        assertTrue(content.isDirty)
+        assertFalse(content.isDirty)
+        assertEquals(630, savedStateHandle.get<Int>(SettingsSavedStateKeys.DRAFT_SLOT_1))
+    }
+
+    @Test
+    fun cancellationIsNotUiError() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        updateScheduleCommand.shouldThrowCancellation = true
+        viewModel.onSlotTimeChanged(1, 630)
+        advanceUntilIdle()
+        val content = viewModel.uiState.value as SettingsUiState.Content
+        assertFalse(content.scheduleError == SettingsScheduleError.SAVE_FAILED)
+    }
+
+    @Test
+    fun scheduleSuccessSnackbarIsNotEmitted() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        viewModel = SettingsViewModel(
+            scheduleReadRepository = scheduleRepository,
+            practiceReadRepository = practiceRepository,
+            updateScheduleCommand = updateScheduleCommand,
+            pausePracticeCommand = pausePracticeCommand,
+            resumePracticeCommand = resumePracticeCommand,
+            soundPreferenceRepository = soundRepository,
+            notificationPermissionRepository = notificationPermissionRepository,
+            notificationSyncRequester = notificationSyncRequester,
+            diagnosticReportSubmitter = diagnosticReportSubmitter,
+            savedStateHandle = savedStateHandle,
+            backupSettingsActions = RecordingBackupSettingsActions(),
+            commandDispatcher = dispatcher,
+        )
+        val events = mutableListOf<SettingsSnackbarEvent>()
+        val collector = launch { viewModel.snackbar.collect { events.add(it) } }
+        advanceUntilIdle()
+        viewModel.onSlotTimeChanged(1, 630)
+        advanceUntilIdle()
+        collector.cancel()
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun autosaveCallsUpdateScheduleWithAllThreeSlots() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onSlotTimeChanged(3, 1200)
+        advanceUntilIdle()
+        assertEquals(1, updateScheduleCommand.calls)
+        assertEquals(
+            listOf(
+                ScheduleSlotUpdate(1, 660),
+                ScheduleSlotUpdate(2, 900),
+                ScheduleSlotUpdate(3, 1200),
+            ),
+            updateScheduleCommand.lastUpdates,
+        )
     }
 
     @Test
@@ -234,38 +366,6 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun cancellationIsNotUiError() = runTest {
-        createViewModel()
-        advanceUntilIdle()
-        updateScheduleCommand.hangIndefinitely = true
-        viewModel.onSlotTimeChanged(1, 630)
-        val job = launch { viewModel.saveSchedule() }
-        advanceUntilIdle()
-        job.cancel()
-        advanceUntilIdle()
-        val content = viewModel.uiState.value as SettingsUiState.Content
-        assertFalse(content.scheduleError == SettingsScheduleError.SAVE_FAILED)
-    }
-
-    @Test
-    fun roomEmissionDoesNotOverwriteDirtyDraft() = runTest {
-        createViewModel()
-        advanceUntilIdle()
-        viewModel.onSlotTimeChanged(1, 630)
-        scheduleRepository.emit(defaultSnapshot().copy(
-            slots = listOf(
-                ScheduleSlotReadModel(1, 480),
-                ScheduleSlotReadModel(2, 900),
-                ScheduleSlotReadModel(3, 1140),
-            ),
-        ))
-        advanceUntilIdle()
-        val content = viewModel.uiState.value as SettingsUiState.Content
-        assertEquals(630, content.slots.first { it.slotIndex == 1 }.timeOfDayMinutes)
-        assertTrue(content.isDirty)
-    }
-
-    @Test
     fun cleanDraftAcceptsExternalRoomEmission() = runTest {
         createViewModel()
         advanceUntilIdle()
@@ -285,50 +385,16 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun saveSuccessSynchronizesDraftAndPersisted() = runTest {
+    fun confirmDiscardRestoresPersistedDraft() = runTest {
         createViewModel()
         advanceUntilIdle()
-        viewModel.onSlotTimeChanged(1, 630)
-        viewModel.saveSchedule()
+        viewModel.onSlotTimeChanged(2, 660)
+        advanceUntilIdle()
+        viewModel.confirmDiscardChanges()
         advanceUntilIdle()
         val content = viewModel.uiState.value as SettingsUiState.Content
+        assertEquals(900, content.slots.first { it.slotIndex == 2 }.timeOfDayMinutes)
         assertFalse(content.isDirty)
-        assertEquals(630, savedStateHandle.get<Int>(SettingsSavedStateKeys.DRAFT_SLOT_1))
-    }
-
-    @Test
-    fun snackbarEventIsOneShot() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        Dispatchers.setMain(dispatcher)
-        scheduleRepository = MutableFakeScheduleReadRepository(defaultSnapshot())
-        practiceRepository = MutableFakePracticeReadRepository(defaultPracticeSnapshot(paused = false))
-        updateScheduleCommand = RecordingUpdateScheduleCommand()
-        pausePracticeCommand = RecordingPausePracticeCommand()
-        resumePracticeCommand = RecordingResumePracticeCommand()
-        soundRepository = MutableFakeSoundPreferenceRepository()
-        notificationPermissionRepository = FakeNotificationPermissionPolicy()
-        notificationSyncRequester = RecordingNotificationSyncRequester()
-        savedStateHandle = SavedStateHandle()
-        viewModel = SettingsViewModel(
-            scheduleReadRepository = scheduleRepository,
-            practiceReadRepository = practiceRepository,
-            updateScheduleCommand = updateScheduleCommand,
-            pausePracticeCommand = pausePracticeCommand,
-            resumePracticeCommand = resumePracticeCommand,
-            soundPreferenceRepository = soundRepository,
-            notificationPermissionRepository = notificationPermissionRepository,
-            notificationSyncRequester = notificationSyncRequester,
-            savedStateHandle = savedStateHandle,
-            commandDispatcher = dispatcher,
-        )
-        val events = mutableListOf<SettingsSnackbarEvent>()
-        val collector = launch { viewModel.snackbar.collect { events.add(it) } }
-        advanceUntilIdle()
-        viewModel.onSlotTimeChanged(1, 630)
-        viewModel.saveSchedule()
-        advanceUntilIdle()
-        collector.cancel()
-        assertEquals(1, events.count { it == SettingsSnackbarEvent.ScheduleSaved })
     }
 
     @Test
@@ -408,14 +474,32 @@ class SettingsViewModelTest {
     private class RecordingUpdateScheduleCommand : UpdateScheduleCommand {
         var calls = 0
         var hangIndefinitely = false
+        var shouldFail = false
+        var shouldThrowCancellation = false
+        var suspendUntilGate: CompletableDeferred<Unit>? = null
+        var lastUpdates: List<ScheduleSlotUpdate>? = null
+
         override suspend fun updateSchedule(
-            updates: List<com.me4hik.praktika.data.cycle.ScheduleSlotUpdate>,
+            updates: List<ScheduleSlotUpdate>,
         ): ScheduleUpdateResult {
             calls += 1
+            lastUpdates = updates
+            suspendUntilGate?.await()
+            if (shouldThrowCancellation) {
+                shouldThrowCancellation = false
+                throw CancellationException("cancelled")
+            }
             if (hangIndefinitely) {
                 kotlinx.coroutines.awaitCancellation()
             }
+            if (shouldFail) {
+                throw IOException("schedule save failed")
+            }
             return ScheduleUpdateResult.Success
+        }
+
+        fun lastUpdatesMinutes(): List<Int>? {
+            return lastUpdates?.sortedBy { it.slotIndex }?.map { it.timeOfDayMinutes }
         }
     }
 
@@ -448,6 +532,13 @@ class SettingsViewModelTest {
     }
 
     private class FakeNotificationPermissionPolicy : NotificationPermissionPolicy {
+        private val _permissionStateRevision = MutableStateFlow(0L)
+        override val permissionStateRevision: StateFlow<Long> = _permissionStateRevision.asStateFlow()
+
+        override fun notifyPermissionStateChanged(source: String) {
+            _permissionStateRevision.value = _permissionStateRevision.value + 1L
+        }
+
         override val permissionRequested = MutableStateFlow(false)
 
         override suspend fun markPermissionRequested() = Unit
@@ -467,6 +558,8 @@ class SettingsViewModelTest {
         override fun shouldRequestRuntimePermission(): Boolean = false
         override fun hasRuntimePermission(): Boolean = true
         override fun areAppNotificationsEnabled(): Boolean = true
+        override fun shouldShowRequestPermissionRationale(): Boolean = false
+        override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
     }
 
     private class RecordingNotificationSyncRequester : NotificationSyncRequester {
@@ -491,5 +584,16 @@ class SettingsViewModelTest {
             state.value = enabled
         }
     }
+
+    private class FakeDiagnosticReportSubmitter : DiagnosticReportSubmitter {
+        var lastComment: String? = null
+        var result: BugReportSendResult = BugReportSendResult.SAVED_LOCALLY_NO_DSN
+
+        override suspend fun submitManualReport(testerComment: String?): BugReportSendResult {
+            lastComment = testerComment
+            return result
+        }
+    }
 }
+// 09.08.2026 Post-release fixes cursor by Me4Hik END
 // 06.08.2026 Settings Schedule cursor by Me4Hik END

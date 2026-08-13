@@ -32,7 +32,7 @@ class CycleRepositoryTimezoneTest {
         database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(8, 0, 0), ZONE_KIEV)
-        repository = CycleRepository(database, timeProvider)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
     }
 
     @After

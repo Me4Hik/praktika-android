@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import com.me4hik.praktika.navigation.Routes
+import com.me4hik.praktika.diagnostics.FakeDiagnosticReportSubmitter
 import com.me4hik.praktika.runtime.PraktikaRuntime
 import com.me4hik.praktika.ui.HomeScreen
 import com.me4hik.praktika.ui.SettingsScreen
@@ -59,7 +60,11 @@ fun SettingsScheduleDraftTestNavigation(
         composable(Routes.SETTINGS) { backStackEntry ->
             val settingsViewModel: SettingsViewModel = viewModel(
                 viewModelStoreOwner = backStackEntry,
-                factory = SettingsViewModelFactory(backStackEntry, runtime),
+                factory = SettingsViewModelFactory(
+                    backStackEntry,
+                    runtime,
+                    FakeDiagnosticReportSubmitter(),
+                ),
             )
             val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
             var showDirtyDialog by remember { mutableStateOf(false) }
@@ -85,7 +90,6 @@ fun SettingsScheduleDraftTestNavigation(
             SettingsScreen(
                 uiState = settingsUiState,
                 onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
-                onSaveSchedule = settingsViewModel::saveSchedule,
                 onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
                 onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
                 onTogglePauseState = settingsViewModel::togglePauseState,

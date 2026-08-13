@@ -56,6 +56,7 @@ class DatabaseSeederRestartIntegrationTest {
         val repository = CycleRepository(
             db,
             FakeTimeProvider(epochAt(8, 0, 0), TEST_ZONE_ID),
+            com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
         )
         repository.startPractice()
 
@@ -92,6 +93,7 @@ class DatabaseSeederRestartIntegrationTest {
         val repository = CycleRepository(
             db,
             FakeTimeProvider(epochAt(11, 0, 0), TEST_ZONE_ID),
+            com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
         )
         repository.startPractice()
 

@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import com.me4hik.praktika.runtime.PraktikaRuntimeHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,13 +13,19 @@ import kotlinx.coroutines.launch
 
 class PracticeAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val occurrenceId = intent.getLongExtra(EXTRA_OCCURRENCE_ID, INVALID_ID)
+        val eventType = intent.getStringExtra(EXTRA_EVENT_TYPE)
+        val receivedAtEpochMs = System.currentTimeMillis()
+        TargetedBugDiagnostics.recordAlarmFired(
+            occurrenceId = occurrenceId,
+            alarmType = eventType?.lowercase()?.substringBefore("_boundary"),
+            receivedAtEpochMs = receivedAtEpochMs,
+        )
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val occurrenceId = intent.getLongExtra(EXTRA_OCCURRENCE_ID, INVALID_ID)
-                val eventType = intent.getStringExtra(EXTRA_EVENT_TYPE)
                 val boundaryEpoch = intent.getLongExtra(EXTRA_BOUNDARY_EPOCH_MILLIS, INVALID_ID)
-                val receivedSystemWallTime = System.currentTimeMillis()
+                val receivedSystemWallTime = receivedAtEpochMs
                 // 06.08.2026 Stage 12 Real Alarm Proof cursor by Me4Hik START - receiver delivery diagnostic log
                 Log.i(
                     TAG,

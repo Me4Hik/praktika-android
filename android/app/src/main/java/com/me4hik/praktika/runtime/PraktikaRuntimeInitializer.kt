@@ -3,6 +3,8 @@ package com.me4hik.praktika.runtime
 
 import android.content.Context
 import android.util.Log
+import com.me4hik.praktika.data.backup.write.BackupAttemptTrigger
+import com.me4hik.praktika.data.backup.write.BackupRequestReason
 import com.me4hik.praktika.data.seed.DatabaseSeeder
 import com.me4hik.praktika.notification.NotificationSyncReason
 import kotlinx.coroutines.CompletableDeferred
@@ -19,6 +21,15 @@ class PraktikaRuntimeInitializer(
     @Volatile
     private var initDeferred: CompletableDeferred<Boolean> = CompletableDeferred()
 
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2B1 startup sync test seam
+    /**
+     * When non-null, replaces [PracticeNotificationCoordinator.sync](APP_START) for host tests.
+     * Production always leaves this null so real APP_START sync runs.
+     */
+    @Volatile
+    internal var appStartSyncOverrideForTests: (suspend () -> Unit)? = null
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
     suspend fun ensureInitialized(): Boolean {
         val existing = initDeferred
         if (existing.isCompleted) {
@@ -29,20 +40,38 @@ class PraktikaRuntimeInitializer(
                 return@withLock initDeferred.getCompleted()
             }
             val deferred = initDeferred
+            val runtime = runtimeProvider()
+            val backupService = runtime.authorizedBackupService
+            // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2B1 init suppress + startup catch-up
+            backupService.beginInitialization()
             try {
-                val runtime = runtimeProvider()
                 DatabaseSeeder().seedFromAssets(context, runtime.database)
                 runtime.cycleRepository.syncEnvironmentAndReconcile()
                 // 06.08.2026 Stage 12 Connected Navigation Fix cursor by Me4Hik START - complete init before nested sync
                 deferred.complete(true)
-                runtime.notificationCoordinator.sync(NotificationSyncReason.APP_START)
+                val syncOverride = appStartSyncOverrideForTests
+                if (syncOverride != null) {
+                    syncOverride()
+                } else {
+                    runtime.notificationCoordinator.sync(NotificationSyncReason.APP_START)
+                }
                 // 06.08.2026 Stage 12 Connected Navigation Fix cursor by Me4Hik END
+                // STARTUP_ROOM_QUIESCENT_POINT = after APP_START sync returns
+                if (runtime.startupCatchupOnce.compareAndSet(false, true)) {
+                    backupService.requestBackup(
+                        reason = BackupRequestReason.STARTUP_CATCHUP,
+                        trigger = BackupAttemptTrigger.STARTUP,
+                    )
+                }
                 true
             } catch (exception: Exception) {
                 Log.e(TAG, "Runtime initialization failed", exception)
                 deferred.complete(false)
                 false
+            } finally {
+                backupService.endInitialization()
             }
+            // 10.08.2026 Post-release fixes cursor by Me4Hik END
         }
     }
 
@@ -69,6 +98,7 @@ class PraktikaRuntimeInitializer(
     internal fun resetForTests() {
         synchronized(lock) {
             initDeferred = CompletableDeferred()
+            appStartSyncOverrideForTests = null
         }
     }
 

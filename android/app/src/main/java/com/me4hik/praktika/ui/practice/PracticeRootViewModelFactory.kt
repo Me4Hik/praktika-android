@@ -16,7 +16,9 @@ class PracticeRootViewModelFactory(
     owner: SavedStateRegistryOwner,
     private val runtime: PraktikaRuntime,
     private val onRequestPostNotifications: () -> Unit,
-    private val onOpenNotificationSettings: () -> Unit,
+    private val onOpenAppNotificationSettings: () -> Unit,
+    private val onOpenChannelSettings: () -> Unit,
+    private val onOpenExactAlarmSettings: () -> Unit = {},
 ) : AbstractSavedStateViewModelFactory(owner, null) {
 
     @Suppress("UNCHECKED_CAST")
@@ -40,9 +42,12 @@ class PracticeRootViewModelFactory(
                     result
                 },
                 notificationPermissionRepository = runtime.notificationPermissionRepository,
+                exactAlarmCapabilityRepository = runtime.exactAlarmCapabilityRepository,
                 soundPreferenceRepository = runtime.soundPreferenceRepository,
                 onRequestPostNotifications = onRequestPostNotifications,
-                onOpenNotificationSettings = onOpenNotificationSettings,
+                onOpenAppNotificationSettings = onOpenAppNotificationSettings,
+                onOpenChannelSettings = onOpenChannelSettings,
+                onOpenExactAlarmSettings = onOpenExactAlarmSettings,
                 savedStateHandle = handle,
                 timeFormatter = PracticeTimeFormatter(),
             ) as T

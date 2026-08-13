@@ -5,6 +5,20 @@
     <application
         android:allowBackup="false"
         tools:replace="android:allowBackup">
+        <activity
+            android:name=".ui.saf.SafStorageProofHarnessActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Praktika" />
+        <activity
+            android:name=".ui.restore.RestoreProofHarnessActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Praktika" />
+        <!-- 13.08.2026 DATA VAULT Stage 6.3C1 cursor by Me4Hik START - device acceptance evidence harness -->
+        <activity
+            android:name=".ui.acceptance.DeviceAcceptanceHarnessActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Praktika" />
+        <!-- 13.08.2026 DATA VAULT Stage 6.3C1 cursor by Me4Hik END -->
         <receiver
             android:name=".AcceleratedCommandReceiver"
             android:exported="true">

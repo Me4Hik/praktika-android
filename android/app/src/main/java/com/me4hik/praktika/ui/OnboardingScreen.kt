@@ -48,6 +48,7 @@ import com.me4hik.praktika.ui.practice.PracticeTestTags
 import com.me4hik.praktika.ui.practice.PracticeUiError
 import com.me4hik.praktika.ui.practice.PracticeUiState
 import com.me4hik.praktika.ui.practice.onboardingSlotTestTag
+import com.me4hik.praktika.ui.restore.ProductionRestoreTestTags
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
 import com.me4hik.praktika.ui.theme.TextSecondary
 import com.me4hik.praktika.ui.theme.TitleSerifStyle
@@ -57,6 +58,7 @@ fun OnboardingScreen(
     state: PracticeUiState.NotStarted,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
     onStartPractice: () -> Unit,
+    onRestoreBackup: () -> Unit,
 ) {
     var pickerSlotIndex by remember { mutableIntStateOf(-1) }
 
@@ -92,6 +94,46 @@ fun OnboardingScreen(
                     .padding(top = 12.dp)
                     .testTag(PracticeTestTags.ONBOARDING_DESCRIPTION),
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            // 10.08.2026 Post-release fixes cursor by Me4Hik START - onboarding primary CTA above schedule
+            val startEnabled = !state.isScheduleLoading &&
+                state.isScheduleValid &&
+                !state.isStarting
+            PracticePrimaryButton(
+                text = stringResource(R.string.onboarding_start_practice),
+                onClick = onStartPractice,
+                enabled = startEnabled,
+                showProgress = state.isStarting,
+                progressTestTag = PracticeTestTags.ONBOARDING_START_PROGRESS,
+                modifier = Modifier.testTag(PracticeTestTags.ONBOARDING_START),
+            )
+            TextButton(
+                onClick = onRestoreBackup,
+                enabled = !state.isStarting && !state.isScheduleLoading,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .testTag(ProductionRestoreTestTags.ONBOARDING_RESTORE_CTA),
+            ) {
+                Text(
+                    text = stringResource(R.string.onboarding_restore_backup),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            state.startError?.let { error ->
+                Text(
+                    text = onboardingStartErrorText(error),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                        .testTag(PracticeTestTags.ONBOARDING_START_ERROR),
+                )
+            }
             Spacer(modifier = Modifier.height(24.dp))
             Column(
                 modifier = Modifier
@@ -144,30 +186,7 @@ fun OnboardingScreen(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            val startEnabled = !state.isScheduleLoading &&
-                state.isScheduleValid &&
-                !state.isStarting
-            PracticePrimaryButton(
-                text = stringResource(R.string.onboarding_start_practice),
-                onClick = onStartPractice,
-                enabled = startEnabled,
-                showProgress = state.isStarting,
-                progressTestTag = PracticeTestTags.ONBOARDING_START_PROGRESS,
-                modifier = Modifier.testTag(PracticeTestTags.ONBOARDING_START),
-            )
-            state.startError?.let { error ->
-                Text(
-                    text = onboardingStartErrorText(error),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                        .testTag(PracticeTestTags.ONBOARDING_START_ERROR),
-                )
-            }
+            // 10.08.2026 Post-release fixes cursor by Me4Hik END
         }
     }
     // 07.08.2026 Stage 24 Final Design cursor by Me4Hik END

@@ -21,6 +21,7 @@
     <string name="onboarding_description">Несколько раз в день приложение будет задавать вам вопрос. Остановитесь на несколько секунд, почувствуйте свой ответ и сохраните его. Через время вопрос повторится, и вы сможете увидеть, как изменилось ваше восприятие.</string>
     <string name="onboarding_schedule_title">Расписание</string>
     <string name="onboarding_start_practice">Начать практику</string>
+    <string name="onboarding_restore_backup">Восстановить из резервной копии</string>
     <!-- 05.08.2026 Stage 6 Boundary cursor by Me4Hik END -->
     <string name="practice_open_question">Открыть вопрос</string>
     <string name="practice_question_placeholder">Экран вопроса будет подключён на следующем этапе.</string>
@@ -89,12 +90,91 @@
     <string name="settings_time_picker_confirm">Готово</string>
     <string name="settings_time_picker_cancel">Отмена</string>
     <string name="settings_fatal_error">Не удалось загрузить настройки.</string>
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder -->
+    <string name="settings_bug_report">Сообщить о проблеме</string>
+    <string name="settings_bug_report_title">Сообщить о проблеме</string>
+    <string name="settings_bug_report_description">К отчёту автоматически прикладываются технические события за последнее время. Тексты ваших ответов не отправляются.</string>
+    <string name="settings_bug_report_comment_hint">Кратко опишите проблему (необязательно)</string>
+    <string name="settings_bug_report_send">Отправить</string>
+    <string name="settings_bug_report_cancel">Отмена</string>
+    <string name="settings_bug_report_close">Закрыть</string>
+    <string name="settings_bug_report_sent">Отчёт отправлен. Спасибо!</string>
+    <string name="settings_bug_report_saved_locally">Отчёт сохранён локально, отправка недоступна.</string>
+    <string name="settings_bug_report_send_failed">Отчёт сохранён локально, но отправка не удалась.</string>
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik END -->
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI -->
+    <string name="settings_backup_section">Резервная копия</string>
+    <string name="settings_backup_status_not_configured">Папка для резервных копий не выбрана.</string>
+    <string name="settings_backup_status_healthy">Резервное копирование включено</string>
+    <string name="settings_backup_status_configured_no_cache">Резервное копирование настроено. Пока нет данных о последней успешной копии.</string>
+    <string name="settings_backup_status_needs_reconnect">Нет доступа к папке резервных копий.</string>
+    <string name="settings_backup_status_transient">Не удалось обновить резервную копию. Можно попробовать ещё раз.</string>
+    <string name="settings_backup_status_needs_attention">Папка резервных копий требует проверки.</string>
+    <string name="settings_backup_status_data_problem">Сейчас не удалось подготовить данные для резервной копии.</string>
+    <string name="settings_backup_status_unavailable">Статус резервного копирования временно недоступен.</string>
+    <string name="settings_backup_last_success">Последняя успешная копия: %1$s</string>
+    <string name="settings_backup_setup">Настроить резервную копию</string>
+    <string name="settings_backup_now">Создать копию сейчас</string>
+    <string name="settings_backup_change_folder">Изменить папку</string>
+    <string name="settings_backup_reconnect">Восстановить доступ</string>
+    <string name="settings_backup_disable">Отключить резервное копирование</string>
+    <string name="settings_backup_use_folder">Использовать для резервных копий</string>
+    <string name="settings_backup_choose_another">Выбрать другую папку</string>
+    <string name="settings_backup_retry">Повторить</string>
+    <string name="settings_backup_continue">Продолжить</string>
+    <string name="settings_backup_disable_confirm_action">Отключить</string>
+    <string name="settings_backup_cancel">Отмена</string>
+    <string name="settings_backup_close">Закрыть</string>
+    <string name="settings_backup_disclosure_body">Приложение получит доступ к выбранной папке и будет сохранять в ней резервные копии ответов и настроек практики обычными файлами — без дополнительного шифрования. Выберите надёжную папку, к которой у вас есть доступ.</string>
+    <string name="settings_backup_disclosure_title">Резервная копия</string>
+    <string name="settings_backup_confirm_equal">В папке уже есть резервная копия Практики. Текущие данные будут сохранены как новая версия.</string>
+    <string name="settings_backup_confirm_different">В папке уже есть другая резервная копия Практики. Настройка не восстанавливает её. Текущие данные станут новой копией; старые версии могут быть замещены. Восстановление выполняется из потока восстановления при старте практики.</string>
+    <string name="settings_backup_confirm_invalid_plus_missing">В папке найден повреждённый файл резервной копии. Повреждённый файл останется без изменений. Текущие данные будут сохранены отдельно.</string>
+    <string name="settings_backup_confirm_blocked">В этой папке нельзя безопасно настроить резервное копирование. Выберите другую папку.</string>
+    <string name="settings_backup_confirm_unsafe_database">Сейчас не удалось подготовить данные для резервной копии.</string>
+    <string name="settings_backup_commit_retry_body">Копия создана, но не удалось завершить настройку.</string>
+    <string name="settings_backup_disable_body">Автоматическое резервное копирование будет отключено. Файлы копий в выбранной папке останутся. Приложение снимет свой доступ к папке, если это возможно.</string>
+    <string name="settings_backup_reconnect_different_body">Вы выбрали другую папку.</string>
+    <string name="settings_backup_use_as_new_folder">Использовать как новую папку</string>
+    <string name="settings_backup_snackbar_enabled">Резервное копирование включено</string>
+    <string name="settings_backup_snackbar_folder_changed">Папка для резервных копий изменена</string>
+    <string name="settings_backup_snackbar_created">Резервная копия создана</string>
+    <string name="settings_backup_snackbar_already_current">Резервная копия уже актуальна</string>
+    <string name="settings_backup_snackbar_not_configured">Резервное копирование не настроено</string>
+    <string name="settings_backup_snackbar_needs_reconnect">Нет доступа к папке резервных копий.</string>
+    <string name="settings_backup_snackbar_transient">Не удалось создать резервную копию. Попробуйте ещё раз.</string>
+    <string name="settings_backup_snackbar_needs_attention">Папка резервных копий требует проверки.</string>
+    <string name="settings_backup_snackbar_data_problem">Сейчас не удалось подготовить данные для резервной копии.</string>
+    <string name="settings_backup_snackbar_tracking_written">Резервная копия создана, но статус в приложении мог не обновиться.</string>
+    <string name="settings_backup_snackbar_tracking_nochange">Копия актуальна, но статус в приложении мог не обновиться.</string>
+    <string name="settings_backup_snackbar_temporarily_unavailable">Резервная копия сейчас недоступна. Попробуйте немного позже.</string>
+    <string name="settings_backup_snackbar_reconnect_success">Доступ к папке восстановлен</string>
+    <string name="settings_backup_snackbar_stale_configuration">Настройки резервного копирования изменились. Повторите действие.</string>
+    <string name="settings_backup_snackbar_permission_failure">Не удалось получить доступ к папке резервных копий.</string>
+    <string name="settings_backup_snackbar_validation_failure">Не удалось проверить доступ к папке резервных копий.</string>
+    <string name="settings_backup_snackbar_disabled">Резервное копирование отключено</string>
+    <string name="settings_backup_snackbar_disabled_cleanup_warning">Резервное копирование отключено, но не удалось полностью снять доступ к папке.</string>
+    <string name="settings_backup_snackbar_disable_failed">Не удалось отключить резервное копирование.</string>
+    <string name="settings_backup_snackbar_disable_busy">Не удалось завершить отключение. Попробуйте ещё раз.</string>
+    <string name="settings_backup_snackbar_inspect_permission">Нет доступа к выбранной папке.</string>
+    <string name="settings_backup_snackbar_inspect_unavailable">Не удалось открыть выбранную папку.</string>
+    <string name="settings_backup_snackbar_inspect_provider">Не удалось проверить выбранную папку.</string>
+    <string name="settings_backup_snackbar_busy">Сейчас выполняется другая операция. Попробуйте ещё раз.</string>
+    <string name="settings_backup_snackbar_abandon_busy">Не удалось завершить текущую настройку. Попробуйте ещё раз.</string>
+    <string name="settings_backup_snackbar_write_failed">Не удалось создать резервную копию. Попробуйте ещё раз.</string>
+    <string name="settings_backup_snackbar_export_failed">Сейчас не удалось подготовить данные для резервной копии.</string>
+    <string name="settings_backup_snackbar_setup_failed">Не удалось завершить настройку резервного копирования.</string>
+    <string name="settings_backup_snackbar_replace_failed">Не удалось сменить папку.</string>
+    <string name="settings_backup_snackbar_replace_failed_still_active">Не удалось сменить папку. Текущее резервное копирование остаётся активным.</string>
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik END -->
     <!-- 06.08.2026 Settings Schedule cursor by Me4Hik END -->
     <!-- 06.08.2026 Stage 12 Notifications cursor by Me4Hik START -->
     <string name="home_notification_request_message">Разрешите уведомления, чтобы получать вопросы по расписанию.</string>
     <string name="home_notification_request_action">Разрешить уведомления</string>
     <string name="home_notification_disabled_message">Уведомления выключены</string>
     <string name="home_notification_enable_action">Включить</string>
+    <string name="home_exact_alarm_message">Чтобы напоминания приходили точно по расписанию, разрешите точные будильники и напоминания.</string>
+    <string name="home_exact_alarm_action">Разрешить точные напоминания</string>
     <string name="settings_notification_settings">Настройки уведомлений</string>
     <string name="notification_channel_sound_name">Вопросы со звуком</string>
     <string name="notification_channel_sound_description">Уведомления о доступных вопросах со стандартным звуком.</string>
@@ -163,5 +243,58 @@
     <string name="archive_entry_share_cancel">Отмена</string>
     <!-- 07.08.2026 Stage 21 Share cursor by Me4Hik END -->
     <!-- 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END -->
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 5.2 production restore overlay -->
+    <string name="restore_close_content_description">Закрыть</string>
+    <string name="restore_idle_title">Восстановление данных</string>
+    <string name="restore_idle_body">Выберите папку, которую использовали для резервных копий Практики.</string>
+    <string name="restore_idle_disclosure">Приложение получит доступ к выбранной папке для восстановления и будущих резервных копий. Копия хранится в ней обычным файлом.</string>
+    <string name="restore_choose_folder">Выбрать папку</string>
+    <string name="restore_choose_other_folder">Выбрать другую папку</string>
+    <string name="restore_choose_folder_again">Выбрать папку снова</string>
+    <string name="restore_cancel">Отмена</string>
+    <string name="restore_close">Закрыть</string>
+    <string name="restore_checking_title">Проверка…</string>
+    <string name="restore_choosing_folder_title">Выбор папки…</string>
+    <string name="restore_connecting_title">Подключение…</string>
+    <string name="restore_connecting_body">Получаем доступ к папке.</string>
+    <string name="restore_inspecting_title">Поиск копии…</string>
+    <string name="restore_inspecting_body">Ищем резервную копию в выбранной папке.</string>
+    <string name="restore_blocked_title">Восстановление недоступно</string>
+    <string name="restore_blocked_not_empty_body">Восстановление доступно только до начала практики.</string>
+    <string name="restore_blocked_unsafe_body">Восстановление сейчас недоступно.</string>
+    <string name="restore_error_no_backup_title">Копия не найдена</string>
+    <string name="restore_error_no_backup_body">В этой папке нет резервной копии Практики.</string>
+    <string name="restore_error_invalid_title">Копия повреждена</string>
+    <string name="restore_error_invalid_body">Резервная копия повреждена или неполна.</string>
+    <string name="restore_error_incompatible_title">Копия несовместима</string>
+    <string name="restore_error_incompatible_body">Эта резервная копия несовместима с текущей версией приложения. Проверьте, установлена ли последняя версия.</string>
+    <string name="restore_error_permission_title">Нет доступа</string>
+    <string name="restore_error_permission_body">Нет доступа к выбранной папке.</string>
+    <string name="restore_error_read_title">Не удалось прочитать</string>
+    <string name="restore_error_read_body">Не удалось прочитать резервную копию.</string>
+    <string name="restore_error_active_folder_title">Не удалось подключить папку</string>
+    <string name="restore_error_active_folder_body">Не удалось сохранить доступ к выбранной папке.</string>
+    <string name="restore_error_restore_write_title">Не удалось восстановить данные</string>
+    <string name="restore_error_restore_write_body">Не удалось сохранить восстановленные данные.</string>
+    <string name="restore_error_unexpected_title">Что-то пошло не так</string>
+    <string name="restore_error_unexpected_body">Попробуйте выбрать папку ещё раз.</string>
+    <string name="restore_preview_title">Резервная копия от %1$s</string>
+    <string name="restore_preview_answers">Сохранённых ответов: %1$d</string>
+    <string name="restore_preview_completed">Завершённых показов: %1$d</string>
+    <string name="restore_preview_practice_started">Практика была начата</string>
+    <string name="restore_preview_practice_not_started">Практика ещё не была начата</string>
+    <string name="restore_preview_schedule">Расписание: будет восстановлено</string>
+    <string name="restore_preview_deleted_text">Ранее удалённые тексты ответов останутся удалёнными: %1$d</string>
+    <string name="restore_preview_folder_note">Эта папка будет использоваться для будущих резервных копий.</string>
+    <string name="restore_stale_notice">Резервная копия изменилась. Проверьте данные ещё раз.</string>
+    <string name="restore_confirm">Восстановить</string>
+    <string name="restore_restoring_title">Восстановление…</string>
+    <string name="restore_restoring_body">Не закрывайте приложение.</string>
+    <string name="restore_success_title">Данные восстановлены</string>
+    <string name="restore_success_body">Практика и расписание восстановлены.</string>
+    <string name="restore_continue">Продолжить</string>
+    <string name="restore_runtime_warning_title">Данные восстановлены</string>
+    <string name="restore_runtime_warning_body">Данные восстановлены, но часть обновления не завершилась. Если состояние отображается неверно, закройте и снова откройте приложение.</string>
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik END -->
 </resources>
 <!-- 04.08.2026 Reminder App cursor by Me4Hik END -->

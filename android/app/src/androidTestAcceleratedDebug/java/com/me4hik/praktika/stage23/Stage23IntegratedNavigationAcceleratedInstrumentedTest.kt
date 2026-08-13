@@ -150,7 +150,8 @@ class Stage23IntegratedNavigationAcceleratedInstrumentedTest {
                         owner = composeRule.activity,
                         runtime = harness.runtime,
                         onRequestPostNotifications = {},
-                        onOpenNotificationSettings = {},
+                        onOpenAppNotificationSettings = {},
+                        onOpenChannelSettings = {},
                     )
                 }
                 val rootViewModel: PracticeRootViewModel = viewModel(factory = factory)

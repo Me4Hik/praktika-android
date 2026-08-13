@@ -261,8 +261,7 @@ class MainActivityStage13VerticalE2EInstrumentedTest {
         SettingsComposeTestSupport.changeSlotTime(composeRule, 1, 630)
         SettingsComposeTestSupport.changeSlotTime(composeRule, 2, 860)
         SettingsComposeTestSupport.changeSlotTime(composeRule, 3, 1210)
-        SettingsComposeTestSupport.saveSchedule(composeRule)
-        SettingsComposeTestSupport.waitForSnackbarText(composeRule, "Расписание сохранено")
+        SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
         runBlocking {
             Stage10BlackviewE2ESupport.assertSlotMinutes(runtime, 630, 860, 1210)
             val alarmDump = readAlarmDump()

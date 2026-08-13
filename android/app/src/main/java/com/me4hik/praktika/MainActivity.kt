@@ -3,6 +3,7 @@
 // 04.08.2026 Cycle Engine cursor by Me4Hik START - reconcile после seed
 // 04.08.2026 Accelerated Test Mode cursor by Me4Hik START - PraktikaRuntimeHolder
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - init gate, tap intent, permission
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
 package com.me4hik.praktika
 
 import android.content.Intent
@@ -12,9 +13,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.me4hik.praktika.diagnostics.DiagnosticCategory
+import com.me4hik.praktika.diagnostics.DiagnosticPermissionRecorder
+import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.notification.NotificationTapDecision
 import com.me4hik.praktika.notification.NotificationTapSource
@@ -23,6 +30,7 @@ import com.me4hik.praktika.ui.PraktikaApp
 import com.me4hik.praktika.ui.theme.PraktikaTheme
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -34,12 +42,35 @@ class MainActivity : ComponentActivity() {
 
     private val postNotificationsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { _ ->
+    ) { granted ->
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - permission result observability
+        if (DiagnosticsRecorder.isInitialized()) {
+            DiagnosticsRecorder.get().record(
+                category = DiagnosticCategory.PERMISSION,
+                name = "permission_result",
+                metadata = mapOf(
+                    "permission" to "POST_NOTIFICATIONS",
+                    "granted" to granted.toString(),
+                ),
+            )
+        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
         lifecycleScope.launch {
             // 06.08.2026 Stage 12 Production Defect Fix cursor by Me4Hik START - keep permission sync off Main
             withContext(Dispatchers.IO) {
                 val runtime = PraktikaRuntimeHolder.get(applicationContext)
                 runtime.notificationCoordinator.sync(NotificationSyncReason.PERMISSION_CHANGED)
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - permission state after sync
+                val soundEnabled = runtime.soundPreferenceRepository.soundEnabled.first()
+                DiagnosticPermissionRecorder.recordState(
+                    permissionRepository = runtime.notificationPermissionRepository,
+                    soundEnabled = soundEnabled,
+                    source = "permission_result_after_sync",
+                )
+                runtime.notificationPermissionRepository.notifyPermissionStateChanged(
+                    source = "runtime_permission_callback",
+                )
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
             }
             // 06.08.2026 Stage 12 Production Defect Fix cursor by Me4Hik END
         }
@@ -48,6 +79,46 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - activity lifecycle diagnostics
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                recordActivityLifecycle("activity_create")
+            }
+
+            override fun onStart(owner: LifecycleOwner) {
+                recordActivityLifecycle("activity_start")
+                TargetedBugDiagnostics.recordAppForegrounded()
+            }
+
+            override fun onResume(owner: LifecycleOwner) {
+                recordActivityLifecycle("activity_resume")
+                if (PraktikaRuntimeHolder.isInitialized()) {
+                    val runtime = PraktikaRuntimeHolder.get(applicationContext)
+                    runtime.notificationPermissionRepository
+                        .notifyPermissionStateChanged(source = "activity_resume")
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            runtime.exactAlarmCapabilityRepository.seedInitialCapability("activity_resume_seed")
+                            if (runtime.exactAlarmCapabilityRepository.notifyCapabilityChanged("activity_resume")) {
+                                runtime.notificationCoordinator.sync(
+                                    NotificationSyncReason.EXACT_ALARM_PERMISSION_CHANGED,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                recordActivityLifecycle("activity_pause")
+            }
+
+            override fun onStop(owner: LifecycleOwner) {
+                recordActivityLifecycle("activity_stop")
+                TargetedBugDiagnostics.recordAppBackgrounded()
+            }
+        })
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
         // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik START - cold-start instance marker
         activeActivityInstanceId = activityInstanceId
         android.util.Log.i(
@@ -165,6 +236,20 @@ class MainActivity : ComponentActivity() {
             is NotificationTapDecision.Open -> Unit
             NotificationTapDecision.Ignore -> Unit
         }
+    }
+
+    private fun recordActivityLifecycle(name: String) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        DiagnosticsRecorder.get().record(
+            category = DiagnosticCategory.APP,
+            name = name,
+            metadata = mapOf(
+                "activity" to "MainActivity",
+                "instance_id" to activityInstanceId.toString(),
+            ),
+        )
     }
 
     companion object {

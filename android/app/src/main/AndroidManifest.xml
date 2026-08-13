@@ -4,6 +4,12 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - exact scheduled reminder delivery -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik END -->
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 10.08.2026 Post-release fixes cursor by Me4Hik END -->
 
     <application
         android:name=".PraktikaApplication"
@@ -13,6 +19,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Praktika">
+        <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder -->
+        <meta-data
+            android:name="io.sentry.auto-init"
+            android:value="false" />
+        <!-- 10.08.2026 Post-release fixes cursor by Me4Hik END -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -38,6 +49,14 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".notification.ExactAlarmPermissionStateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

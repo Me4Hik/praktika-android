@@ -25,6 +25,18 @@ val releaseSecrets = Properties().apply {
     }
 }
 
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
+val localPropertiesFile = rootProject.file("local.properties")
+val localProperties = Properties().apply {
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+val sentryDsn = localProperties.getProperty("sentry.dsn").orEmpty()
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+// 10.08.2026 Post-release fixes cursor by Me4Hik END
+
 android {
     namespace = "com.me4hik.praktika"
     compileSdk = 36
@@ -33,8 +45,12 @@ android {
         applicationId = "com.me4hik.praktika"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
+        versionCode = 8
         versionName = "1.0"
+
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -99,6 +115,9 @@ android {
     // 05.08.2026 Main Screen cursor by Me4Hik START - stub Android Log в JVM unit tests
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 5.2 Compose Robolectric host tests
+        unitTests.isIncludeAndroidResources = true
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
     // 05.08.2026 Main Screen cursor by Me4Hik END
 }
@@ -114,6 +133,59 @@ androidComponents {
     }
 }
 // 04.08.2026 Accelerated Test Mode cursor by Me4Hik END
+
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Prompt134 production device test hard guard
+apply(from = rootProject.file("gradle/production-device-test-guard.gradle.kts"))
+// 10.08.2026 Post-release fixes cursor by Me4Hik END
+
+// 10.08.2026 Post-release fixes cursor by Me4Hik START - Prompt131 device test artifact path sanitization
+tasks.matching { it.name.startsWith("connected") && it.name.endsWith("AndroidTest") }.configureEach {
+    doLast {
+        sanitizeConnectedAndroidTestArtifacts(name)
+    }
+}
+
+fun sanitizeConnectedAndroidTestArtifacts(taskName: String) {
+    val flavorSegment = when {
+        taskName.contains("Accelerated", ignoreCase = true) -> "accelerated"
+        else -> "production"
+    }
+    val buildTypeSegment = if (taskName.contains("Debug", ignoreCase = true)) "debug" else "release"
+    val resultRoots = listOf(
+        layout.buildDirectory
+            .dir("outputs/androidTest-results/connected/$buildTypeSegment/flavors/$flavorSegment")
+            .get()
+            .asFile,
+        layout.buildDirectory
+            .dir("reports/androidTests/connected/$buildTypeSegment/flavors/$flavorSegment")
+            .get()
+            .asFile,
+    )
+    resultRoots.forEach { root ->
+        if (!root.exists()) {
+            return@forEach
+        }
+        root.listFiles()?.filter { it.isDirectory }?.forEach { deviceDir ->
+            val safeName = deviceDir.name.replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_')
+            val resolvedDir = if (safeName != deviceDir.name) {
+                val target = deviceDir.parentFile.resolve(safeName)
+                if (!target.exists()) {
+                    deviceDir.renameTo(target)
+                }
+                target
+            } else {
+                deviceDir
+            }
+            resolvedDir.walkTopDown().maxDepth(2).filter { it.isFile && it.name.startsWith("logcat-") }.forEach { logcat ->
+                if (!logcat.exists() || logcat.length() == 0L) {
+                    logcat.parentFile?.mkdirs()
+                    logcat.writeText("")
+                }
+            }
+        }
+    }
+}
+// 10.08.2026 Post-release fixes cursor by Me4Hik END
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -144,13 +216,29 @@ dependencies {
     // 06.08.2026 Settings Schedule cursor by Me4Hik END
     // 04.08.2026 DB Refactoring cursor by Me4Hik END
 
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
+    implementation(libs.sentry.android)
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
     // 04.08.2026 Cycle Engine cursor by Me4Hik START - coreLibraryDesugaring для java.time на minSdk 24
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     // 04.08.2026 Cycle Engine cursor by Me4Hik END
 
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
     // 05.08.2026 Main Screen cursor by Me4Hik START - coroutines test для ViewModel
     testImplementation(libs.kotlinx.coroutines.test)
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 3 cancellation JVM tests
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.androidx.ui.test.manifest)
+    testImplementation(libs.androidx.activity.compose)
+    testImplementation(libs.androidx.material3)
+    testImplementation(libs.androidx.ui)
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
     // 05.08.2026 Main Screen cursor by Me4Hik END
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

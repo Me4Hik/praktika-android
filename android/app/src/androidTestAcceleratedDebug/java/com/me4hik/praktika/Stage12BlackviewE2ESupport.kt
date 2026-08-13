@@ -1,7 +1,9 @@
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - Stage 12 E2E helpers
 package com.me4hik.praktika
 
+import android.Manifest
 import android.app.UiAutomation
+import android.os.Build
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.rules.ActivityScenarioRule
@@ -35,11 +37,22 @@ object Stage12BlackviewE2ESupport {
     fun grantPostNotificationsViaShell() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val pkg = instrumentation.targetContext.packageName
-        instrumentation.uiAutomation.executeShellCommand(
-            "pm grant $pkg android.permission.POST_NOTIFICATIONS",
-        ).close()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                pkg,
+                Manifest.permission.POST_NOTIFICATIONS,
+            )
+        } else {
+            instrumentation.uiAutomation.executeShellCommand(
+                "pm grant $pkg android.permission.POST_NOTIFICATIONS",
+            ).close()
+        }
     }
 
+    /**
+     * Do not call from instrumentation on Android 15 — pm revoke kills the host process.
+     * Use host adb between separate instrumentation invocations instead.
+     */
     fun revokePostNotificationsViaShell() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val pkg = instrumentation.targetContext.packageName

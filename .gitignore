@@ -33,3 +33,11 @@ credentials.json
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Pre-play tester release artifacts (APKs + generated metadata).
+# Keep README.txt and DISTRIBUTION_LOG.txt trackable.
+/release/testers/CURRENT/*
+/release/testers/archive/*
+/release/testers/.staging/
+/release/testers/CURRENT.next/
+/release/testers/CURRENT.bak-*/
