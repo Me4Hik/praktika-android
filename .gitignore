@@ -35,7 +35,7 @@ credentials.json
 Thumbs.db
 
 # Pre-play tester release artifacts (APKs + generated metadata).
-# Keep README.txt and DISTRIBUTION_LOG.txt trackable.
+# Local tester README/DISTRIBUTION_LOG are ignored in the Me4Hik blocks below.
 /release/testers/CURRENT/*
 /release/testers/archive/*
 /release/testers/.staging/
@@ -95,4 +95,8 @@ Thumbs.db
 /design/2question_master_atmospheric_plate.png
 /design/ChatGPT Image*.png
 /release/testers/DISTRIBUTION_LOG.txt
+# 14.08.2026 DB Refactoring cursor by Me4Hik END
+
+# 14.08.2026 DB Refactoring cursor by Me4Hik START - ignore local tester distribution documentation
+/release/testers/README.txt
 # 14.08.2026 DB Refactoring cursor by Me4Hik END
