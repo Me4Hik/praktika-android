@@ -89,3 +89,10 @@ Thumbs.db
 /poslefovatelnosti/
 
 # 14.08.2026 DB Refactoring cursor by Me4Hik END
+# 14.08.2026 DB Refactoring cursor by Me4Hik START - protect local design drafts and tester distribution log
+/design/1.png
+/design/1question_master_atmospheric_plate.png
+/design/2question_master_atmospheric_plate.png
+/design/ChatGPT Image*.png
+/release/testers/DISTRIBUTION_LOG.txt
+# 14.08.2026 DB Refactoring cursor by Me4Hik END
