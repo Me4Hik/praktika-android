@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
+import com.me4hik.praktika.MainActivity
 import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 
 enum class AlarmSchedulerApiMode {
@@ -41,11 +43,69 @@ class AndroidAlarmScheduler(
                     reason = "schedule_replace",
                 )
             }
+            // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+            cancelSiblingPlannedIdentities(alarm)
+            // 10.08.2026 Post-release fixes cursor by Me4Hik END
         }
     }
 
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    override fun scheduleResidualPlannedRecovery(
+        recoveryPlan: BoundaryAlarmPlan,
+        useAlarmClock: Boolean,
+    ): ResidualPlannedRecoveryResult {
+        require(recoveryPlan.eventType == BoundaryEventType.PLANNED_BOUNDARY)
+        require(
+            PlannedBoundaryTiming.isExpectedRecoveryTrigger(
+                recoveryPlan.plannedAtEpochMillis,
+                recoveryPlan.triggerAtEpochMillis,
+            ),
+        )
+        cancelSiblingPlannedIdentities(recoveryPlan)
+        val operation = pendingIntentFor(
+            recoveryPlan,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        ) ?: return ResidualPlannedRecoveryResult.FAILED_FALLBACK_AWI
+
+        val capability = ExactAlarmCapabilityResolver.resolve(alarmManager)
+        return if (useAlarmClock) {
+            try {
+                val scheduled = scheduleAlarmClock(recoveryPlan.triggerAtEpochMillis, operation)
+                recordScheduled(
+                    alarm = recoveryPlan,
+                    scheduled = scheduled,
+                    capability = capability,
+                    decision = PlannedBoundarySchedulerDecision.ALARM_CLOCK_RECOVERY,
+                )
+                ResidualPlannedRecoveryResult.ALARM_CLOCK_SCHEDULED
+            } catch (securityException: SecurityException) {
+                val scheduled = scheduleAllowWhileIdle(recoveryPlan.triggerAtEpochMillis, operation)
+                recordScheduled(
+                    alarm = recoveryPlan,
+                    scheduled = scheduled,
+                    capability = capability,
+                    decision = PlannedBoundarySchedulerDecision.RESIDUAL_EARLY_FALLBACK_AWI,
+                )
+                ResidualPlannedRecoveryResult.FALLBACK_AWI_SCHEDULED
+            }
+        } else {
+            val scheduled = scheduleAllowWhileIdle(recoveryPlan.triggerAtEpochMillis, operation)
+            recordScheduled(
+                alarm = recoveryPlan,
+                scheduled = scheduled,
+                capability = capability,
+                decision = PlannedBoundarySchedulerDecision.RESIDUAL_EARLY_FALLBACK_AWI,
+            )
+            ResidualPlannedRecoveryResult.FALLBACK_AWI_SCHEDULED
+        }
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
     private fun scheduleBoundary(alarm: BoundaryAlarmPlan) {
         val triggerAt = alarm.triggerAtEpochMillis
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        cancelSiblingPlannedIdentities(alarm)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
         val pendingIntent = pendingIntentFor(
             alarm,
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
@@ -67,16 +127,78 @@ class AndroidAlarmScheduler(
             }
         }
 
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        val decision = when (alarm.eventType) {
+            BoundaryEventType.PLANNED_BOUNDARY -> PlannedBoundarySchedulerDecision.BIAS_SCHEDULE
+            BoundaryEventType.EXPIRY_BOUNDARY -> PlannedBoundarySchedulerDecision.NORMAL_REARM
+        }
+        recordScheduled(alarm, scheduled, capability, decision)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+    }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    private fun recordScheduled(
+        alarm: BoundaryAlarmPlan,
+        scheduled: ScheduledApi,
+        capability: ExactAlarmCapability,
+        decision: PlannedBoundarySchedulerDecision,
+    ) {
         TargetedBugDiagnostics.recordAlarmScheduled(
             occurrenceId = alarm.occurrenceId,
             alarmType = alarmTypeLabel(alarm.eventType),
-            triggerAtEpochMs = triggerAt,
+            triggerAtEpochMs = alarm.triggerAtEpochMillis,
             windowMs = scheduled.windowMs,
             schedulerApi = scheduled.schedulerApi,
             exactAlarmCapability = ExactAlarmCapabilityResolver.diagnosticLabel(capability),
             reasonFromSync = TargetedBugDiagnostics.NotificationTraceContext.syncReason,
+            semanticPlannedAtEpochMs = alarm.plannedAtEpochMillis,
+            schedulerDecision = decision.name,
+            wallClockMs = System.currentTimeMillis(),
+            elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+        )
+        TargetedBugDiagnostics.recordSchedulerDecision(
+            decision = decision.name,
+            occurrenceId = alarm.occurrenceId,
+            eventType = alarm.eventType.name,
+            semanticPlannedAtEpochMs = alarm.plannedAtEpochMillis,
+            triggerAtEpochMs = alarm.triggerAtEpochMillis,
+            schedulerApi = scheduled.schedulerApi,
         )
     }
+
+    private fun cancelSiblingPlannedIdentities(alarm: BoundaryAlarmPlan) {
+        if (alarm.eventType != BoundaryEventType.PLANNED_BOUNDARY) {
+            return
+        }
+        val semantic = alarm.plannedAtEpochMillis
+        val candidates = listOf(
+            PlannedBoundaryTiming.biasedTriggerAt(semantic),
+            semantic,
+        ).distinct()
+        candidates.forEach { trigger ->
+            if (trigger == alarm.triggerAtEpochMillis) {
+                return@forEach
+            }
+            val sibling = alarm.copy(triggerAtEpochMillis = trigger)
+            pendingIntentFor(
+                sibling,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+            )?.let { alarmManager.cancel(it) }
+        }
+    }
+
+    private fun scheduleAlarmClock(triggerAt: Long, operation: PendingIntent): ScheduledApi {
+        val showIntent = PendingIntent.getActivity(
+            context,
+            ALARM_CLOCK_SHOW_REQUEST_CODE,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val clockInfo = AlarmManager.AlarmClockInfo(triggerAt, showIntent)
+        alarmManager.setAlarmClock(clockInfo, operation)
+        return ScheduledApi(schedulerApi = "setAlarmClock", windowMs = 0L)
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private data class ScheduledApi(val schedulerApi: String, val windowMs: Long)
 
@@ -193,14 +315,13 @@ class AndroidAlarmScheduler(
 
         const val WINDOW_LENGTH_MILLIS = 10 * 60 * 1000L
 
-        fun actionFor(alarm: BoundaryAlarmPlan): String {
-            return "com.me4hik.praktika.action.PRACTICE_ALARM/" +
-                "${alarm.eventType.name.lowercase()}/${alarm.occurrenceId}/${alarm.triggerAtEpochMillis}"
-        }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        private const val ALARM_CLOCK_SHOW_REQUEST_CODE = 0x504C414E // "PLAN"
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
-        fun requestCodeFor(alarm: BoundaryAlarmPlan): Int {
-            return actionFor(alarm).hashCode()
-        }
+        fun actionFor(alarm: BoundaryAlarmPlan): String = PracticeAlarmIdentity.actionFor(alarm)
+
+        fun requestCodeFor(alarm: BoundaryAlarmPlan): Int = PracticeAlarmIdentity.requestCodeFor(alarm)
     }
 }
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

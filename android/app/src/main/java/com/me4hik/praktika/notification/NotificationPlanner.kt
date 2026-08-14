@@ -26,11 +26,17 @@ object NotificationPlanner {
         nowEpochMillis: Long,
         occurrence: NotificationOccurrenceSnapshot,
     ): NotificationPlan {
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
         val plannedAlarm = if (nowEpochMillis < occurrence.plannedAtEpochMillis) {
-            boundaryAlarm(occurrence, BoundaryEventType.PLANNED_BOUNDARY, occurrence.plannedAtEpochMillis)
+            boundaryAlarm(
+                occurrence = occurrence,
+                eventType = BoundaryEventType.PLANNED_BOUNDARY,
+                triggerAtEpochMillis = PlannedBoundaryTiming.biasedTriggerAt(occurrence.plannedAtEpochMillis),
+            )
         } else {
             null
         }
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
         val expiryAlarm = boundaryAlarm(
             occurrence,
             BoundaryEventType.EXPIRY_BOUNDARY,

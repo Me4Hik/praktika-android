@@ -20,6 +20,13 @@ class NoOpPlatformAlarmScheduler : PlatformAlarmScheduler {
     override fun scheduleAlarms(plan: NotificationPlan, previousAlarms: List<BoundaryAlarmPlan>) = Unit
 
     override fun cancelAlarms(alarms: List<BoundaryAlarmPlan>) = Unit
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    override fun scheduleResidualPlannedRecovery(
+        recoveryPlan: BoundaryAlarmPlan,
+        useAlarmClock: Boolean,
+    ) = com.me4hik.praktika.notification.ResidualPlannedRecoveryResult.ALARM_CLOCK_SCHEDULED
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 }
 
 class NoOpPracticeNotificationPresenter : PracticeNotificationPresenter {

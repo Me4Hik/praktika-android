@@ -1,6 +1,8 @@
 // 10.08.2026 Post-release fixes cursor by Me4Hik START - targeted real-bug trace events
 package com.me4hik.praktika.diagnostics
 
+import com.me4hik.praktika.notification.PlannedBoundarySchedulerDecision
+
 object TargetedBugDiagnostics {
     internal val SEMANTIC_TRACE_EVENT_NAMES = setOf(
         "answer_save_attempt",
@@ -12,6 +14,10 @@ object TargetedBugDiagnostics {
         "notification_alarm_fired",
         "notification_post_attempt",
         "notification_post_result",
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        "notification_scheduler_decision",
+        "malformed_alarm_intent",
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     )
 
     object NotificationTraceContext {
@@ -94,6 +100,12 @@ object TargetedBugDiagnostics {
         schedulerApi: String = "setWindow",
         exactAlarmCapability: String = "",
         reasonFromSync: String?,
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        semanticPlannedAtEpochMs: Long? = null,
+        schedulerDecision: String? = null,
+        wallClockMs: Long? = null,
+        elapsedRealtimeMs: Long? = null,
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     ) {
         recordNotification(
             name = "notification_alarm_scheduled",
@@ -105,6 +117,12 @@ object TargetedBugDiagnostics {
                 put("scheduler_api", schedulerApi)
                 put("exact_alarm_capability", exactAlarmCapability)
                 put("reason_from_sync", reasonFromSync ?: "")
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+                semanticPlannedAtEpochMs?.let { put("semantic_planned_at_epoch_ms", it.toString()) }
+                schedulerDecision?.let { put("scheduler_decision", it) }
+                wallClockMs?.let { put("wall_clock_ms", it.toString()) }
+                elapsedRealtimeMs?.let { put("elapsed_realtime_ms", it.toString()) }
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
             },
         )
     }
@@ -128,6 +146,16 @@ object TargetedBugDiagnostics {
         occurrenceId: Long,
         alarmType: String?,
         receivedAtEpochMs: Long,
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        receiverEventType: String? = null,
+        semanticPlannedAtEpochMs: Long? = null,
+        triggerAtEpochMs: Long? = null,
+        intentFlags: Int? = null,
+        wallClockMs: Long? = null,
+        elapsedRealtimeMs: Long? = null,
+        deltaToPlannedMs: Long? = null,
+        logicalPiIdentity: String? = null,
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     ) {
         recordNotification(
             name = "notification_alarm_fired",
@@ -135,9 +163,76 @@ object TargetedBugDiagnostics {
                 put("occurrence_id", occurrenceId.toString())
                 put("alarm_type", alarmType ?: "unknown")
                 put("received_at_epoch_ms", receivedAtEpochMs.toString())
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+                receiverEventType?.let { put("receiver_event_type", it) }
+                semanticPlannedAtEpochMs?.let { put("receiver_semantic_planned_at", it.toString()) }
+                triggerAtEpochMs?.let { put("receiver_trigger_at", it.toString()) }
+                intentFlags?.let { put("receiver_intent_flags", it.toString()) }
+                wallClockMs?.let { put("receiver_wall_clock_ms", it.toString()) }
+                elapsedRealtimeMs?.let { put("receiver_elapsed_realtime_ms", it.toString()) }
+                deltaToPlannedMs?.let { put("delta_to_planned_ms", it.toString()) }
+                logicalPiIdentity?.let { put("logical_pi_identity", it) }
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
             },
         )
     }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    data class PowerDiagnosticsSnapshot(
+        val deviceIdleMode: Boolean? = null,
+        val powerSaveMode: Boolean? = null,
+        val ignoringBatteryOptimizations: Boolean? = null,
+    )
+
+    fun recordSchedulerDecision(
+        decision: String,
+        occurrenceId: Long,
+        eventType: String?,
+        semanticPlannedAtEpochMs: Long,
+        triggerAtEpochMs: Long,
+        schedulerApi: String? = null,
+        exactAlarmCapability: String? = null,
+        powerSnapshot: PowerDiagnosticsSnapshot? = null,
+    ) {
+        recordNotification(
+            name = "notification_scheduler_decision",
+            metadata = buildMap {
+                put("scheduler_decision", decision)
+                put("occurrence_id", occurrenceId.toString())
+                put("receiver_event_type", eventType ?: "")
+                put("semantic_planned_at_epoch_ms", semanticPlannedAtEpochMs.toString())
+                put("trigger_at_epoch_ms", triggerAtEpochMs.toString())
+                put("wall_clock_ms", System.currentTimeMillis().toString())
+                put("elapsed_realtime_ms", android.os.SystemClock.elapsedRealtime().toString())
+                schedulerApi?.let { put("scheduler_api", it) }
+                exactAlarmCapability?.let { put("exact_alarm_capability", it) }
+                powerSnapshot?.deviceIdleMode?.let { put("device_idle_mode", it.toString()) }
+                powerSnapshot?.powerSaveMode?.let { put("power_save_mode", it.toString()) }
+                powerSnapshot?.ignoringBatteryOptimizations?.let {
+                    put("ignoring_battery_optimizations", it.toString())
+                }
+            },
+        )
+    }
+
+    fun recordMalformedAlarmIntent(
+        occurrenceId: Long,
+        eventType: String?,
+        triggerAtEpochMs: Long,
+        semanticPlannedAtEpochMs: Long,
+    ) {
+        recordNotification(
+            name = "malformed_alarm_intent",
+            metadata = mapOf(
+                "occurrence_id" to occurrenceId.toString(),
+                "receiver_event_type" to (eventType ?: ""),
+                "trigger_at_epoch_ms" to triggerAtEpochMs.toString(),
+                "semantic_planned_at_epoch_ms" to semanticPlannedAtEpochMs.toString(),
+                "scheduler_decision" to PlannedBoundarySchedulerDecision.IGNORE_MALFORMED.name,
+            ),
+        )
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     fun recordNotificationPostAttempt(
         occurrenceId: Long,
@@ -167,6 +262,10 @@ object TargetedBugDiagnostics {
                 if (!exceptionClass.isNullOrEmpty()) {
                     put("exception_class", exceptionClass)
                 }
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+                put("wall_clock_ms", System.currentTimeMillis().toString())
+                put("elapsed_realtime_ms", android.os.SystemClock.elapsedRealtime().toString())
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
             },
         )
     }

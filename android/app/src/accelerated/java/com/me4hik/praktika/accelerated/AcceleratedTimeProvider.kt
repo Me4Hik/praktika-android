@@ -105,6 +105,34 @@ class AcceleratedTimeProvider(
         }
     }
 
+    // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik START
+    override fun alignVirtualEpochMillis(targetEpochMillis: Long) {
+        if (targetEpochMillis <= 0L) {
+            throw AcceleratedClockCommandException("target must be positive")
+        }
+        synchronized(mutationLock) {
+            val state = stateRef.get()
+            val elapsedNow = monotonic.elapsedRealtimeMillis()
+            // lastCheckpoint must be set to the target (not maxOf) so backward
+            // alignment is not pinned by a later checkpoint floor.
+            val updated = if (state.isVirtualClockPaused) {
+                state.copy(
+                    pausedVirtualEpochMillis = targetEpochMillis,
+                    virtualAnchorEpochMillis = targetEpochMillis,
+                    lastCheckpointVirtualEpochMillis = targetEpochMillis,
+                )
+            } else {
+                state.copy(
+                    virtualAnchorEpochMillis = targetEpochMillis,
+                    realAnchorElapsedRealtimeMillis = elapsedNow,
+                    lastCheckpointVirtualEpochMillis = targetEpochMillis,
+                )
+            }
+            persist(updated)
+        }
+    }
+    // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik END
+
     override fun checkpoint() {
         synchronized(mutationLock) {
             val current = currentVirtualNow()

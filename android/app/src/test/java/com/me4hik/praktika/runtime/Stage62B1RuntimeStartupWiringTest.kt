@@ -46,6 +46,7 @@ import com.me4hik.praktika.notification.BoundaryAlarmPlan
 import com.me4hik.praktika.notification.PlatformAlarmScheduler
 import com.me4hik.praktika.notification.PracticeNotificationCoordinator
 import com.me4hik.praktika.notification.PracticeNotificationPresenter
+import com.me4hik.praktika.notification.ResidualPlannedRecoveryResult
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CompletableDeferred
@@ -451,6 +452,10 @@ class Stage62B1RuntimeStartupWiringTest {
                     previousAlarms: List<BoundaryAlarmPlan>,
                 ) = Unit
                 override fun cancelAlarms(alarms: List<BoundaryAlarmPlan>) = Unit
+                override fun scheduleResidualPlannedRecovery(
+                    recoveryPlan: BoundaryAlarmPlan,
+                    useAlarmClock: Boolean,
+                ) = ResidualPlannedRecoveryResult.ALARM_CLOCK_SCHEDULED
             },
             notificationPresenter = object : PracticeNotificationPresenter {
                 override fun ensureChannelsCreated() = Unit

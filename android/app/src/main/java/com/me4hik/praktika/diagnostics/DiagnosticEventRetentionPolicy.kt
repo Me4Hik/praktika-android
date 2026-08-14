@@ -10,9 +10,12 @@ internal object DiagnosticEventRetentionPolicy {
     const val VERSION_BOUNDARY_TARGET_EVENTS = 350
     const val REPORT_PERMISSION_CAP = 20
     const val REPORT_USER_CAP = 15
-    const val REPORT_SEMANTIC_TRACE_CAP = 25
+    const val REPORT_SEMANTIC_TRACE_CAP = 40
     const val REPORT_NOTIFICATION_MAX_FRACTION = 0.60
-    const val SEMANTIC_TRACE_CAP = 25
+    const val SEMANTIC_TRACE_CAP = 40
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    const val REPORT_OCCURRENCE_KEY_EVENT_CAP = 12
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private val CRASH_EVENT_NAMES = setOf("uncaught_exception", "caught_exception")
     private val SEMANTIC_TRACE_EVENT_NAMES = TargetedBugDiagnostics.SEMANTIC_TRACE_EVENT_NAMES
@@ -116,7 +119,10 @@ internal object DiagnosticEventRetentionPolicy {
             .takeLast(REPORT_USER_CAP)
         val pinnedSemanticTrace = sorted.filter { it.name in SEMANTIC_TRACE_EVENT_NAMES }
             .takeLast(REPORT_SEMANTIC_TRACE_CAP)
-        val pinned = (pinnedErrors + pinnedPermissions + pinnedUsers + pinnedSemanticTrace)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        val pinnedOccurrenceKeys = selectOccurrenceKeyNotificationEvents(sorted)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        val pinned = (pinnedErrors + pinnedPermissions + pinnedUsers + pinnedSemanticTrace + pinnedOccurrenceKeys)
             .distinctBy { it.seq }
             .sortedBy { it.seq }
 
@@ -141,6 +147,41 @@ internal object DiagnosticEventRetentionPolicy {
             .sortedBy { it.seq }
             .takeLast(limit)
     }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    /**
+     * Preferentially keep, per recent occurrence_id:
+     * first planned scheduled, first receiver entry, first scheduler decision, last productive post.
+     */
+    private fun selectOccurrenceKeyNotificationEvents(sorted: List<DiagnosticEvent>): List<DiagnosticEvent> {
+        val keyNames = setOf(
+            "notification_alarm_scheduled",
+            "notification_alarm_fired",
+            "notification_scheduler_decision",
+            "notification_post_result",
+        )
+        val byOccurrence = sorted
+            .filter { it.category == DiagnosticCategory.NOTIFICATION && it.name in keyNames }
+            .groupBy { it.metadata["occurrence_id"].orEmpty() }
+            .filterKeys { it.isNotEmpty() }
+        val selected = mutableListOf<DiagnosticEvent>()
+        byOccurrence.values
+            .sortedBy { group -> group.minOf { it.seq } }
+            .takeLast(REPORT_OCCURRENCE_KEY_EVENT_CAP)
+            .forEach { group ->
+                val plannedScheduled = group.firstOrNull {
+                    it.name == "notification_alarm_scheduled" && it.metadata["alarm_type"] == "planned"
+                }
+                val fired = group.firstOrNull { it.name == "notification_alarm_fired" }
+                val decision = group.firstOrNull { it.name == "notification_scheduler_decision" }
+                val posted = group.lastOrNull {
+                    it.name == "notification_post_result" && it.metadata["result"] == "posted"
+                }
+                listOfNotNull(plannedScheduled, fired, decision, posted).forEach { selected.add(it) }
+            }
+        return selected.distinctBy { it.seq }.sortedBy { it.seq }
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     internal fun trimLegacyNotificationNoise(
         events: List<DiagnosticEvent>,

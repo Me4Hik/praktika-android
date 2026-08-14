@@ -85,6 +85,34 @@ class AcceleratedTimeProviderTest {
     }
 
     @Test
+    fun alignVirtualEpoch_forwardFromPausedEightAm() {
+        val provider = createPausedProvider()
+        val wall = virtualAnchor + 2 * 60 * 60_000L
+        provider.alignVirtualEpochMillis(wall)
+        assertEquals(wall, provider.currentVirtualNow())
+    }
+
+    @Test
+    fun alignVirtualEpoch_backwardFromPausedEightAm() {
+        val provider = createPausedProvider()
+        val wall = virtualAnchor - 3 * 60 * 60_000L
+        provider.alignVirtualEpochMillis(wall)
+        assertEquals(wall, provider.currentVirtualNow())
+        assertEquals(wall, provider.currentState().lastCheckpointVirtualEpochMillis)
+    }
+
+    @Test
+    fun alignVirtualEpoch_runningClockReanchorsElapsed() {
+        val provider = createRunningProvider(multiplier = 240, elapsedDelta = 5_000L)
+        val wall = virtualAnchor - 60_000L
+        provider.alignVirtualEpochMillis(wall)
+        provider.setSpeedMultiplier(1)
+        assertEquals(wall, provider.currentVirtualNow())
+        monotonic.setElapsedRealtimeMillis(6_000L)
+        assertEquals(wall + 1_000L, provider.currentVirtualNow())
+    }
+
+    @Test
     fun multiplicationOverflowRejected() {
         try {
             AcceleratedTimeProvider.safeMultiply(Long.MAX_VALUE, 2L)

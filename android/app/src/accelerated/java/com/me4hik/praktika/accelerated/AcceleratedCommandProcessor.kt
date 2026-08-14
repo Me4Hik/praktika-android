@@ -1,10 +1,12 @@
 // 04.08.2026 Accelerated Test Mode cursor by Me4Hik START - ADB command processor
 package com.me4hik.praktika.accelerated
 
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.notification.ExactAlarmCapabilityResolver
 import com.me4hik.praktika.runtime.PraktikaRuntime
 import com.me4hik.praktika.runtime.PraktikaRuntimeHolder
 
@@ -82,9 +84,85 @@ class AcceleratedCommandProcessor(
                 AcceleratedDiagnostics.dump(context, runtime, monotonic, clock)
             }
 
+            // 14.08.2026 Accelerated planned-boundary injection harness cursor by Me4Hik START
+            InjectValidPlannedBoundaryCommand.COMMAND -> injectValidPlannedBoundary(runtime)
+            // 14.08.2026 Accelerated planned-boundary injection harness cursor by Me4Hik END
+
+            // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik START
+            WallSync1xCommand.COMMAND -> {
+                WallSync1xCommand.execute(
+                    packageName = context.packageName,
+                    readWallMs = { System.currentTimeMillis() },
+                    clock = clock,
+                )
+            }
+
+            PrepareNotificationBoundaryTestCommand.COMMAND -> prepareNotificationBoundaryTest(runtime, clock)
+            // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik END
+
             else -> throw AcceleratedClockCommandException("Unknown command: $command")
         }
     }
+
+    // 14.08.2026 Accelerated planned-boundary injection harness cursor by Me4Hik START
+    /**
+     * Host/ADB must not supply occurrence identity; only Room + wall clock are used.
+     * The command [Intent] extras for identity are intentionally ignored.
+     */
+    private suspend fun injectValidPlannedBoundary(runtime: PraktikaRuntime) {
+        val incomplete = runtime.database.questionOccurrenceDao().getIncompleteOrdered().map {
+            InjectValidPlannedBoundaryCommand.IncompleteOccurrence(
+                id = it.id,
+                status = it.status,
+                plannedAtEpochMillis = it.plannedAtEpochMillis,
+            )
+        }
+        InjectValidPlannedBoundaryCommand.execute(
+            context = context,
+            incomplete = incomplete,
+            exactAlarmCapability = readExactAlarmCapabilityLabel(),
+        )
+    }
+
+    private fun readExactAlarmCapabilityLabel(): String? {
+        return try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                ?: return null
+            ExactAlarmCapabilityResolver.diagnosticLabel(
+                ExactAlarmCapabilityResolver.resolve(alarmManager),
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+    // 14.08.2026 Accelerated planned-boundary injection harness cursor by Me4Hik END
+
+    // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik START
+    /**
+     * Host extras for slots/epoch/zone are intentionally ignored.
+     * Schedule identity is derived from the wall-aligned TimeProvider only.
+     */
+    private suspend fun prepareNotificationBoundaryTest(
+        runtime: PraktikaRuntime,
+        clock: AcceleratedTimeProvider,
+    ) {
+        val wallNowMs = System.currentTimeMillis()
+        val state = clock.currentState()
+        val practiceState = runtime.database.practiceStateDao().get()
+        val occurrenceCount = runtime.database.questionOccurrenceDao().count()
+        PrepareNotificationBoundaryTestCommand.execute(
+            packageName = context.packageName,
+            wallNowMs = wallNowMs,
+            virtualNowMs = clock.currentVirtualNow(),
+            speedMultiplier = state.speedMultiplier,
+            clockRunning = !state.isVirtualClockPaused,
+            practiceStarted = practiceState?.isPracticeStarted == true,
+            occurrenceCount = occurrenceCount,
+            zoneId = clock.currentZoneId(),
+            updateSchedule = { updates -> runtime.cycleRepository.updateSchedule(updates) },
+        )
+    }
+    // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik END
 
     private suspend fun stepEvent(
         runtime: PraktikaRuntime,

@@ -30,6 +30,20 @@ class PracticeNotificationCoordinator(
     private val mutex = Mutex()
     private var scheduledAlarms: List<BoundaryAlarmPlan> = emptyList()
 
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    suspend fun handleResidualPlannedRecovery(
+        recoveryPlan: BoundaryAlarmPlan,
+        useAlarmClock: Boolean,
+    ): ResidualPlannedRecoveryResult {
+        return mutex.withLock {
+            alarmScheduler.scheduleResidualPlannedRecovery(
+                recoveryPlan = recoveryPlan,
+                useAlarmClock = useAlarmClock,
+            )
+        }
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
     suspend fun sync(reason: NotificationSyncReason) {
         if (DiagnosticsRecorder.isInitialized()) {
             DiagnosticsRecorder.get().record(

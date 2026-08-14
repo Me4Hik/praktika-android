@@ -12,6 +12,12 @@ interface AcceleratedClockController {
 
     fun advanceToVirtualEpochMillis(target: Long)
 
+    /**
+     * Absolute virtual-epoch alignment (forward or backward).
+     * Accelerated-only; not a generic host-supplied set_epoch command.
+     */
+    fun alignVirtualEpochMillis(targetEpochMillis: Long)
+
     fun checkpoint()
 
     fun currentVirtualNow(): Long

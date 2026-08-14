@@ -70,7 +70,13 @@ class NotificationPlannerTest {
         )
         assertFalse(plan.cancelAllAlarms)
         assertEquals(BoundaryEventType.PLANNED_BOUNDARY, plan.plannedBoundaryAlarm?.eventType)
-        assertEquals(1_000L, plan.plannedBoundaryAlarm?.triggerAtEpochMillis)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        assertEquals(1_000L, plan.plannedBoundaryAlarm?.plannedAtEpochMillis)
+        assertEquals(
+            1_000L + PlannedBoundaryTiming.PLANNED_BOUNDARY_TRIGGER_BIAS_MS,
+            plan.plannedBoundaryAlarm?.triggerAtEpochMillis,
+        )
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
         assertEquals(BoundaryEventType.EXPIRY_BOUNDARY, plan.expiryBoundaryAlarm?.eventType)
         assertEquals(2_000L, plan.expiryBoundaryAlarm?.triggerAtEpochMillis)
         assertNull(plan.showNotification)
@@ -155,8 +161,53 @@ class NotificationPlannerTest {
         )
         val trigger = checkNotNull(plan.plannedBoundaryAlarm).triggerAtEpochMillis
         assertTrue(500L < trigger)
-        assertEquals(1_000L, trigger)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+        assertEquals(1_000L + PlannedBoundaryTiming.PLANNED_BOUNDARY_TRIGGER_BIAS_MS, trigger)
+        assertEquals(1_000L, plan.plannedBoundaryAlarm?.plannedAtEpochMillis)
+        // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
+
+    // 10.08.2026 Post-release fixes cursor by Me4Hik START - notification planned boundary trigger bias/recovery
+    @Test
+    fun plannedBiasDoesNotChangeExpiryTrigger() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.SCHEDULED,
+                    plannedAtEpochMillis = 10_000L,
+                    availableUntilEpochMillis = 20_000L,
+                ),
+            ),
+            soundEnabled = true,
+        )
+        assertEquals(10_000L, plan.plannedBoundaryAlarm?.plannedAtEpochMillis)
+        assertEquals(25_000L, plan.plannedBoundaryAlarm?.triggerAtEpochMillis)
+        assertEquals(20_000L, plan.expiryBoundaryAlarm?.triggerAtEpochMillis)
+    }
+
+    @Test
+    fun independentSlotsKeepDistinctBiasedTriggers() {
+        val slotA = occurrence.copy(
+            occurrenceId = 1L,
+            plannedAtEpochMillis = 1_000_000L,
+            availableUntilEpochMillis = 2_000_000L,
+            status = QuestionOccurrenceStatus.SCHEDULED,
+        )
+        val slotB = occurrence.copy(
+            occurrenceId = 2L,
+            plannedAtEpochMillis = 3_000_000L,
+            availableUntilEpochMillis = 4_000_000L,
+            status = QuestionOccurrenceStatus.SCHEDULED,
+        )
+        val planA = NotificationPlanner.plan(baseInput(nowEpochMillis = 0L, currentOccurrence = slotA), true)
+        val planB = NotificationPlanner.plan(baseInput(nowEpochMillis = 0L, currentOccurrence = slotB), true)
+        assertEquals(1_015_000L, planA.plannedBoundaryAlarm?.triggerAtEpochMillis)
+        assertEquals(3_015_000L, planB.plannedBoundaryAlarm?.triggerAtEpochMillis)
+        assertEquals(2_000_000L, planA.expiryBoundaryAlarm?.triggerAtEpochMillis)
+        assertEquals(4_000_000L, planB.expiryBoundaryAlarm?.triggerAtEpochMillis)
+    }
+    // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private fun baseInput(
         isPracticeStarted: Boolean = true,
