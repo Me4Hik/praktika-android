@@ -100,3 +100,7 @@ Thumbs.db
 # 14.08.2026 DB Refactoring cursor by Me4Hik START - ignore local tester distribution documentation
 /release/testers/README.txt
 # 14.08.2026 DB Refactoring cursor by Me4Hik END
+
+# 14.08.2026 DB Refactoring cursor by Me4Hik START - keep local learning notes out of public Git
+/для обучения добавить в гитигнор. не копировать на гитхаб/
+# 14.08.2026 DB Refactoring cursor by Me4Hik END
