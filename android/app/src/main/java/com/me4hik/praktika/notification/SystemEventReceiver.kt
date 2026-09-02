@@ -1,10 +1,13 @@
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - system event receiver
+// 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik START - durable SYSTEM_EVENT_RECEIVED
 package com.me4hik.praktika.notification
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 import android.util.Log
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import com.me4hik.praktika.runtime.PraktikaRuntimeHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,16 +18,15 @@ class SystemEventReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val action = intent.action
+                val reason = SystemEventSyncReasonResolver.resolve(action) ?: return@launch
+                TargetedBugDiagnostics.recordSystemEventReceived(
+                    action = action.orEmpty(),
+                    syncReason = reason.name,
+                    wallClockMs = System.currentTimeMillis(),
+                    elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                )
                 val runtime = PraktikaRuntimeHolder.get(context)
-                val reason = when (intent.action) {
-                    Intent.ACTION_BOOT_COMPLETED -> NotificationSyncReason.BOOT
-                    Intent.ACTION_TIME_CHANGED,
-                    "android.intent.action.TIME_SET",
-                    -> NotificationSyncReason.TIME_CHANGED
-                    Intent.ACTION_TIMEZONE_CHANGED -> NotificationSyncReason.TIMEZONE_CHANGED
-                    Intent.ACTION_MY_PACKAGE_REPLACED -> NotificationSyncReason.PACKAGE_REPLACED
-                    else -> return@launch
-                }
                 runtime.initializer.ensureInitialized()
                 runtime.notificationCoordinator.sync(reason)
             } catch (exception: Exception) {
@@ -41,4 +43,5 @@ class SystemEventReceiver : BroadcastReceiver() {
         private const val TAG = "SystemEventReceiver"
     }
 }
+// 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik END
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

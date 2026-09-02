@@ -8,7 +8,12 @@ interface PracticeNotificationPresenter {
 
     fun showNotification(plan: NotificationShowPlan)
 
-    fun cancelPracticeNotification(occurrenceId: Long)
+    fun cancelCurrentPracticeNotification()
+
+    fun cancelLegacyPracticeNotifications(
+        currentOccurrenceId: Long? = null,
+        syncReason: String? = null,
+    )
 
     fun cancelAllPracticeNotifications()
 }

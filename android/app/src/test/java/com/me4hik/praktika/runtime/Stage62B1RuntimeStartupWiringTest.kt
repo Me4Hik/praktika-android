@@ -461,7 +461,11 @@ class Stage62B1RuntimeStartupWiringTest {
                 override fun ensureChannelsCreated() = Unit
                 override fun findActivePracticeNotificationOccurrenceId(): Long? = null
                 override fun showNotification(plan: NotificationShowPlan) = Unit
-                override fun cancelPracticeNotification(occurrenceId: Long) = Unit
+                override fun cancelCurrentPracticeNotification() = Unit
+                override fun cancelLegacyPracticeNotifications(
+                    currentOccurrenceId: Long?,
+                    syncReason: String?,
+                ) = Unit
                 override fun cancelAllPracticeNotifications() = Unit
             },
             openRequestStore = openRequestStore,

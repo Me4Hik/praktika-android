@@ -18,6 +18,9 @@ object TargetedBugDiagnostics {
         "notification_scheduler_decision",
         "malformed_alarm_intent",
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
+        // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik START - retain SYSTEM_EVENT_RECEIVED
+        "system_event_received",
+        // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik END
     )
 
     object NotificationTraceContext {
@@ -305,6 +308,30 @@ object TargetedBugDiagnostics {
             metadata = mapOf("source" to source),
         )
     }
+
+    // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik START - SYSTEM_EVENT_RECEIVED
+    fun recordSystemEventReceived(
+        action: String,
+        syncReason: String,
+        wallClockMs: Long,
+        elapsedRealtimeMs: Long,
+    ) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        // Persist synchronously so a short-lived BOOT/system-event process retains the marker.
+        DiagnosticsRecorder.get().recordSync(
+            category = DiagnosticCategory.NOTIFICATION,
+            name = "system_event_received",
+            metadata = mapOf(
+                "action" to action,
+                "sync_reason" to syncReason,
+                "wall_clock_ms" to wallClockMs.toString(),
+                "elapsed_realtime_ms" to elapsedRealtimeMs.toString(),
+            ),
+        )
+    }
+    // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik END
 
     fun extractOccurrenceId(route: String): String? {
         return when {

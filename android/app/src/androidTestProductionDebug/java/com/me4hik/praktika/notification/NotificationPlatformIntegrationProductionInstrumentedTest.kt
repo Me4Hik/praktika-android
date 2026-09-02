@@ -86,7 +86,7 @@ class NotificationPlatformIntegrationProductionInstrumentedTest {
                 soundEnabled = false,
             ),
         )
-        presenter.cancelPracticeNotification(99L)
+        presenter.cancelCurrentPracticeNotification()
     }
 
     @Test

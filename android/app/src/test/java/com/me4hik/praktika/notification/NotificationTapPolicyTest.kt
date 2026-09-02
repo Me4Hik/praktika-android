@@ -111,6 +111,20 @@ class NotificationTapPolicyTest {
     }
 
     @Test
+    fun missedByTime_isIgnored() {
+        val missed = availableOccurrence.copy(status = QuestionOccurrenceStatus.MISSED_BY_TIME)
+        val current = availableOccurrence.copy(id = 99L)
+        val decision = NotificationTapPolicy.evaluate(
+            practiceState = practiceState,
+            currentIncomplete = current,
+            targetOccurrence = missed,
+            expectedOccurrenceId = 10L,
+            expectedPlannedAtEpochMillis = 1_000L,
+        )
+        assertTrue(decision is NotificationTapDecision.Ignore)
+    }
+
+    @Test
     fun replacedOccurrence_isIgnored() {
         val decision = NotificationTapPolicy.evaluate(
             practiceState = practiceState,

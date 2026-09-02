@@ -5,13 +5,14 @@ package com.me4hik.praktika.notification
 import android.util.Log
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.TimeProvider
-import com.me4hik.praktika.diagnostics.DiagnosticCategory
-import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
-import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.PracticeReadSnapshot
+import com.me4hik.praktika.diagnostics.DiagnosticCategory
+import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
+import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import com.me4hik.praktika.runtime.PraktikaRuntimeInitializer
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -79,8 +80,7 @@ class PracticeNotificationCoordinator(
                 val capability = permissionRepository.toDeliveryCapability(permissionState)
                 TargetedBugDiagnostics.NotificationTraceContext.syncReason = reason.name
                 TargetedBugDiagnostics.NotificationTraceContext.deliveryCapability = capability.name
-                val activeNotificationOccurrenceId =
-                    notificationPresenter.findActivePracticeNotificationOccurrenceId()
+                val activeNotificationOccurrenceId = readActiveOccurrenceIdBestEffort()
                 val soundEnabled = soundEnabledProvider()
                 val plan = NotificationPlanner.plan(
                     input = NotificationPlanningInput(
@@ -94,7 +94,12 @@ class PracticeNotificationCoordinator(
                     soundEnabled = soundEnabled,
                 )
                 if (plan.cancelNotification) {
-                    notificationPresenter.cancelAllPracticeNotifications()
+                    cancelPracticeNotificationsBestEffort()
+                } else {
+                    cancelLegacyPracticeNotificationsBestEffort(
+                        currentOccurrenceId = snapshot.incompleteOccurrence?.id,
+                        syncReason = reason.name,
+                    )
                 }
                 val previousAlarms = scheduledAlarms
                 scheduledAlarms = listOfNotNull(plan.plannedBoundaryAlarm, plan.expiryBoundaryAlarm)
@@ -172,7 +177,7 @@ class PracticeNotificationCoordinator(
                 // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik END
                 if (decision is NotificationTapDecision.Open) {
                     cycleRepository.markOccurrenceOpened(decision.occurrenceId)
-                    notificationPresenter.cancelPracticeNotification(decision.occurrenceId)
+                    notificationPresenter.cancelCurrentPracticeNotification()
                     openRequestStore.publish(NotificationOpenRequest(decision.occurrenceId))
                     val openedAtAfter = cycleRepository.getOccurrenceById(decision.occurrenceId)
                         ?.openedAtEpochMillis
@@ -184,7 +189,10 @@ class PracticeNotificationCoordinator(
                     )
                     // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik END
                 } else {
-                    notificationPresenter.cancelPracticeNotification(occurrenceId)
+                    cancelLegacyPracticeNotificationsBestEffort(
+                        currentOccurrenceId = snapshot.incompleteOccurrence?.id,
+                        syncReason = "NOTIFICATION_TAP_STALE",
+                    )
                     // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik START - stale/ignored tap log
                     Log.i(
                         NOTIFICATION_TAP_TAG,
@@ -197,6 +205,69 @@ class PracticeNotificationCoordinator(
             } catch (exception: Exception) {
                 Log.e(TAG, "Notification tap handling failed", exception)
                 NotificationTapDecision.Ignore
+            }
+        }
+    }
+
+    private fun readActiveOccurrenceIdBestEffort(): Long? {
+        return try {
+            notificationPresenter.findActivePracticeNotificationOccurrenceId()
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            Log.w(TAG, "Failed to read active Practice notification", exception)
+            if (DiagnosticsRecorder.isInitialized()) {
+                DiagnosticsRecorder.get().recordCaughtException(
+                    "PracticeNotificationCoordinator.activeNotification",
+                    exception,
+                )
+            }
+            null
+        }
+    }
+
+    private fun cancelPracticeNotificationsBestEffort() {
+        try {
+            notificationPresenter.cancelAllPracticeNotifications()
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            Log.w(TAG, "Failed to cancel Practice notifications", exception)
+            if (DiagnosticsRecorder.isInitialized()) {
+                DiagnosticsRecorder.get().recordCaughtException(
+                    "PracticeNotificationCoordinator.cancelAllPracticeNotifications",
+                    exception,
+                )
+            }
+        }
+    }
+
+    private fun cancelLegacyPracticeNotificationsBestEffort(
+        currentOccurrenceId: Long?,
+        syncReason: String,
+    ) {
+        try {
+            notificationPresenter.cancelLegacyPracticeNotifications(
+                currentOccurrenceId = currentOccurrenceId,
+                syncReason = syncReason,
+            )
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            Log.w(TAG, "Legacy Practice notification cleanup failed", exception)
+            if (DiagnosticsRecorder.isInitialized()) {
+                DiagnosticsRecorder.get().record(
+                    category = DiagnosticCategory.NOTIFICATION,
+                    name = "PRACTICE_NOTIFICATION_LEGACY_CLEANUP_FAILED",
+                    metadata = buildMap {
+                        put("sync_reason", syncReason)
+                        currentOccurrenceId?.let { put("current_occurrence_id", it.toString()) }
+                        put("exception_class", exception.javaClass.simpleName)
+                    },
+                )
             }
         }
     }
