@@ -295,5 +295,60 @@ class DiagnosticEventRetentionPolicyTest {
             selected.first { it.name == "system_event_received" }.metadata["sync_reason"],
         )
     }
+
+    @Test
+    fun selectForReport_retainsPlannedAlarmAbortMarkersAmongNotificationFlood() {
+        seq = 0
+        val syncMetadata = mapOf(
+            "reason" to "FOREGROUND",
+            "capability" to "ENABLED",
+            "cancel_notification" to "false",
+            "show_notification" to "false",
+            "alarm_count" to "1",
+        )
+        val events = buildList {
+            repeat(400) {
+                add(event(DiagnosticCategory.NOTIFICATION, "notification_sync_result", syncMetadata))
+            }
+            add(
+                event(
+                    DiagnosticCategory.NOTIFICATION,
+                    "planned_alarm_init_failed",
+                    mapOf(
+                        "occurrence_id" to "39",
+                        "receiver_event_type" to "PLANNED_BOUNDARY",
+                        "failure_stage" to "ensureInitialized",
+                        "wall_clock_ms" to "10",
+                        "elapsed_realtime_ms" to "20",
+                    ),
+                ),
+            )
+            add(
+                event(
+                    DiagnosticCategory.NOTIFICATION,
+                    "planned_alarm_receiver_failed",
+                    mapOf(
+                        "occurrence_id" to "40",
+                        "receiver_event_type" to "PLANNED_BOUNDARY",
+                        "exception_class" to "java.lang.IllegalStateException",
+                        "wall_clock_ms" to "11",
+                        "elapsed_realtime_ms" to "21",
+                    ),
+                ),
+            )
+        }
+
+        val selected = DiagnosticEventRetentionPolicy.selectForReport(events, limit = 150)
+        assertTrue(selected.any { it.name == "planned_alarm_init_failed" })
+        assertTrue(selected.any { it.name == "planned_alarm_receiver_failed" })
+        assertEquals(
+            "ensureInitialized",
+            selected.first { it.name == "planned_alarm_init_failed" }.metadata["failure_stage"],
+        )
+        assertEquals(
+            "java.lang.IllegalStateException",
+            selected.first { it.name == "planned_alarm_receiver_failed" }.metadata["exception_class"],
+        )
+    }
 }
 // 10.08.2026 Post-release fixes cursor by Me4Hik END

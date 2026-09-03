@@ -50,6 +50,17 @@ class PracticeAlarmReceiver : BroadcastReceiver() {
                 // 10.08.2026 Post-release fixes cursor by Me4Hik END
             } catch (exception: Exception) {
                 Log.e(TAG, "Alarm receiver failed", exception)
+                // 03.09.2026 Case2 minimal observability cursor by Me4Hik START - durable receiver failure
+                TargetedBugDiagnostics.recordPlannedAlarmReceiverFailed(
+                    occurrenceId = occurrenceId,
+                    receiverEventType = eventType,
+                    exceptionClass = exception.javaClass.name,
+                    wallClockMs = System.currentTimeMillis(),
+                    elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                    semanticPlannedAtEpochMs = semanticPlannedAt.takeIf { it > 0L },
+                    triggerAtEpochMs = triggerAt.takeIf { it > 0L },
+                )
+                // 03.09.2026 Case2 minimal observability cursor by Me4Hik END
             } finally {
                 pendingResult.finish()
             }
@@ -115,6 +126,16 @@ class PracticeAlarmReceiver : BroadcastReceiver() {
 
         if (!runtime.initializer.ensureInitialized()) {
             Log.w(TAG, "Initialization failed during planned alarm")
+            // 03.09.2026 Case2 minimal observability cursor by Me4Hik START - durable init failure
+            TargetedBugDiagnostics.recordPlannedAlarmInitFailed(
+                occurrenceId = occurrenceId,
+                receiverEventType = eventType,
+                semanticPlannedAtEpochMs = semanticPlannedAt,
+                triggerAtEpochMs = triggerAt,
+                wallClockMs = System.currentTimeMillis(),
+                elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+            )
+            // 03.09.2026 Case2 minimal observability cursor by Me4Hik END
             return
         }
 

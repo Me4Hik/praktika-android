@@ -21,6 +21,10 @@ object TargetedBugDiagnostics {
         // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik START - retain SYSTEM_EVENT_RECEIVED
         "system_event_received",
         // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik END
+        // 03.09.2026 Case2 minimal observability cursor by Me4Hik START - planned alarm abort markers
+        "planned_alarm_init_failed",
+        "planned_alarm_receiver_failed",
+        // 03.09.2026 Case2 minimal observability cursor by Me4Hik END
     )
 
     object NotificationTraceContext {
@@ -332,6 +336,62 @@ object TargetedBugDiagnostics {
         )
     }
     // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik END
+
+    // 03.09.2026 Case2 minimal observability cursor by Me4Hik START - planned alarm abort markers
+    fun recordPlannedAlarmInitFailed(
+        occurrenceId: Long,
+        receiverEventType: String?,
+        semanticPlannedAtEpochMs: Long,
+        triggerAtEpochMs: Long,
+        wallClockMs: Long,
+        elapsedRealtimeMs: Long,
+    ) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        // Sync write: alarm cold-start process may die immediately after abort.
+        DiagnosticsRecorder.get().recordSync(
+            category = DiagnosticCategory.NOTIFICATION,
+            name = "planned_alarm_init_failed",
+            metadata = mapOf(
+                "occurrence_id" to occurrenceId.toString(),
+                "receiver_event_type" to (receiverEventType ?: ""),
+                "semantic_planned_at_epoch_ms" to semanticPlannedAtEpochMs.toString(),
+                "trigger_at_epoch_ms" to triggerAtEpochMs.toString(),
+                "failure_stage" to "ensureInitialized",
+                "wall_clock_ms" to wallClockMs.toString(),
+                "elapsed_realtime_ms" to elapsedRealtimeMs.toString(),
+            ),
+        )
+    }
+
+    fun recordPlannedAlarmReceiverFailed(
+        occurrenceId: Long,
+        receiverEventType: String?,
+        exceptionClass: String,
+        wallClockMs: Long,
+        elapsedRealtimeMs: Long,
+        semanticPlannedAtEpochMs: Long? = null,
+        triggerAtEpochMs: Long? = null,
+    ) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        DiagnosticsRecorder.get().recordSync(
+            category = DiagnosticCategory.NOTIFICATION,
+            name = "planned_alarm_receiver_failed",
+            metadata = buildMap {
+                put("occurrence_id", occurrenceId.toString())
+                put("receiver_event_type", receiverEventType ?: "")
+                put("exception_class", exceptionClass)
+                put("wall_clock_ms", wallClockMs.toString())
+                put("elapsed_realtime_ms", elapsedRealtimeMs.toString())
+                semanticPlannedAtEpochMs?.let { put("semantic_planned_at_epoch_ms", it.toString()) }
+                triggerAtEpochMs?.let { put("trigger_at_epoch_ms", it.toString()) }
+            },
+        )
+    }
+    // 03.09.2026 Case2 minimal observability cursor by Me4Hik END
 
     fun extractOccurrenceId(route: String): String? {
         return when {
