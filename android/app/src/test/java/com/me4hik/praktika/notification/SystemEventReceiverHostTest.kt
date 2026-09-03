@@ -3,22 +3,24 @@ package com.me4hik.praktika.notification
 
 import android.content.Context
 import android.content.Intent
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.me4hik.praktika.diagnostics.DiagnosticCategory
 import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
 import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
 import com.me4hik.praktika.runtime.PraktikaRuntimeHolder
 import java.io.File
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -91,14 +93,14 @@ class SystemEventReceiverHostTest {
     }
 
     @Test
-    fun bootCompleted_onReceive_emitsSystemEventReceived() = runBlocking {
+    fun bootCompleted_onReceive_emitsSystemEventReceived() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         // Warm runtime so receiver sync path can complete without Application bootstrap.
         val runtime = PraktikaRuntimeHolder.get(context)
         runtime.initializer.completeActivityInit(true)
 
         SystemEventReceiver().onReceive(context, Intent(Intent.ACTION_BOOT_COMPLETED))
-        awaitSystemEvent()
+        awaitSystemEventReceived()
 
         val event = DiagnosticsRecorder.get().getBufferedEvents()
             .lastOrNull { it.name == "system_event_received" }
@@ -109,15 +111,34 @@ class SystemEventReceiverHostTest {
         assertTrue(event.metadata["elapsed_realtime_ms"].orEmpty().isNotBlank())
     }
 
-    private suspend fun awaitSystemEvent() {
-        repeat(40) {
+    /**
+     * Robolectric 4.14 PAUSED + production Dispatchers.IO: drain main looper each poll and
+     * bound wait with real monotonic time (not kotlinx delay / virtual clock).
+     */
+    private fun awaitSystemEventReceived() {
+        val mainLooper = Looper.getMainLooper()
+        val shadowMain = shadowOf(mainLooper)
+        val deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+        while (System.nanoTime() < deadlineNs) {
+            shadowMain.idle()
             val found = DiagnosticsRecorder.get().getBufferedEvents()
                 .any { it.name == "system_event_received" }
             if (found) {
+                // Drain follow-on main work from sync/PendingResult so PAUSED teardown stays clean.
+                shadowMain.idle()
                 return
             }
-            delay(50)
+            // Scheduling cooperation only — not the primary wait mechanism.
+            Thread.sleep(20L)
         }
+        shadowMain.idle()
+        val buffered = DiagnosticsRecorder.get().getBufferedEvents()
+        val names = buffered.map { it.name }
+        fail(
+            "system_event_received not observed within 2s real monotonic timeout. " +
+                "bufferedNames=$names mainLooperIdle=${shadowMain.isIdle} " +
+                "recent=${buffered.takeLast(5)}",
+        )
     }
 }
 // 02.09.2026 Case1 reboot system-event filter fix cursor by Me4Hik END
