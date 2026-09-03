@@ -350,5 +350,45 @@ class DiagnosticEventRetentionPolicyTest {
             selected.first { it.name == "planned_alarm_receiver_failed" }.metadata["exception_class"],
         )
     }
+
+    @Test
+    fun selectForReport_retainsRuntimeInitFailedAmongNotificationFlood() {
+        seq = 0
+        val syncMetadata = mapOf(
+            "reason" to "FOREGROUND",
+            "capability" to "ENABLED",
+            "cancel_notification" to "false",
+            "show_notification" to "false",
+            "alarm_count" to "1",
+        )
+        val events = buildList {
+            repeat(400) {
+                add(event(DiagnosticCategory.NOTIFICATION, "notification_sync_result", syncMetadata))
+            }
+            add(
+                event(
+                    DiagnosticCategory.NOTIFICATION,
+                    "runtime_init_failed",
+                    mapOf(
+                        "failure_stage" to "SEED",
+                        "exception_class" to "java.lang.IllegalStateException",
+                        "wall_clock_ms" to "10",
+                        "elapsed_realtime_ms" to "20",
+                    ),
+                ),
+            )
+        }
+
+        val selected = DiagnosticEventRetentionPolicy.selectForReport(events, limit = 150)
+        assertTrue(selected.any { it.name == "runtime_init_failed" })
+        assertEquals(
+            "SEED",
+            selected.first { it.name == "runtime_init_failed" }.metadata["failure_stage"],
+        )
+        assertEquals(
+            "java.lang.IllegalStateException",
+            selected.first { it.name == "runtime_init_failed" }.metadata["exception_class"],
+        )
+    }
 }
 // 10.08.2026 Post-release fixes cursor by Me4Hik END

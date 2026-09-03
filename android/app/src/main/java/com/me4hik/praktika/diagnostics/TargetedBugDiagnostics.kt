@@ -25,6 +25,9 @@ object TargetedBugDiagnostics {
         "planned_alarm_init_failed",
         "planned_alarm_receiver_failed",
         // 03.09.2026 Case2 minimal observability cursor by Me4Hik END
+        // 03.09.2026 Case2 init internal observability cursor by Me4Hik START - runtime init failure reason
+        "runtime_init_failed",
+        // 03.09.2026 Case2 init internal observability cursor by Me4Hik END
     )
 
     object NotificationTraceContext {
@@ -392,6 +395,30 @@ object TargetedBugDiagnostics {
         )
     }
     // 03.09.2026 Case2 minimal observability cursor by Me4Hik END
+
+    // 03.09.2026 Case2 init internal observability cursor by Me4Hik START - runtime init failure reason
+    fun recordRuntimeInitFailed(
+        failureStage: String,
+        exceptionClass: String,
+        wallClockMs: Long,
+        elapsedRealtimeMs: Long,
+    ) {
+        if (!DiagnosticsRecorder.isInitialized()) {
+            return
+        }
+        // Sync write: headless cold-start process may die immediately after sticky false.
+        DiagnosticsRecorder.get().recordSync(
+            category = DiagnosticCategory.NOTIFICATION,
+            name = "runtime_init_failed",
+            metadata = mapOf(
+                "failure_stage" to failureStage,
+                "exception_class" to exceptionClass,
+                "wall_clock_ms" to wallClockMs.toString(),
+                "elapsed_realtime_ms" to elapsedRealtimeMs.toString(),
+            ),
+        )
+    }
+    // 03.09.2026 Case2 init internal observability cursor by Me4Hik END
 
     fun extractOccurrenceId(route: String): String? {
         return when {
