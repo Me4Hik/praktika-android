@@ -1,0 +1,29 @@
+---
+description: Tester APK only on request; CURRENT/archive; build ≠ send
+alwaysApply: true
+---
+
+# Tester / release (minimal)
+
+Authoritative detail: `release/testers/README.txt`. Packaging script: `android/scripts/make-tester-release.ps1`.
+
+## Build policy
+
+- Do **not** produce tester APK/AAB automatically after feature or bug work
+- Build tester APK only after an **explicit** user request (preferably after release analysis)
+- `tNNN` (distribution sequence) and `versionCode` are **separate** concepts; never reuse either casually
+
+## Artifacts
+
+- Telegram APK comes **only** from `release/testers/CURRENT/`
+- `archive/` is immutable — do not overwrite past entries
+- Build event ≠ distribution/send — never invent `DISTRIBUTION_LOG` facts
+- Do not send Gradle `app-production-release.apk`, debug, accelerated, or androidTest APKs as tester builds
+
+## Updates
+
+Data-preserving update: same package + same release cert + valid higher `versionCode` path. Never uninstall a tester’s production app as a convenience workaround.
+
+## Volatile — do not hardcode in rules
+
+Current `tNNN`, `versionCode`, APK hash, HEAD → read `release/testers/CURRENT/BUILD_INFO.txt` and/or `docs/CURRENT_STATE.md`.

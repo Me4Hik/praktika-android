@@ -1,0 +1,42 @@
+---
+description: Device automation policy; unlock prompts; accelerated ops
+globs: android/**/*,android/scripts/**/*,docs/ACCELERATED_TEST_MODE.md
+alwaysApply: false
+---
+
+# Android / device operations
+
+Detail: `docs/ACCELERATED_TEST_MODE.md`. Safety: `10-safety-production`.
+
+## May automate when an EXECUTION plan already authorizes it
+
+- ADB read-only inspection (`dumpsys`, `pm path`, logcat collect, etc.)
+- Launch approved TEST/accelerated app; HOME; waits; screenshots/evidence
+- Explicitly approved build/test commands (prefer accelerated device tests)
+
+## Never automate
+
+- Telegram UI
+- OEM Auto Start / battery / autostart settings UI
+- SAF / DocumentsUI selection when unsafe or unreliable
+- Risky production settings changes
+
+Request user interaction only when unavoidable.
+
+## Device unavailable / lock (exact text)
+
+If the device is locked or wireless debugging dropped:
+
+```text
+Разблокируй телефон и введи PIN. Если беспроводная отладка отключилась — включи её. Затем напиши “готово”.
+```
+
+After a planned `adb reboot`:
+
+```text
+Разблокируй телефон и введи PIN, затем напиши “готово”
+```
+
+## Do not embed volatile device facts
+
+No current `boot_count`, PID, alarm inventory, or one-off OEM state in rules — put those in task reports / `docs/CURRENT_STATE.md` when needed.

@@ -1,0 +1,28 @@
+---
+description: Minimal Git policy; work lanes; no auto push/merge/tag
+alwaysApply: true
+---
+
+# Git (minimal)
+
+Authoritative detail: `docs/GIT_WORKFLOW.md`.
+
+## Lanes
+
+- `main` — clean, meaningful commits only; do not start product edits on `main`
+- `work/<task>` — local WIP sandbox; any commit messages OK; **never push** `work/*`
+- `review/<task>` — cleaned 1–3 logical commits for transfer to `main`
+
+## Always
+
+- Commit / push / merge / tag **only** when the user explicitly asks
+- Never delete unrelated personal untracked files or folders
+- Never run destructive cleanup just to get a “clean tree”
+- Never rewrite pushed `main` history
+- Never move or rewrite existing preplay tags
+
+## Before source changes
+
+If on `main` and the task changes source/config → create/switch to `work/<task>` first.
+
+Do not hardcode current branch or HEAD — check at task time.

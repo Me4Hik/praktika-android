@@ -1,0 +1,43 @@
+---
+description: Analysis-first workflow; stage markers; conflict precedence
+alwaysApply: true
+---
+
+# Praktika workflow
+
+## New stage (default)
+
+For genuinely NEW non-trivial work (feature, bugfix, device mutation, release):
+
+1. **ANALYSIS ONLY** → report → human review
+2. Separate **IMPLEMENTATION** or **EXECUTION** → report → review
+3. Next stage
+
+## Already-authorized stage
+
+If the task is `# IMPLEMENTATION` / `# EXECUTION` / `# IMPLEMENT` and cites an **approved analysis** path for this exact scope:
+
+- Do **not** demand a duplicate full re-analysis
+- Execute only the authorized plan; stop if scope expands
+
+Exception: an approved analysis may list bounded no-source follow-ups; execute those when cited.
+
+## Markers
+
+| Marker | Meaning |
+|--------|---------|
+| `# ANALYSIS ONLY` | No source/device/release mutations; no Git commit; no APK/install unless the analysis itself is explicitly read-only and approved |
+| `# IMPLEMENTATION` / `# IMPLEMENT` | Source/config changes per cited analysis only |
+| `# EXECUTION` | Device/ops steps per cited analysis only |
+
+Trivial Q&A / navigation does not require a full analysis stage.
+
+## Precedence
+
+1. Non-overridable safety (production destructive, OEM UI automation, deleting unrelated untracked personal trees)
+2. Workflow defaults (analysis-first; no auto APK; no auto push) — overridable only by explicit user markers
+3. Task-specific scope
+4. `docs/DECISIONS.md` / code for domain detail
+5. Stale chat or old Case assumptions
+
+When a prompt conflicts with a project rule: refuse the unsafe/expanding part and state which rule wins.

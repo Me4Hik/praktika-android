@@ -1,0 +1,36 @@
+---
+description: Production package sacred; accelerated-only tests; OEM UI manual
+alwaysApply: true
+---
+
+# Production safety
+
+## Packages
+
+| Role | Application ID |
+|------|----------------|
+| Production | `com.me4hik.praktika` |
+| Accelerated / TEST sandbox | `com.me4hik.praktika.accelerated` |
+
+## Never automatic (non-overridable in normal prompts)
+
+- Uninstall production
+- `pm clear` / wipe production Room, DataStore, or `filesDir`
+- Force destructive reinstall / replace production to “make tests green”
+- Downgrade or uninstall as an install workaround
+- Bypass or defeat `android/gradle/production-device-test-guard.gradle.kts`
+- Use `-PALLOW_PRODUCTION_DEVICE_TESTS=true` unless the **user explicitly** authorizes that rare override in this task (still never wipe production)
+- Prefix cleanup `com.me4hik.praktika*` — use exact package ids only
+
+## Device tests
+
+- Use accelerated only: `:app:connectedAcceleratedDebugAndroidTest`
+- Production connected / install-debug footguns are blocked by the Gradle guard (mechanical SoT)
+
+## Production update (data-preserving)
+
+Signed release APK, same signing certificate, higher `versionCode`, normal `adb install -r`. Do not ask testers to uninstall unless data loss is intentional.
+
+## OEM / messenger UI
+
+Never automate Telegram UI, OEM Auto Start, battery/autostart settings, or similar. Manual user action only. Details: `50-android-device` + `docs/ACCELERATED_TEST_MODE.md`.

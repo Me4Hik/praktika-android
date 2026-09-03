@@ -1,0 +1,21 @@
+---
+description: Proportional reporting levels; default build/outputs paths
+alwaysApply: true
+---
+
+# Reporting (proportional)
+
+Do not write 30-section forensic reports for trivial work. Task prompts may override path/level.
+
+| Level | When | Output |
+|-------|------|--------|
+| **L0** | Trivial Q&A | Chat only |
+| **L1** | Small analysis/fix | Short chat contract; optional tiny md |
+| **L2** | Feature / device / release / process analysis with decisions | `android/app/build/outputs/<topic>/NAME.md` |
+| **L3** | Multi-episode forensics | Dedicated folder + SUMMARY; update `docs/CURRENT_STATE.md` if status changed |
+
+## Defaults
+
+- Meaningful ANALYSIS / IMPLEMENTATION / EXECUTION with decisions → at least L2 unless the prompt says otherwise
+- Prefer updating `docs/CURRENT_STATE.md` over spawning near-duplicate Case notes when only status moved
+- Case1/Case2 deep timelines stay in existing forensics folders — link, do not re-paste

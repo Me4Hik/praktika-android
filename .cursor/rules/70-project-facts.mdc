@@ -1,0 +1,25 @@
+---
+description: Stable repo paths and package ids only
+alwaysApply: true
+---
+
+# Stable project facts
+
+| Fact | Value |
+|------|-------|
+| Root | `F:\SkalackiY_APP` |
+| Android | `F:\SkalackiY_APP\android` |
+| Design | `F:\SkalackiY_APP\design` |
+| Docs | `F:\SkalackiY_APP\docs` |
+| Tester release | `F:\SkalackiY_APP\release\testers` |
+| Production package | `com.me4hik.praktika` |
+| Accelerated package | `com.me4hik.praktika.accelerated` |
+| Production DB | `praktika.db` |
+| Accelerated DB | `praktika_accelerated.db` |
+| Device-test guard | `android/gradle/production-device-test-guard.gradle.kts` |
+| Prompting guide | `docs/CURSOR_PROMPTING_GUIDE.md` |
+| Volatile handoff | `docs/CURRENT_STATE.md` |
+
+## Not facts for this rule
+
+Current HEAD, branch, `versionCode`, tester `tNNN`, boot_count, Sentry events, bug classification — read at task time from git / `BUILD_INFO.txt` / `docs/CURRENT_STATE.md`.

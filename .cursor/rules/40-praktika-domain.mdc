@@ -1,0 +1,34 @@
+---
+description: Durable Praktika domain invariants (occurrence, archive, notifications)
+globs: android/app/src/**/*.kt,docs/DECISIONS.md,docs/STAGE_0_APPROVED_LOGIC.md
+alwaysApply: false
+---
+
+# Praktika domain (invariants)
+
+Authoritative detail: `docs/DECISIONS.md` (wins over `STAGE_0_APPROVED_LOGIC.md`).
+
+## Cycle and occurrence
+
+- Questions hold cycle positions **1–21**; calendar time lives on `QuestionOccurrence`
+- Occurrence identity for product logic: **cycleNumber + cyclePosition** (persist `id` across pause re-anchor)
+- Only **one** current answerable question; unanswered old questions must not accumulate as a queue
+- When the next semantic question becomes due, an old `AVAILABLE` occurrence becomes `MISSED_BY_TIME`
+- Statuses: `SCHEDULED` | `AVAILABLE` | `ANSWERED` | `SKIPPED_BY_USER` | `MISSED_BY_TIME` (no `CANCELLED`)
+- `MISSED_BY_TIME` is persisted; not automatically user-visible in archive UI
+- Deleting an answer does **not** reopen a completed occurrence
+
+## Archive and notifications
+
+- Archive is **answer-centric** (answers shown; skips not shown as archive entries)
+- Room is source of truth for occurrence status; notification delivery time does not redefine status
+- Notification planning is **single-current** (boundaries for the current incomplete occurrence)
+
+## Terminology
+
+- Developer/project: **backup / бекап**
+- User-facing feature: **резервная копия / резервная папка**
+
+## Do not freeze here
+
+Case1/Case2 forensics; unfinished features (e.g. analyzed-only «Отложить»); temporary observability probes. See `docs/CURRENT_STATE.md` when investigation context is needed.
