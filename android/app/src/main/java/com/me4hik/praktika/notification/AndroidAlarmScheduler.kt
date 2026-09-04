@@ -123,9 +123,12 @@ class AndroidAlarmScheduler(
             AlarmSchedulerApiMode.SET_WINDOW -> scheduleSetWindow(triggerAt, operation)
             AlarmSchedulerApiMode.SET_AND_ALLOW_WHILE_IDLE -> scheduleAllowWhileIdle(triggerAt, operation)
             null -> when (alarm.eventType) {
-                BoundaryEventType.PLANNED_BOUNDARY -> schedulePlannedReminder(triggerAt, operation, capability)
-                BoundaryEventType.EXPIRY_BOUNDARY -> scheduleMaintenanceReminder(triggerAt, operation)
-                BoundaryEventType.DEFERRED_REMINDER -> schedulePlannedReminder(triggerAt, operation, capability)
+                // PLANNED / EXPIRY / DEFERRED share exact-when-capable scheduling (OPTION A:
+                // expiry must not stay forever on inexact AWI while exact capability is available).
+                BoundaryEventType.PLANNED_BOUNDARY,
+                BoundaryEventType.EXPIRY_BOUNDARY,
+                BoundaryEventType.DEFERRED_REMINDER,
+                -> scheduleCapabilityGatedReminder(triggerAt, operation, capability)
             }
         }
 
@@ -205,7 +208,7 @@ class AndroidAlarmScheduler(
 
     private data class ScheduledApi(val schedulerApi: String, val windowMs: Long)
 
-    private fun schedulePlannedReminder(
+    private fun scheduleCapabilityGatedReminder(
         triggerAt: Long,
         operation: PendingIntent,
         capability: ExactAlarmCapability,
@@ -216,10 +219,6 @@ class AndroidAlarmScheduler(
             -> scheduleExactAndAllowWhileIdle(triggerAt, operation)
             ExactAlarmCapability.SPECIAL_ACCESS_REQUIRED -> scheduleAllowWhileIdle(triggerAt, operation)
         }
-    }
-
-    private fun scheduleMaintenanceReminder(triggerAt: Long, operation: PendingIntent): ScheduledApi {
-        return scheduleAllowWhileIdle(triggerAt, operation)
     }
 
     private fun scheduleExactAndAllowWhileIdle(triggerAt: Long, operation: PendingIntent): ScheduledApi {
