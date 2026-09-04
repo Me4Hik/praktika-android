@@ -148,6 +148,33 @@ class PracticeReadRepositoryTest {
     }
 
     @Test
+    fun readSnapshot_seesWriteImmediatelyWithoutFlow() = runBlocking {
+        insertOccurrence(status = QuestionOccurrenceStatus.AVAILABLE)
+        markStarted()
+        val before = repository.readSnapshot()
+        assertNull(before.incompleteOccurrence!!.deferredUntilEpochMillis)
+        assertNull(before.incompleteOccurrence!!.openedAtEpochMillis)
+
+        database.questionOccurrenceDao().deferAvailableOccurrence(
+            id = before.incompleteOccurrence!!.id,
+            deferredUntilEpochMillis = 1_800L,
+        )
+        database.questionOccurrenceDao().markOpenedIfNull(
+            id = before.incompleteOccurrence!!.id,
+            openedAtEpochMillis = 1_400L,
+        )
+        database.questionOccurrenceDao().consumeMaturedDeferIfDue(
+            id = before.incompleteOccurrence!!.id,
+            nowEpochMillis = 1_900L,
+        )
+
+        val after = repository.readSnapshot()
+        assertNull(after.incompleteOccurrence!!.deferredUntilEpochMillis)
+        assertNull(after.incompleteOccurrence!!.openedAtEpochMillis)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, after.incompleteOccurrence!!.status)
+    }
+
+    @Test
     fun questionTextChangeDoesNotAffectOccurrenceSnapshot() = runBlocking {
         insertOccurrence(status = QuestionOccurrenceStatus.AVAILABLE, textSnapshot = "Snapshot A")
         markStarted()

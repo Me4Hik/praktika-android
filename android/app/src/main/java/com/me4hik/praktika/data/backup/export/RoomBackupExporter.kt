@@ -105,6 +105,7 @@ class RoomBackupExporter(
                     availableUntilEpochMillis = entity.availableUntilEpochMillis,
                     openedAtEpochMillis = entity.openedAtEpochMillis,
                     completedAtEpochMillis = entity.completedAtEpochMillis,
+                    deferredUntilEpochMillis = entity.deferredUntilEpochMillis,
                     status = entity.status.name,
                     zoneId = entity.zoneId,
                 )

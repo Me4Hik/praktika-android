@@ -56,8 +56,38 @@ object NotificationPlanner {
         occurrence: NotificationOccurrenceSnapshot,
         soundEnabled: Boolean,
     ): NotificationPlan {
+        val deferredUntil = occurrence.deferredUntilEpochMillis
+        val isDeferred = deferredUntil != null && input.nowEpochMillis < deferredUntil
+        if (isDeferred) {
+            // Clock-like snooze stays in the shade even if the user opened the question.
+            return NotificationPlan(
+                cancelAllAlarms = false,
+                plannedBoundaryAlarm = null,
+                expiryBoundaryAlarm = boundaryAlarm(
+                    occurrence,
+                    BoundaryEventType.EXPIRY_BOUNDARY,
+                    occurrence.availableUntilEpochMillis,
+                ),
+                deferredReminderAlarm = boundaryAlarm(
+                    occurrence,
+                    BoundaryEventType.DEFERRED_REMINDER,
+                    deferredUntil!!,
+                ),
+                cancelNotification = false,
+                showNotification = NotificationShowPlan(
+                    occurrenceId = occurrence.occurrenceId,
+                    plannedAtEpochMillis = occurrence.plannedAtEpochMillis,
+                    questionTextSnapshot = occurrence.questionTextSnapshot,
+                    soundEnabled = soundEnabled,
+                    kind = PracticeNotificationKind.SNOOZED,
+                    deferredUntilEpochMillis = deferredUntil,
+                    zoneId = occurrence.zoneId,
+                ),
+            )
+        }
+
         val shouldShow = occurrence.openedAtEpochMillis == null &&
-            input.activeNotificationOccurrenceId != occurrence.occurrenceId
+            shouldShowDueQuestion(input, occurrence.occurrenceId)
         return NotificationPlan(
             cancelAllAlarms = false,
             plannedBoundaryAlarm = null,
@@ -66,6 +96,7 @@ object NotificationPlanner {
                 BoundaryEventType.EXPIRY_BOUNDARY,
                 occurrence.availableUntilEpochMillis,
             ),
+            deferredReminderAlarm = null,
             cancelNotification = false,
             showNotification = if (shouldShow) {
                 NotificationShowPlan(
@@ -73,11 +104,31 @@ object NotificationPlanner {
                     plannedAtEpochMillis = occurrence.plannedAtEpochMillis,
                     questionTextSnapshot = occurrence.questionTextSnapshot,
                     soundEnabled = soundEnabled,
+                    kind = PracticeNotificationKind.QUESTION,
+                    zoneId = occurrence.zoneId,
                 )
             } else {
                 null
             },
         )
+    }
+
+    /**
+     * Force refresh when the shade still shows the same occurrence as SNOOZED
+     * (or a different occurrence). Do not re-post if QUESTION for this id is already active.
+     */
+    private fun shouldShowDueQuestion(
+        input: NotificationPlanningInput,
+        occurrenceId: Long,
+    ): Boolean {
+        val activeId = input.activeNotificationOccurrenceId
+        if (activeId == null) {
+            return true
+        }
+        if (activeId != occurrenceId) {
+            return true
+        }
+        return input.activeNotificationKind != PracticeNotificationKind.QUESTION
     }
 
     private fun boundaryAlarm(

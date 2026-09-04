@@ -231,6 +231,7 @@ class AcceleratedCycleDriverInstrumentedTest {
         override fun setSpeedMultiplier(multiplier: Int) = Unit
         override fun advanceByVirtualMinutes(minutes: Long) = Unit
         override fun advanceToVirtualEpochMillis(target: Long) = Unit
+        override fun alignVirtualEpochMillis(targetEpochMillis: Long) = Unit
         override fun checkpoint() = Unit
         override fun currentVirtualNow(): Long = epochAt(8, 0)
         override fun currentState(): AcceleratedClockState = AcceleratedClockState.createInitial(

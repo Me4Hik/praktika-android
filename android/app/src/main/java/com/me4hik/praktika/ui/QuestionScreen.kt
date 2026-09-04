@@ -48,6 +48,7 @@ fun QuestionScreen(
     uiState: QuestionUiState,
     commandState: QuestionCommandState,
     onAnswer: () -> Unit,
+    onDefer: () -> Unit,
     onSkip: () -> Unit,
     onBackHome: () -> Unit,
     onRetry: () -> Unit,
@@ -61,6 +62,7 @@ fun QuestionScreen(
                 question = uiState.question,
                 commandState = commandState,
                 onAnswer = onAnswer,
+                onDefer = onDefer,
                 onSkip = onSkip,
             )
             is QuestionUiState.Blocked -> QuestionBlockedContent(
@@ -95,9 +97,10 @@ private fun QuestionInteractiveContent(
     question: QuestionUiModel,
     commandState: QuestionCommandState,
     onAnswer: () -> Unit,
+    onDefer: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    val actionsEnabled = !commandState.isSkipping
+    val actionsEnabled = !commandState.isBusy
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -152,6 +155,29 @@ private fun QuestionInteractiveContent(
                 enabled = actionsEnabled,
                 modifier = Modifier.testTag(PracticeTestTags.QUESTION_ANSWER),
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            TextButton(
+                onClick = onDefer,
+                enabled = actionsEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(PracticeTestTags.QUESTION_DEFER),
+            ) {
+                if (commandState.isDeferring) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.testTag(PracticeTestTags.QUESTION_DEFER_PROGRESS),
+                        color = TextSecondary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.question_defer),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary.copy(alpha = 0.92f),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             TextButton(
                 onClick = onSkip,

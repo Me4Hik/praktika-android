@@ -14,6 +14,8 @@ import com.me4hik.praktika.data.read.PracticeReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleSlotReadModel
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
+import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
 import com.me4hik.praktika.notification.NotificationPermissionUiState
@@ -54,6 +56,7 @@ class SettingsViewModelTest {
     private lateinit var pausePracticeCommand: RecordingPausePracticeCommand
     private lateinit var resumePracticeCommand: RecordingResumePracticeCommand
     private lateinit var soundRepository: MutableFakeSoundPreferenceRepository
+    private lateinit var deferDurationRepository: MutableFakeDeferDurationPreferenceRepository
     private lateinit var notificationPermissionRepository: FakeNotificationPermissionPolicy
     private lateinit var notificationSyncRequester: RecordingNotificationSyncRequester
     private lateinit var diagnosticReportSubmitter: FakeDiagnosticReportSubmitter
@@ -69,6 +72,7 @@ class SettingsViewModelTest {
         pausePracticeCommand = RecordingPausePracticeCommand()
         resumePracticeCommand = RecordingResumePracticeCommand()
         soundRepository = MutableFakeSoundPreferenceRepository()
+        deferDurationRepository = MutableFakeDeferDurationPreferenceRepository()
         notificationPermissionRepository = FakeNotificationPermissionPolicy()
         notificationSyncRequester = RecordingNotificationSyncRequester()
         diagnosticReportSubmitter = FakeDiagnosticReportSubmitter()
@@ -88,6 +92,7 @@ class SettingsViewModelTest {
             pausePracticeCommand = pausePracticeCommand,
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
+            deferDurationPreferenceRepository = deferDurationRepository,
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
             diagnosticReportSubmitter = diagnosticReportSubmitter,
@@ -159,6 +164,7 @@ class SettingsViewModelTest {
             pausePracticeCommand = pausePracticeCommand,
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
+            deferDurationPreferenceRepository = deferDurationRepository,
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
             diagnosticReportSubmitter = diagnosticReportSubmitter,
@@ -250,6 +256,7 @@ class SettingsViewModelTest {
             pausePracticeCommand = pausePracticeCommand,
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
+            deferDurationPreferenceRepository = deferDurationRepository,
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
             diagnosticReportSubmitter = diagnosticReportSubmitter,
@@ -461,6 +468,7 @@ class SettingsViewModelTest {
     ) : PracticeReadRepository {
         private val state = MutableStateFlow(initial)
         override fun observeSnapshot(): Flow<PracticeReadSnapshot> = state
+        override suspend fun readSnapshot(): PracticeReadSnapshot = state.value
         fun setPaused(paused: Boolean) {
             state.value = state.value.copy(
                 practiceState = state.value.practiceState.copy(
@@ -582,6 +590,14 @@ class SettingsViewModelTest {
             }
             currentValue = enabled
             state.value = enabled
+        }
+    }
+
+    private class MutableFakeDeferDurationPreferenceRepository : DeferDurationPreferenceRepository {
+        private val state = MutableStateFlow(DeferDurationOptions.DEFAULT_MINUTES)
+        override val deferDurationMinutes: Flow<Int> = state
+        override suspend fun setDeferDurationMinutes(minutes: Int) {
+            state.value = DeferDurationOptions.sanitize(minutes)
         }
     }
 

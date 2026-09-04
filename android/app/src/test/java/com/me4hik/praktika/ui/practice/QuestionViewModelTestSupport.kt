@@ -3,6 +3,7 @@ package com.me4hik.praktika.ui.practice
 
 import com.me4hik.praktika.data.cycle.CycleResult
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.read.QuestionOccurrenceReadResult
 import com.me4hik.praktika.data.read.QuestionReadRepository
 import com.me4hik.praktika.data.read.QuestionReadSnapshot
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.flow
 
 internal object QuestionViewModelTestSupport {
     const val OCCURRENCE_ID = 10L
+    const val DEFER_DURATION_MINUTES = DeferDurationOptions.DEFAULT_MINUTES
 
     fun availableSnapshot(
         isCurrent: Boolean = true,
@@ -84,6 +86,25 @@ internal object QuestionViewModelTestSupport {
             lastExpectedId = expectedOccurrenceId
             exception?.let { throw it }
             return CycleResult.SkipCompleted
+        }
+    }
+
+    class RecordingDeferOccurrenceCommand : DeferOccurrenceCommand {
+        var invocations = 0
+        var lastExpectedId: Long? = null
+        var lastDurationMinutes: Int? = null
+        var exception: Exception? = null
+
+        override suspend fun defer(expectedOccurrenceId: Long, durationMinutes: Int): CycleResult {
+            invocations += 1
+            lastExpectedId = expectedOccurrenceId
+            lastDurationMinutes = durationMinutes
+            exception?.let { throw it }
+            return CycleResult.DeferCompleted(
+                occurrenceId = expectedOccurrenceId,
+                deferredUntilEpochMillis = 1_000L,
+                durationMinutes = durationMinutes,
+            )
         }
     }
 }

@@ -30,6 +30,8 @@
     <string name="practice_settings">Настройки</string>
     <!-- 05.08.2026 Question And Skip cursor by Me4Hik START - строки экрана вопроса и заглушки ответа -->
     <string name="question_skip">Пропустить</string>
+    <string name="question_defer">Отложить</string>
+    <string name="question_deferred_for_minutes">Отложено на %d минут</string>
     <string name="question_back_home">На главный экран</string>
     <string name="question_blocked_not_found_title">Вопрос не найден</string>
     <string name="question_blocked_not_found_message">Этот показ вопроса больше недоступен.</string>
@@ -75,6 +77,12 @@
     <string name="settings_sound_section">Звук уведомлений</string>
     <string name="settings_sound_label">Звук включён</string>
     <string name="settings_sound_error">Не удалось изменить настройку звука.</string>
+    <string name="settings_defer_section">Отложить вопрос</string>
+    <string name="settings_defer_5">5 минут</string>
+    <string name="settings_defer_10">10 минут</string>
+    <string name="settings_defer_15">15 минут</string>
+    <string name="settings_defer_30">30 минут</string>
+    <string name="settings_defer_error">Не удалось изменить время отложения.</string>
     <string name="settings_practice_section">Практика</string>
     <string name="settings_pause_practice">Приостановить практику</string>
     <string name="settings_resume_practice">Продолжить практику</string>
@@ -180,8 +188,18 @@
     <string name="notification_channel_sound_description">Уведомления о доступных вопросах со стандартным звуком.</string>
     <string name="notification_channel_silent_name">Вопросы без звука</string>
     <string name="notification_channel_silent_description">Тихие уведомления о доступных вопросах.</string>
+    <string name="notification_channel_due_sound_name">Вопросы (всплывающие) со звуком</string>
+    <string name="notification_channel_due_sound_description">Всплывающие уведомления о доступных вопросах со звуком.</string>
+    <string name="notification_channel_due_silent_name">Вопросы (всплывающие) без звука</string>
+    <string name="notification_channel_due_silent_description">Всплывающие уведомления о доступных вопросах без звука.</string>
+    <string name="notification_channel_snoozed_name">Отложенные вопросы</string>
+    <string name="notification_channel_snoozed_description">Тихий статус отложенного вопроса без всплывающего окна.</string>
     <string name="notification_public_title">Практика</string>
     <string name="notification_public_body">Доступен новый вопрос</string>
+    <string name="notification_snoozed_body">Повтор в %1$s</string>
+    <string name="notification_action_answer">Ответить</string>
+    <string name="notification_action_answer_now">Ответить сейчас</string>
+    <string name="notification_action_defer">Отложить</string>
     <!-- 06.08.2026 Stage 12 Notifications cursor by Me4Hik END -->
     <!-- 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - строки архива -->
     <string name="archive_title">Архив</string>

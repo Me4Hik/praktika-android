@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -40,6 +41,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     private lateinit var timeProvider: FakeTimeProvider
     private lateinit var cycleRepository: CycleRepository
     private lateinit var presenter: RecordingPracticeNotificationPresenter
+    private lateinit var alarmScheduler: RecordingPlatformAlarmScheduler
     private lateinit var coordinator: PracticeNotificationCoordinator
 
     @Before
@@ -52,6 +54,7 @@ class PracticeNotificationCoordinatorStableIdTest {
         timeProvider = FakeTimeProvider(epochAt(11, 0, 0), ZONE_KIEV)
         cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
         presenter = RecordingPracticeNotificationPresenter()
+        alarmScheduler = RecordingPlatformAlarmScheduler()
         val initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }
         initializer.completeActivityInit(true)
         coordinator = PracticeNotificationCoordinator(
@@ -60,7 +63,7 @@ class PracticeNotificationCoordinatorStableIdTest {
             practiceReadRepository = RoomPracticeReadRepository(database),
             permissionRepository = EnabledNotificationPermissionPolicy(),
             soundEnabledProvider = { true },
-            alarmScheduler = NoOpPlatformAlarmScheduler(),
+            alarmScheduler = alarmScheduler,
             notificationPresenter = presenter,
             openRequestStore = NotificationOpenRequestStore(),
             timeProvider = timeProvider,
@@ -167,6 +170,169 @@ class PracticeNotificationCoordinatorStableIdTest {
         assertEquals(1, presenter.cancelCurrentCalls)
         assertEquals(QuestionOccurrenceStatus.AVAILABLE, currentOccurrence().status)
         assertTrue(currentOccurrence().openedAtEpochMillis != null)
+    }
+
+    @Test
+    fun tapSnoozed_restoresSnoozedAfterOpenedAt() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        coordinator.sync(NotificationSyncReason.MUTATION)
+        presenter.resetShowsOnly()
+        presenter.activeOccurrenceId = occurrence.id
+        presenter.activeKind = PracticeNotificationKind.SNOOZED
+
+        val decision = coordinator.handleNotificationTap(
+            occurrenceId = occurrence.id,
+            plannedAtEpochMillis = occurrence.plannedAtEpochMillis,
+        )
+
+        assertEquals(NotificationTapDecision.Open(occurrence.id), decision)
+        assertTrue(currentOccurrence().openedAtEpochMillis != null)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, currentOccurrence().status)
+        assertEquals(1, presenter.cancelCurrentCalls)
+        val lastShow = presenter.shown.last()
+        assertEquals(PracticeNotificationKind.SNOOZED, lastShow.kind)
+        assertEquals(occurrence.id, lastShow.occurrenceId)
+    }
+
+    @Test
+    fun beforeMaturity_keepsSnoozeAndDeferredAlarm() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        cycleRepository.markOccurrenceOpened(occurrence.id)
+
+        coordinator.sync(NotificationSyncReason.MUTATION)
+
+        val after = currentOccurrence()
+        assertTrue(after.deferredUntilEpochMillis != null)
+        assertTrue(after.openedAtEpochMillis != null)
+        assertEquals(PracticeNotificationKind.SNOOZED, presenter.shown.last().kind)
+        assertEquals(
+            after.deferredUntilEpochMillis,
+            alarmScheduler.lastPlan?.deferredReminderAlarm?.triggerAtEpochMillis,
+        )
+    }
+
+    @Test
+    fun maturity_sameSyncConsumesAndShowsQuestionWithoutSecondSync() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        cycleRepository.markOccurrenceOpened(occurrence.id)
+        assertTrue(currentOccurrence().openedAtEpochMillis != null)
+        assertTrue(currentOccurrence().deferredUntilEpochMillis != null)
+
+        // Past deferredUntil, still before availableUntil (15:00).
+        timeProvider.setEpochMillis(epochAt(11, 40, 0))
+        presenter.resetShowsOnly()
+        presenter.activeOccurrenceId = occurrence.id
+        presenter.activeKind = PracticeNotificationKind.SNOOZED
+
+        coordinator.sync(NotificationSyncReason.DEFERRED_ALARM)
+
+        val after = currentOccurrence()
+        assertNull(after.deferredUntilEpochMillis)
+        assertNull(after.openedAtEpochMillis)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, after.status)
+        assertEquals(1, presenter.shown.size)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.single().kind)
+        assertNull(alarmScheduler.lastPlan?.deferredReminderAlarm)
+    }
+
+    @Test
+    fun maturityConsume_secondReconcileIsNoOp() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        cycleRepository.markOccurrenceOpened(occurrence.id)
+        timeProvider.setEpochMillis(epochAt(11, 40, 0))
+
+        cycleRepository.reconcile()
+        val afterFirst = currentOccurrence()
+        assertNull(afterFirst.deferredUntilEpochMillis)
+        assertNull(afterFirst.openedAtEpochMillis)
+
+        cycleRepository.reconcile()
+        val afterSecond = currentOccurrence()
+        assertNull(afterSecond.deferredUntilEpochMillis)
+        assertNull(afterSecond.openedAtEpochMillis)
+        assertEquals(afterFirst.id, afterSecond.id)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, afterSecond.status)
+    }
+
+    @Test
+    fun maturedQuestionTap_nextSyncDoesNotResurrect() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        timeProvider.setEpochMillis(epochAt(11, 40, 0))
+        coordinator.sync(NotificationSyncReason.DEFERRED_ALARM)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.last().kind)
+        assertNull(currentOccurrence().deferredUntilEpochMillis)
+
+        presenter.resetShowsOnly()
+        presenter.activeOccurrenceId = occurrence.id
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+
+        val decision = coordinator.handleNotificationTap(
+            occurrenceId = occurrence.id,
+            plannedAtEpochMillis = occurrence.plannedAtEpochMillis,
+        )
+        assertEquals(NotificationTapDecision.Open(occurrence.id), decision)
+        assertTrue(currentOccurrence().openedAtEpochMillis != null)
+        assertNull(currentOccurrence().deferredUntilEpochMillis)
+
+        presenter.resetShowsOnly()
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+
+        assertTrue(presenter.shown.isEmpty())
+        assertNull(currentOccurrence().deferredUntilEpochMillis)
+        assertTrue(currentOccurrence().openedAtEpochMillis != null)
+    }
+
+    @Test
+    fun reDeferAfterMaturity_showsSnoozedAgain() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        timeProvider.setEpochMillis(epochAt(11, 40, 0))
+        coordinator.sync(NotificationSyncReason.DEFERRED_ALARM)
+        assertNull(currentOccurrence().deferredUntilEpochMillis)
+
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 10)
+        coordinator.sync(NotificationSyncReason.MUTATION)
+
+        val after = currentOccurrence()
+        assertTrue(after.deferredUntilEpochMillis != null)
+        assertNull(after.openedAtEpochMillis)
+        assertEquals(PracticeNotificationKind.SNOOZED, presenter.shown.last().kind)
+        assertEquals(
+            after.deferredUntilEpochMillis,
+            alarmScheduler.lastPlan?.deferredReminderAlarm?.triggerAtEpochMillis,
+        )
+    }
+
+    @Test
+    fun semanticExpiry_beatsDeferMaturity_doesNotResurrectOldOccurrence() = runBlocking {
+        startAvailableOccurrence()
+        val occurrenceA = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrenceA.id, durationMinutes = 30)
+        cycleRepository.markOccurrenceOpened(occurrenceA.id)
+        // Past availableUntil (15:00) while deferredUntil would still be "in future" relative to defer time,
+        // but semantic expiry must win.
+        timeProvider.setEpochMillis(epochAt(15, 30, 0))
+        presenter.reset()
+
+        coordinator.sync(NotificationSyncReason.EXPIRY_ALARM)
+
+        assertEquals(QuestionOccurrenceStatus.MISSED_BY_TIME, occurrenceById(occurrenceA.id).status)
+        val current = currentOccurrence()
+        assertTrue(current.id != occurrenceA.id)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, current.status)
+        assertEquals(listOf(current.id), presenter.shown.map { it.occurrenceId })
+        assertTrue(presenter.shown.none { it.occurrenceId == occurrenceA.id })
     }
 
     @Test
@@ -289,19 +455,24 @@ private class RecordingPracticeNotificationPresenter : PracticeNotificationPrese
     var legacyCancelCalls = 0
     var throwOnLegacyCancel = false
     var activeOccurrenceId: Long? = null
+    var activeKind: PracticeNotificationKind? = null
 
     override fun ensureChannelsCreated() = Unit
 
     override fun findActivePracticeNotificationOccurrenceId(): Long? = activeOccurrenceId
 
+    override fun findActivePracticeNotificationKind(): PracticeNotificationKind? = activeKind
+
     override fun showNotification(plan: NotificationShowPlan) {
         shown += plan
         activeOccurrenceId = plan.occurrenceId
+        activeKind = plan.kind
     }
 
     override fun cancelCurrentPracticeNotification() {
         cancelCurrentCalls += 1
         activeOccurrenceId = null
+        activeKind = null
     }
 
     override fun cancelLegacyPracticeNotifications(
@@ -318,6 +489,7 @@ private class RecordingPracticeNotificationPresenter : PracticeNotificationPrese
     override fun cancelAllPracticeNotifications() {
         cancelAllCalls += 1
         activeOccurrenceId = null
+        activeKind = null
     }
 
     fun reset() {
@@ -336,8 +508,12 @@ private class RecordingPracticeNotificationPresenter : PracticeNotificationPrese
     }
 }
 
-private class NoOpPlatformAlarmScheduler : PlatformAlarmScheduler {
-    override fun scheduleAlarms(plan: NotificationPlan, previousAlarms: List<BoundaryAlarmPlan>) = Unit
+private class RecordingPlatformAlarmScheduler : PlatformAlarmScheduler {
+    var lastPlan: NotificationPlan? = null
+
+    override fun scheduleAlarms(plan: NotificationPlan, previousAlarms: List<BoundaryAlarmPlan>) {
+        lastPlan = plan
+    }
 
     override fun cancelAlarms(alarms: List<BoundaryAlarmPlan>) = Unit
 

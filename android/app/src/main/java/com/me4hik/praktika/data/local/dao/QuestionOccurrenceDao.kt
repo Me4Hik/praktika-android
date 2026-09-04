@@ -159,6 +159,40 @@ interface QuestionOccurrenceDao {
         openedAtEpochMillis: Long,
     ): Int
 
+    @Query(
+        """
+        UPDATE question_occurrences
+        SET deferredUntilEpochMillis = :deferredUntilEpochMillis,
+            openedAtEpochMillis = NULL
+        WHERE id = :id AND status = 'AVAILABLE'
+        """,
+    )
+    suspend fun deferAvailableOccurrence(
+        id: Long,
+        deferredUntilEpochMillis: Long,
+    ): Int
+
+    /**
+     * Consumes a matured defer promise exactly once:
+     * clear deferredUntil and reset openedAt so one fresh due QUESTION can post.
+     * Idempotent when deferredUntil is already null or still in the future.
+     */
+    @Query(
+        """
+        UPDATE question_occurrences
+        SET deferredUntilEpochMillis = NULL,
+            openedAtEpochMillis = NULL
+        WHERE id = :id
+          AND status = 'AVAILABLE'
+          AND deferredUntilEpochMillis IS NOT NULL
+          AND deferredUntilEpochMillis <= :nowEpochMillis
+        """,
+    )
+    suspend fun consumeMaturedDeferIfDue(
+        id: Long,
+        nowEpochMillis: Long,
+    ): Int
+
     @Update
     suspend fun update(occurrence: QuestionOccurrenceEntity)
 

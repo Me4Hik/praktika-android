@@ -14,6 +14,12 @@ sealed class CycleResult {
 
     data object SkipCompleted : CycleResult()
 
+    data class DeferCompleted(
+        val occurrenceId: Long,
+        val deferredUntilEpochMillis: Long,
+        val durationMinutes: Int,
+    ) : CycleResult()
+
     data object PauseEnabled : CycleResult()
 
     data object PracticeResumed : CycleResult()

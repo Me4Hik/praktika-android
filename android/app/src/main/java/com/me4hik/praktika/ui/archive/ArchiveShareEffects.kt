@@ -7,6 +7,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.me4hik.praktika.share.ShareIntentFactory
+import com.me4hik.praktika.ui.components.showPracticeInfoSnackbar
 
 @Composable
 fun ArchiveShareEffects(
@@ -54,10 +55,10 @@ fun ArchiveShareEffects(
                     )
                 }
                 ArchiveShareUiEvent.NoAnswers -> {
-                    snackbarHostState.showSnackbar(noAnswersMessage)
+                    snackbarHostState.showPracticeInfoSnackbar(noAnswersMessage)
                 }
                 ArchiveShareUiEvent.PrepareFailed -> {
-                    snackbarHostState.showSnackbar(prepareFailedMessage)
+                    snackbarHostState.showPracticeInfoSnackbar(prepareFailedMessage)
                 }
             }
         }
@@ -79,7 +80,7 @@ private suspend fun launchShareChooser(
             ),
         )
     } catch (_: ActivityNotFoundException) {
-        snackbarHostState.showSnackbar(chooserFailedMessage)
+        snackbarHostState.showPracticeInfoSnackbar(chooserFailedMessage)
     }
 }
 // 07.08.2026 Stage 21 Share cursor by Me4Hik END

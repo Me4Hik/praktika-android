@@ -117,6 +117,7 @@ class NotificationPlannerTest {
                 nowEpochMillis = 1_500L,
                 currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
                 activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.QUESTION,
             ),
             soundEnabled = true,
         )
@@ -187,6 +188,177 @@ class NotificationPlannerTest {
     }
 
     @Test
+    fun availableDeferred_showsSnoozedAndArmsReminder() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 1_800L,
+                    zoneId = "Europe/Kiev",
+                ),
+            ),
+            soundEnabled = true,
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.SNOOZED, shown.kind)
+        assertEquals(1_800L, shown.deferredUntilEpochMillis)
+        assertEquals("Europe/Kiev", shown.zoneId)
+        assertFalse(plan.cancelNotification)
+        assertNull(plan.plannedBoundaryAlarm)
+        assertEquals(BoundaryEventType.EXPIRY_BOUNDARY, plan.expiryBoundaryAlarm?.eventType)
+        assertEquals(2_000L, plan.expiryBoundaryAlarm?.triggerAtEpochMillis)
+        assertEquals(BoundaryEventType.DEFERRED_REMINDER, plan.deferredReminderAlarm?.eventType)
+        assertEquals(1_800L, plan.deferredReminderAlarm?.triggerAtEpochMillis)
+    }
+
+    @Test
+    fun availableDeferred_repeatedDeferKeepsSnoozedShow() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 2_100L,
+                ),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.SNOOZED,
+            ),
+            soundEnabled = true,
+        )
+        assertEquals(PracticeNotificationKind.SNOOZED, plan.showNotification?.kind)
+        assertEquals(2_100L, plan.showNotification?.deferredUntilEpochMillis)
+    }
+
+    @Test
+    fun availableDeferred_openedAtStillShowsSnoozedNotification() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 1_800L,
+                    openedAtEpochMillis = 1_400L,
+                ),
+            ),
+            soundEnabled = true,
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.SNOOZED, shown.kind)
+        assertEquals(1_800L, shown.deferredUntilEpochMillis)
+        assertFalse(plan.cancelNotification)
+        assertEquals(1_800L, plan.deferredReminderAlarm?.triggerAtEpochMillis)
+    }
+
+    @Test
+    fun availableDeferred_answeredCancelsNotificationAndAlarms() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.ANSWERED,
+                    deferredUntilEpochMillis = 1_800L,
+                    openedAtEpochMillis = 1_400L,
+                ),
+            ),
+            soundEnabled = true,
+        )
+        assertTrue(plan.cancelAllAlarms)
+        assertTrue(plan.cancelNotification)
+        assertNull(plan.showNotification)
+    }
+
+    @Test
+    fun availableDeferred_skippedCancelsNotificationAndAlarms() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.SKIPPED_BY_USER,
+                    deferredUntilEpochMillis = 1_800L,
+                ),
+            ),
+            soundEnabled = true,
+        )
+        assertTrue(plan.cancelAllAlarms)
+        assertTrue(plan.cancelNotification)
+        assertNull(plan.showNotification)
+    }
+
+    @Test
+    fun availableDeferredExpired_openedAtDoesNotShowQuestion() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_900L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 1_800L,
+                    openedAtEpochMillis = 1_400L,
+                ),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.SNOOZED,
+            ),
+            soundEnabled = true,
+        )
+        assertNull(plan.showNotification)
+        assertFalse(plan.cancelNotification)
+        assertNull(plan.deferredReminderAlarm)
+    }
+
+    @Test
+    fun availableDeferredExpired_forcesQuestionRefreshOverSnoozed() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_900L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 1_800L,
+                ),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.SNOOZED,
+            ),
+            soundEnabled = true,
+        )
+        assertEquals(PracticeNotificationKind.QUESTION, plan.showNotification?.kind)
+        assertFalse(plan.cancelNotification)
+        assertNull(plan.deferredReminderAlarm)
+        assertEquals(BoundaryEventType.EXPIRY_BOUNDARY, plan.expiryBoundaryAlarm?.eventType)
+    }
+
+    @Test
+    fun availableQuestionAlreadyPosted_doesNotDuplicateShow() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.QUESTION,
+            ),
+            soundEnabled = true,
+        )
+        assertNull(plan.showNotification)
+    }
+
+    @Test
+    fun availableDeferredExpired_showsNotificationAgain() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_900L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 1_800L,
+                ),
+            ),
+            soundEnabled = true,
+        )
+        assertNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.QUESTION, plan.showNotification?.kind)
+        assertFalse(plan.cancelNotification)
+        assertNull(plan.deferredReminderAlarm)
+        assertEquals(BoundaryEventType.EXPIRY_BOUNDARY, plan.expiryBoundaryAlarm?.eventType)
+    }
+
+    @Test
     fun independentSlotsKeepDistinctBiasedTriggers() {
         val slotA = occurrence.copy(
             occurrenceId = 1L,
@@ -216,6 +388,7 @@ class NotificationPlannerTest {
         currentOccurrence: NotificationOccurrenceSnapshot? = occurrence,
         notificationCapability: NotificationDeliveryCapability = NotificationDeliveryCapability.ENABLED,
         activeNotificationOccurrenceId: Long? = null,
+        activeNotificationKind: PracticeNotificationKind? = null,
     ): NotificationPlanningInput {
         return NotificationPlanningInput(
             isPracticeStarted = isPracticeStarted,
@@ -224,6 +397,7 @@ class NotificationPlannerTest {
             currentOccurrence = currentOccurrence,
             notificationCapability = notificationCapability,
             activeNotificationOccurrenceId = activeNotificationOccurrenceId,
+            activeNotificationKind = activeNotificationKind,
         )
     }
 }

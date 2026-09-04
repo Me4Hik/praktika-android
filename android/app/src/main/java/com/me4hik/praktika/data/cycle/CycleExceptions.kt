@@ -18,6 +18,8 @@ class CycleClockException(message: String) : IllegalStateException(message)
 
 class CycleSkipNotAllowedException(message: String) : IllegalStateException(message)
 
+class CycleDeferNotAllowedException(message: String) : IllegalStateException(message)
+
 // 05.08.2026 Answer Save cursor by Me4Hik START - business-отказ сохранения ответа
 class CycleAnswerNotAllowedException(
     val reason: CycleAnswerNotAllowedReason,

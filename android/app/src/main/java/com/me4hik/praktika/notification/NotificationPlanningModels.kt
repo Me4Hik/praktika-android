@@ -11,6 +11,12 @@ enum class NotificationDeliveryCapability {
 enum class BoundaryEventType {
     PLANNED_BOUNDARY,
     EXPIRY_BOUNDARY,
+    DEFERRED_REMINDER,
+}
+
+enum class PracticeNotificationKind {
+    QUESTION,
+    SNOOZED,
 }
 
 data class NotificationOccurrenceSnapshot(
@@ -20,6 +26,8 @@ data class NotificationOccurrenceSnapshot(
     val availableUntilEpochMillis: Long,
     val questionTextSnapshot: String,
     val openedAtEpochMillis: Long?,
+    val deferredUntilEpochMillis: Long? = null,
+    val zoneId: String = "UTC",
 )
 
 data class NotificationPlanningInput(
@@ -29,6 +37,7 @@ data class NotificationPlanningInput(
     val currentOccurrence: NotificationOccurrenceSnapshot?,
     val notificationCapability: NotificationDeliveryCapability,
     val activeNotificationOccurrenceId: Long?,
+    val activeNotificationKind: PracticeNotificationKind? = null,
 )
 
 data class BoundaryAlarmPlan(
@@ -43,12 +52,16 @@ data class NotificationShowPlan(
     val plannedAtEpochMillis: Long,
     val questionTextSnapshot: String,
     val soundEnabled: Boolean,
+    val kind: PracticeNotificationKind = PracticeNotificationKind.QUESTION,
+    val deferredUntilEpochMillis: Long? = null,
+    val zoneId: String = "UTC",
 )
 
 data class NotificationPlan(
     val cancelAllAlarms: Boolean = false,
     val plannedBoundaryAlarm: BoundaryAlarmPlan? = null,
     val expiryBoundaryAlarm: BoundaryAlarmPlan? = null,
+    val deferredReminderAlarm: BoundaryAlarmPlan? = null,
     val cancelNotification: Boolean = false,
     val showNotification: NotificationShowPlan? = null,
 )

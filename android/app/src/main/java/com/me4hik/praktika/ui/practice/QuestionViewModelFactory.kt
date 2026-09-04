@@ -3,9 +3,11 @@ package com.me4hik.praktika.ui.practice
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.read.RoomQuestionReadRepository
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.runtime.PraktikaRuntime
+import kotlinx.coroutines.flow.first
 
 class QuestionViewModelFactory(
     private val runtime: PraktikaRuntime,
@@ -20,10 +22,24 @@ class QuestionViewModelFactory(
                 runtime.notificationSyncRequester.requestSync(NotificationSyncReason.MUTATION)
                 result
             }
+            val deferCommand = DeferOccurrenceCommand { expectedId, durationMinutes ->
+                val result = runtime.cycleRepository.deferAvailableOccurrence(
+                    expectedOccurrenceId = expectedId,
+                    durationMinutes = durationMinutes,
+                )
+                runtime.notificationSyncRequester.requestSync(NotificationSyncReason.MUTATION)
+                result
+            }
             return QuestionViewModel(
                 occurrenceId = occurrenceId,
                 readRepository = RoomQuestionReadRepository(runtime.database),
                 skipOccurrenceCommand = skipCommand,
+                deferOccurrenceCommand = deferCommand,
+                deferDurationMinutesProvider = {
+                    DeferDurationOptions.sanitize(
+                        runtime.deferDurationPreferenceRepository.deferDurationMinutes.first(),
+                    )
+                },
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

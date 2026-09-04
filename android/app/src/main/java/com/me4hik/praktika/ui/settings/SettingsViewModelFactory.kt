@@ -44,6 +44,7 @@ class SettingsViewModelFactory(
                     result
                 },
                 soundPreferenceRepository = runtime.soundPreferenceRepository,
+                deferDurationPreferenceRepository = runtime.deferDurationPreferenceRepository,
                 notificationPermissionRepository = runtime.notificationPermissionRepository,
                 notificationSyncRequester = runtime.notificationSyncRequester,
                 diagnosticReportSubmitter = diagnosticReportSubmitter,

@@ -91,6 +91,7 @@ fun SettingsScheduleDraftTestNavigation(
                 uiState = settingsUiState,
                 onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
                 onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
+                onDeferDurationMinutesChanged = settingsViewModel::onDeferDurationMinutesChanged,
                 onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
                 onTogglePauseState = settingsViewModel::togglePauseState,
                 onBack = settingsViewModel::onBackRequested,

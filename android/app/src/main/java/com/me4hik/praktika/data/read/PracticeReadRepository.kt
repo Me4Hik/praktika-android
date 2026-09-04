@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.mapLatest
 
 interface PracticeReadRepository {
     fun observeSnapshot(): Flow<PracticeReadSnapshot>
+
+    /** One-shot transactional read for post-mutation planning (not Flow.first). */
+    suspend fun readSnapshot(): PracticeReadSnapshot
 }
 
 data class PracticeReadSnapshot(
@@ -34,6 +37,8 @@ class RoomPracticeReadRepository(
             .mapLatest { readConsistentSnapshot() }
             .distinctUntilChanged()
     }
+
+    override suspend fun readSnapshot(): PracticeReadSnapshot = readConsistentSnapshot()
 
     private suspend fun readConsistentSnapshot(): PracticeReadSnapshot {
         return database.withTransaction {

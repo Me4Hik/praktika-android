@@ -19,6 +19,7 @@ import com.me4hik.praktika.data.local.entity.QuestionEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
 import com.me4hik.praktika.data.local.migration.MIGRATION_1_2
+import com.me4hik.praktika.data.local.migration.MIGRATION_2_3
 
 @Database(
     entities = [
@@ -28,7 +29,7 @@ import com.me4hik.praktika.data.local.migration.MIGRATION_1_2
         AnswerEntity::class,
         PracticeStateEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -69,7 +70,7 @@ abstract class PraktikaDatabase : RoomDatabase() {
                     PraktikaDatabase::class.java,
                     databaseName,
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also {
                         instance = it

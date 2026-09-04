@@ -239,6 +239,119 @@ class CycleRepositoryTest {
     }
 
     @Test
+    fun deferAvailableKeepsSameOccurrenceAndClearsOpenedAt() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+        val before = database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
+        database.questionOccurrenceDao().markOpenedIfNull(before.id, epochAt(11, 5, 0))
+        timeProvider.setEpochMillis(epochAt(11, 10, 0))
+
+        val result = repository.deferAvailableOccurrence(before.id, durationMinutes = 15)
+        assertTrue(result is CycleResult.DeferCompleted)
+        val deferred = result as CycleResult.DeferCompleted
+
+        val after = database.questionOccurrenceDao().getById(before.id)!!
+        assertEquals(before.id, after.id)
+        assertEquals(before.cycleNumber, after.cycleNumber)
+        assertEquals(before.cyclePosition, after.cyclePosition)
+        assertEquals(before.plannedAtEpochMillis, after.plannedAtEpochMillis)
+        assertEquals(before.availableUntilEpochMillis, after.availableUntilEpochMillis)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, after.status)
+        assertNull(after.openedAtEpochMillis)
+        assertEquals(epochAt(11, 25, 0), after.deferredUntilEpochMillis)
+        assertEquals(epochAt(11, 25, 0), deferred.deferredUntilEpochMillis)
+        assertEquals(1, database.questionOccurrenceDao().count())
+    }
+
+    @Test
+    fun deferRepeatedReplacesDeferredUntil() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+        val occurrence = database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
+        timeProvider.setEpochMillis(epochAt(11, 10, 0))
+        repository.deferAvailableOccurrence(occurrence.id, durationMinutes = 15)
+        timeProvider.setEpochMillis(epochAt(11, 12, 0))
+        repository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+
+        val after = database.questionOccurrenceDao().getById(occurrence.id)!!
+        assertEquals(epochAt(11, 17, 0), after.deferredUntilEpochMillis)
+        assertEquals(1, database.questionOccurrenceDao().count())
+    }
+
+    @Test
+    fun answerDuringDeferFinalizesSameOccurrence() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+        val occurrence = database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
+        timeProvider.setEpochMillis(epochAt(11, 10, 0))
+        repository.deferAvailableOccurrence(occurrence.id, durationMinutes = 30)
+        timeProvider.setEpochMillis(epochAt(11, 15, 0))
+        repository.saveAnswer(occurrence.id, "answer during defer")
+
+        val answered = database.questionOccurrenceDao().getById(occurrence.id)!!
+        assertEquals(QuestionOccurrenceStatus.ANSWERED, answered.status)
+        assertEquals(2, database.questionOccurrenceDao().count())
+    }
+
+    @Test
+    fun reconcileConsumesMaturedDeferAndResetsOpenedAt() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+        val occurrence = database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
+        timeProvider.setEpochMillis(epochAt(11, 10, 0))
+        repository.deferAvailableOccurrence(occurrence.id, durationMinutes = 15)
+        database.questionOccurrenceDao().markOpenedIfNull(occurrence.id, epochAt(11, 12, 0))
+        assertEquals(epochAt(11, 25, 0), database.questionOccurrenceDao().getById(occurrence.id)!!.deferredUntilEpochMillis)
+        assertEquals(epochAt(11, 12, 0), database.questionOccurrenceDao().getById(occurrence.id)!!.openedAtEpochMillis)
+
+        timeProvider.setEpochMillis(epochAt(11, 30, 0))
+        repository.reconcile()
+
+        val after = database.questionOccurrenceDao().getById(occurrence.id)!!
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, after.status)
+        assertNull(after.deferredUntilEpochMillis)
+        assertNull(after.openedAtEpochMillis)
+        assertEquals(occurrence.id, after.id)
+    }
+
+    @Test
+    fun reconcileMaturedDeferSecondPassIsNoOp() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+        val occurrence = database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
+        timeProvider.setEpochMillis(epochAt(11, 10, 0))
+        repository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        database.questionOccurrenceDao().markOpenedIfNull(occurrence.id, epochAt(11, 11, 0))
+        timeProvider.setEpochMillis(epochAt(11, 20, 0))
+        repository.reconcile()
+        repository.reconcile()
+
+        val after = database.questionOccurrenceDao().getById(occurrence.id)!!
+        assertNull(after.deferredUntilEpochMillis)
+        assertNull(after.openedAtEpochMillis)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, after.status)
+    }
+
+    @Test
+    fun semanticExpiryBeatsMaturedDeferWithoutConsumingIntoQuestion() = runBlocking {
+        timeProvider.setEpochMillis(epochAt(11, 0, 0))
+        repository.startPractice()
+        val occurrence = database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
+        timeProvider.setEpochMillis(epochAt(11, 10, 0))
+        repository.deferAvailableOccurrence(occurrence.id, durationMinutes = 30)
+        database.questionOccurrenceDao().markOpenedIfNull(occurrence.id, epochAt(11, 12, 0))
+
+        timeProvider.setEpochMillis(epochAt(15, 30, 0))
+        repository.reconcile()
+
+        val missed = database.questionOccurrenceDao().getById(occurrence.id)!!
+        assertEquals(QuestionOccurrenceStatus.MISSED_BY_TIME, missed.status)
+        val current = database.questionOccurrenceDao().getIncompleteOrdered().single()
+        assertTrue(current.id != occurrence.id)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, current.status)
+    }
+
+    @Test
     fun pauseScheduledDoesNotCreateMissDuringPause() = runBlocking {
         timeProvider.setEpochMillis(epochAt(8, 0, 0))
         repository.startPractice()

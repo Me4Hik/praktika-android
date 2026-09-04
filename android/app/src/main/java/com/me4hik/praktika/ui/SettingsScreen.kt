@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +35,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -49,9 +53,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.BuildConfig
 import com.me4hik.praktika.R
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
 import com.me4hik.praktika.ui.components.PracticeGlassActionRow
@@ -82,6 +88,7 @@ fun SettingsScreen(
     uiState: SettingsUiState,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
+    onDeferDurationMinutesChanged: (Int) -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onTogglePauseState: () -> Unit,
     onBack: () -> Unit,
@@ -150,6 +157,7 @@ fun SettingsScreen(
                 content = uiState,
                 onSlotTimeChange = onSlotTimeChange,
                 onSoundEnabledChanged = onSoundEnabledChanged,
+                onDeferDurationMinutesChanged = onDeferDurationMinutesChanged,
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onTogglePauseState = onTogglePauseState,
                 onOpenBugReport = onOpenBugReport,
@@ -217,6 +225,7 @@ private fun SettingsContentScreen(
     content: SettingsUiState.Content,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
+    onDeferDurationMinutesChanged: (Int) -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onTogglePauseState: () -> Unit,
     onOpenBugReport: () -> Unit,
@@ -340,6 +349,65 @@ private fun SettingsContentScreen(
                 content.soundError?.let {
                     Text(
                         text = stringResource(R.string.settings_sound_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_DEFER_SECTION),
+            ) {
+                PracticeSectionHeader(
+                    title = stringResource(R.string.settings_defer_section),
+                    icon = Icons.Outlined.Timer,
+                )
+                PracticeSurface {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf(
+                            Triple(5, R.string.settings_defer_5, SettingsTestTags.SETTINGS_DEFER_5),
+                            Triple(10, R.string.settings_defer_10, SettingsTestTags.SETTINGS_DEFER_10),
+                            Triple(15, R.string.settings_defer_15, SettingsTestTags.SETTINGS_DEFER_15),
+                            Triple(30, R.string.settings_defer_30, SettingsTestTags.SETTINGS_DEFER_30),
+                        ).forEach { (minutes, labelRes, tag) ->
+                            val selected = content.deferDurationMinutes == minutes
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = selected,
+                                        enabled = !content.isChangingDeferDuration &&
+                                            minutes in DeferDurationOptions.ALLOWED_MINUTES,
+                                        role = Role.RadioButton,
+                                        onClick = { onDeferDurationMinutesChanged(minutes) },
+                                    )
+                                    .padding(vertical = 4.dp)
+                                    .testTag(tag),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = selected,
+                                    onClick = null,
+                                    enabled = !content.isChangingDeferDuration,
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = AccentViolet,
+                                        unselectedColor = TextMuted,
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(labelRes),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = TextPrimary,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                content.deferError?.let {
+                    Text(
+                        text = stringResource(R.string.settings_defer_error),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )

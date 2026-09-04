@@ -5,6 +5,8 @@ import android.content.Context
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.TimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
+import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
@@ -22,6 +24,8 @@ import com.me4hik.praktika.data.backup.write.BackupIoSessionGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 
 object TestPraktikaRuntimeBuilder {
@@ -33,6 +37,8 @@ object TestPraktikaRuntimeBuilder {
         mode: RuntimeMode,
         foregroundDriver: RuntimeForegroundDriver,
         soundPreferenceRepository: SoundPreferenceRepository,
+        deferDurationPreferenceRepository: DeferDurationPreferenceRepository =
+            FakeDeferDurationPreferenceRepository(),
         alarmScheduler: PlatformAlarmScheduler = NoOpPlatformAlarmScheduler(),
         notificationPresenter: PracticeNotificationPresenter = NoOpPracticeNotificationPresenter(),
         permissionRepository: NotificationPermissionPolicy? = null,
@@ -106,6 +112,7 @@ object TestPraktikaRuntimeBuilder {
             foregroundDriver = foregroundDriver,
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
+            deferDurationPreferenceRepository = deferDurationPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
             answerDeleteRepository = answerDeleteRepository,
@@ -123,6 +130,16 @@ object TestPraktikaRuntimeBuilder {
             backupSettingsFacade = backupSettingsFacade,
         )
         return runtimeRef
+    }
+}
+
+class FakeDeferDurationPreferenceRepository(
+    initialMinutes: Int = DeferDurationOptions.DEFAULT_MINUTES,
+) : DeferDurationPreferenceRepository {
+    private val state = MutableStateFlow(DeferDurationOptions.sanitize(initialMinutes))
+    override val deferDurationMinutes: Flow<Int> = state
+    override suspend fun setDeferDurationMinutes(minutes: Int) {
+        state.value = DeferDurationOptions.sanitize(minutes)
     }
 }
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

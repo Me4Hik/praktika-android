@@ -88,6 +88,10 @@ class AcceleratedCommandProcessor(
             InjectValidPlannedBoundaryCommand.COMMAND -> injectValidPlannedBoundary(runtime)
             // 14.08.2026 Accelerated planned-boundary injection harness cursor by Me4Hik END
 
+            // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik START
+            InjectDeferredReminderCommand.COMMAND -> injectDeferredReminder(runtime)
+            // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik END
+
             // 14.08.2026 Accelerated device-setup harness cursor by Me4Hik START
             WallSync1xCommand.COMMAND -> {
                 WallSync1xCommand.execute(
@@ -123,6 +127,32 @@ class AcceleratedCommandProcessor(
             exactAlarmCapability = readExactAlarmCapabilityLabel(),
         )
     }
+
+    // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik START
+    /**
+     * Host/ADB must not supply occurrence/deferredUntil identity; only Room is used.
+     * The command [Intent] extras for identity are intentionally ignored.
+     */
+    private suspend fun injectDeferredReminder(runtime: PraktikaRuntime) {
+        val incomplete = runtime.database.questionOccurrenceDao().getIncompleteOrdered().map {
+            InjectDeferredReminderCommand.IncompleteOccurrence(
+                id = it.id,
+                status = it.status,
+                plannedAtEpochMillis = it.plannedAtEpochMillis,
+                deferredUntilEpochMillis = it.deferredUntilEpochMillis,
+            )
+        }
+        InjectDeferredReminderCommand.execute(
+            context = context,
+            incomplete = incomplete,
+        )
+        // Dump after dispatch so device acceptance can correlate Room/notif with inject logs.
+        // Receiver sync is async (goAsync); dump is best-effort snapshot, not a completion barrier.
+        val clock = runtime.timeProvider as AcceleratedTimeProvider
+        clock.checkpoint()
+        AcceleratedDiagnostics.dump(context, runtime, monotonic, clock)
+    }
+    // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik END
 
     private fun readExactAlarmCapabilityLabel(): String? {
         return try {

@@ -104,6 +104,14 @@ class PracticeAlarmReceiver : BroadcastReceiver() {
             return
         }
 
+        if (eventType == BoundaryEventType.DEFERRED_REMINDER.name) {
+            // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik START - entry log for harness proof
+            Log.i(TAG, "DEFERRED_REMINDER → sync DEFERRED_ALARM occurrenceId=$occurrenceId")
+            // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik END
+            runtime.notificationCoordinator.sync(NotificationSyncReason.DEFERRED_ALARM)
+            return
+        }
+
         if (eventType != BoundaryEventType.PLANNED_BOUNDARY.name) {
             TargetedBugDiagnostics.recordMalformedAlarmIntent(
                 occurrenceId = occurrenceId,

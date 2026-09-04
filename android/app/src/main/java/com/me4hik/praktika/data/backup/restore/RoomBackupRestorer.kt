@@ -157,6 +157,7 @@ class RoomBackupRestorer(
                 availableUntilEpochMillis = backup.availableUntilEpochMillis,
                 openedAtEpochMillis = backup.openedAtEpochMillis,
                 completedAtEpochMillis = backup.completedAtEpochMillis,
+                deferredUntilEpochMillis = backup.deferredUntilEpochMillis,
                 status = QuestionOccurrenceStatus.valueOf(backup.status),
                 zoneId = backup.zoneId,
             )

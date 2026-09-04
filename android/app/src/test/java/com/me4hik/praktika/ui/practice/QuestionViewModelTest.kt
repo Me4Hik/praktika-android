@@ -2,6 +2,7 @@
 package com.me4hik.praktika.ui.practice
 
 import com.me4hik.praktika.data.cycle.CycleCorruptionException
+import com.me4hik.praktika.data.cycle.CycleDeferNotAllowedException
 import com.me4hik.praktika.data.cycle.CycleSkipNotAllowedException
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import com.me4hik.praktika.data.read.QuestionOccurrenceReadResult
@@ -26,6 +27,7 @@ class QuestionViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var readRepository: QuestionViewModelTestSupport.FakeQuestionReadRepository
     private lateinit var skipCommand: QuestionViewModelTestSupport.RecordingSkipOccurrenceCommand
+    private lateinit var deferCommand: QuestionViewModelTestSupport.RecordingDeferOccurrenceCommand
     private lateinit var viewModel: QuestionViewModel
 
     @Before
@@ -33,6 +35,7 @@ class QuestionViewModelTest {
         Dispatchers.setMain(testDispatcher)
         readRepository = QuestionViewModelTestSupport.FakeQuestionReadRepository()
         skipCommand = QuestionViewModelTestSupport.RecordingSkipOccurrenceCommand()
+        deferCommand = QuestionViewModelTestSupport.RecordingDeferOccurrenceCommand()
     }
 
     @After
@@ -45,6 +48,10 @@ class QuestionViewModelTest {
             occurrenceId = QuestionViewModelTestSupport.OCCURRENCE_ID,
             readRepository = readRepository,
             skipOccurrenceCommand = skipCommand,
+            deferOccurrenceCommand = deferCommand,
+            deferDurationMinutesProvider = {
+                QuestionViewModelTestSupport.DEFER_DURATION_MINUTES
+            },
             commandDispatcher = testDispatcher,
         )
     }
@@ -158,6 +165,76 @@ class QuestionViewModelTest {
         assertEquals(QuestionNavigationEvent.ReturnHomeAfterSkip, events.single())
         assertEquals(1, skipCommand.invocations)
         assertEquals(QuestionViewModelTestSupport.OCCURRENCE_ID, skipCommand.lastExpectedId)
+    }
+
+    @Test
+    fun deferSuccessEmitsReturnHomeWithDuration() = runTest {
+        readRepository.emit(
+            QuestionOccurrenceReadResult.Found(QuestionViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        val events = mutableListOf<QuestionNavigationEvent>()
+        val job = launch { viewModel.navigation.collect { events.add(it) } }
+        advanceUntilIdle()
+        viewModel.onDeferClicked()
+        advanceUntilIdle()
+        job.cancel()
+        val event = events.single() as QuestionNavigationEvent.ReturnHomeAfterDefer
+        assertEquals(QuestionViewModelTestSupport.DEFER_DURATION_MINUTES, event.durationMinutes)
+        assertEquals(1, deferCommand.invocations)
+        assertEquals(QuestionViewModelTestSupport.OCCURRENCE_ID, deferCommand.lastExpectedId)
+        assertEquals(
+            QuestionViewModelTestSupport.DEFER_DURATION_MINUTES,
+            deferCommand.lastDurationMinutes,
+        )
+        assertEquals(0, skipCommand.invocations)
+    }
+
+    @Test
+    fun deferFailureSetsErrorWithoutNavigation() = runTest {
+        readRepository.emit(
+            QuestionOccurrenceReadResult.Found(QuestionViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        deferCommand.exception = CycleDeferNotAllowedException("denied")
+        val events = mutableListOf<QuestionNavigationEvent>()
+        val job = launch { viewModel.navigation.collect { events.add(it) } }
+        viewModel.onDeferClicked()
+        advanceUntilIdle()
+        job.cancel()
+        assertTrue(events.isEmpty())
+        assertEquals(QuestionDeferError.NOT_ALLOWED, viewModel.commandUiState.value.deferError)
+        assertFalse(viewModel.commandUiState.value.isDeferring)
+    }
+
+    @Test
+    fun deferBusyBlocksSkipAndAnswer() = runTest {
+        readRepository.emit(
+            QuestionOccurrenceReadResult.Found(QuestionViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onDeferClicked()
+        viewModel.onSkipClicked()
+        viewModel.onAnswerClicked()
+        advanceUntilIdle()
+        assertEquals(1, deferCommand.invocations)
+        assertEquals(0, skipCommand.invocations)
+    }
+
+    @Test
+    fun doubleClickInvokesDeferOnce() = runTest {
+        readRepository.emit(
+            QuestionOccurrenceReadResult.Found(QuestionViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onDeferClicked()
+        viewModel.onDeferClicked()
+        advanceUntilIdle()
+        assertEquals(1, deferCommand.invocations)
     }
 
     @Test

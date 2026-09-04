@@ -9,6 +9,7 @@ import com.me4hik.praktika.data.backup.write.BackupMutationRequestSink
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.TimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
+import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.delete.AnswerDeleteRepository
 import com.me4hik.praktika.data.read.ArchiveReadRepository
@@ -31,6 +32,7 @@ data class PraktikaRuntime(
     val foregroundDriver: RuntimeForegroundDriver,
     val scheduleReadRepository: ScheduleReadRepository,
     val soundPreferenceRepository: SoundPreferenceRepository,
+    val deferDurationPreferenceRepository: DeferDurationPreferenceRepository,
     val practiceReadRepository: PracticeReadRepository,
     val archiveReadRepository: ArchiveReadRepository,
     // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - delete repository wiring

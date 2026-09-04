@@ -12,6 +12,8 @@ import com.me4hik.praktika.data.cycle.ScheduleSlotUpdate
 import com.me4hik.praktika.data.cycle.ScheduleUpdateResult
 import com.me4hik.praktika.data.cycle.ScheduleValidationException
 import com.me4hik.praktika.data.cycle.ScheduleValidationReason
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
+import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadRepository
@@ -49,6 +51,7 @@ class SettingsViewModel(
     private val pausePracticeCommand: PausePracticeCommand,
     private val resumePracticeCommand: ResumePracticeCommand,
     private val soundPreferenceRepository: SoundPreferenceRepository,
+    private val deferDurationPreferenceRepository: DeferDurationPreferenceRepository,
     private val notificationPermissionRepository: NotificationPermissionPolicy,
     private val notificationSyncRequester: NotificationSyncRequester,
     private val diagnosticReportSubmitter: DiagnosticReportSubmitter,
@@ -78,6 +81,7 @@ class SettingsViewModel(
     private var isSavingSchedule = false
     private var pendingAutosaveAfterCurrent = false
     private var isChangingSound = false
+    private var isChangingDeferDuration = false
     private var isChangingPauseState = false
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -104,13 +108,31 @@ class SettingsViewModel(
                 scheduleReadRepository.observeSchedule(),
                 practiceReadRepository.observeSnapshot(),
                 soundPreferenceRepository.soundEnabled,
-            ) { scheduleSnapshot, practiceSnapshot, soundEnabled ->
-                Triple(scheduleSnapshot.slots, practiceSnapshot, soundEnabled)
-            }.collect { (slots, practiceSnapshot, soundEnabled) ->
-                onSourcesUpdated(slots, practiceSnapshot.practiceState.isPaused, soundEnabled)
+                deferDurationPreferenceRepository.deferDurationMinutes,
+            ) { scheduleSnapshot, practiceSnapshot, soundEnabled, deferDurationMinutes ->
+                SettingsSourceSnapshot(
+                    slots = scheduleSnapshot.slots,
+                    isPracticePaused = practiceSnapshot.practiceState.isPaused,
+                    soundEnabled = soundEnabled,
+                    deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
+                )
+            }.collect { source ->
+                onSourcesUpdated(
+                    slots = source.slots,
+                    isPracticePaused = source.isPracticePaused,
+                    soundEnabled = source.soundEnabled,
+                    deferDurationMinutes = source.deferDurationMinutes,
+                )
             }
         }
     }
+
+    private data class SettingsSourceSnapshot(
+        val slots: List<ScheduleSlotReadModel>,
+        val isPracticePaused: Boolean,
+        val soundEnabled: Boolean,
+        val deferDurationMinutes: Int,
+    )
 
     fun draftMinutesBySlotIndex(): Map<Int, Int> {
         return mapOf(
@@ -126,6 +148,7 @@ class SettingsViewModel(
         publishContentFromDraft(
             isPracticePaused = currentPauseState(),
             soundEnabled = currentSoundEnabled(),
+            deferDurationMinutes = currentDeferDurationMinutes(),
         )
         requestAutosaveIfNeeded()
     }
@@ -139,6 +162,7 @@ class SettingsViewModel(
         publishContentFromDraft(
             isPracticePaused = content.isPracticePaused,
             soundEnabled = enabled,
+            deferDurationMinutes = content.deferDurationMinutes,
             isChangingSound = true,
             soundError = null,
         )
@@ -158,6 +182,7 @@ class SettingsViewModel(
                 publishContentFromDraft(
                     isPracticePaused = content.isPracticePaused,
                     soundEnabled = content.soundEnabled,
+                    deferDurationMinutes = content.deferDurationMinutes,
                     soundError = SettingsSoundError.SAVE_FAILED,
                 )
                 viewModelScope.launch {
@@ -168,6 +193,54 @@ class SettingsViewModel(
                 publishContentFromDraft(
                     isPracticePaused = currentPauseState(),
                     soundEnabled = currentSoundEnabled(),
+                    deferDurationMinutes = currentDeferDurationMinutes(),
+                )
+            }
+        }
+    }
+
+    fun onDeferDurationMinutesChanged(minutes: Int) {
+        if (isChangingDeferDuration) {
+            return
+        }
+        val content = _uiState.value as? SettingsUiState.Content ?: return
+        val sanitized = DeferDurationOptions.sanitize(minutes)
+        if (sanitized == content.deferDurationMinutes) {
+            return
+        }
+        isChangingDeferDuration = true
+        publishContentFromDraft(
+            isPracticePaused = content.isPracticePaused,
+            soundEnabled = content.soundEnabled,
+            deferDurationMinutes = sanitized,
+            isChangingDeferDuration = true,
+            deferError = null,
+        )
+
+        viewModelScope.launch {
+            try {
+                withContext(commandDispatcher) {
+                    deferDurationPreferenceRepository.setDeferDurationMinutes(sanitized)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Defer duration preference save failed", exception)
+                publishContentFromDraft(
+                    isPracticePaused = content.isPracticePaused,
+                    soundEnabled = content.soundEnabled,
+                    deferDurationMinutes = content.deferDurationMinutes,
+                    deferError = SettingsDeferError.SAVE_FAILED,
+                )
+                viewModelScope.launch {
+                    snackbarEvents.emit(SettingsSnackbarEvent.DeferDurationChangeFailed)
+                }
+            } finally {
+                isChangingDeferDuration = false
+                publishContentFromDraft(
+                    isPracticePaused = currentPauseState(),
+                    soundEnabled = currentSoundEnabled(),
+                    deferDurationMinutes = currentDeferDurationMinutes(),
                 )
             }
         }
@@ -454,6 +527,7 @@ class SettingsViewModel(
         slots: List<ScheduleSlotReadModel>,
         isPracticePaused: Boolean,
         soundEnabled: Boolean,
+        deferDurationMinutes: Int,
     ) {
         try {
             val ordered = slots.sortedBy { it.slotIndex }.map { it.timeOfDayMinutes }
@@ -475,6 +549,7 @@ class SettingsViewModel(
             publishContentFromDraft(
                 isPracticePaused = isPracticePaused,
                 soundEnabled = soundEnabled,
+                deferDurationMinutes = deferDurationMinutes,
             )
         } catch (_: CycleCorruptionException) {
             _uiState.value = SettingsUiState.FatalError(SettingsFatalError.SCHEDULE_CORRUPTION)
@@ -484,11 +559,14 @@ class SettingsViewModel(
     private fun publishContentFromDraft(
         isPracticePaused: Boolean,
         soundEnabled: Boolean,
+        deferDurationMinutes: Int = currentDeferDurationMinutes(),
         isSavingSchedule: Boolean = this.isSavingSchedule,
         isChangingSound: Boolean = this.isChangingSound,
+        isChangingDeferDuration: Boolean = this.isChangingDeferDuration,
         isChangingPauseState: Boolean = this.isChangingPauseState,
         scheduleError: SettingsScheduleError? = null,
         soundError: SettingsSoundError? = null,
+        deferError: SettingsDeferError? = null,
         pauseError: SettingsPauseError? = null,
     ) {
         val draft = readDraftSnapshot()
@@ -514,10 +592,13 @@ class SettingsViewModel(
             isSavingSchedule = isSavingSchedule,
             soundEnabled = soundEnabled,
             isChangingSound = isChangingSound,
+            deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
+            isChangingDeferDuration = isChangingDeferDuration,
             isPracticePaused = isPracticePaused,
             isChangingPauseState = isChangingPauseState,
             scheduleError = resolvedScheduleError,
             soundError = soundError,
+            deferError = deferError,
             pauseError = pauseError,
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
             backup = backupSession.uiState,
@@ -585,6 +666,11 @@ class SettingsViewModel(
 
     private fun currentSoundEnabled(): Boolean {
         return (_uiState.value as? SettingsUiState.Content)?.soundEnabled ?: true
+    }
+
+    private fun currentDeferDurationMinutes(): Int {
+        return (_uiState.value as? SettingsUiState.Content)?.deferDurationMinutes
+            ?: DeferDurationOptions.DEFAULT_MINUTES
     }
 
     private companion object {

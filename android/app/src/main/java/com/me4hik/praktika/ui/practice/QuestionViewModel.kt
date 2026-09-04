@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.me4hik.praktika.data.cycle.CycleCorruptionException
+import com.me4hik.praktika.data.cycle.CycleDeferNotAllowedException
+import com.me4hik.praktika.data.cycle.CycleResult
 import com.me4hik.praktika.data.cycle.CycleSkipNotAllowedException
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import com.me4hik.praktika.data.read.QuestionOccurrenceReadResult
@@ -30,6 +32,8 @@ class QuestionViewModel(
     private val occurrenceId: Long,
     private val readRepository: QuestionReadRepository,
     private val skipOccurrenceCommand: SkipOccurrenceCommand,
+    private val deferOccurrenceCommand: DeferOccurrenceCommand,
+    private val deferDurationMinutesProvider: suspend () -> Int,
     private val commandDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
@@ -77,14 +81,14 @@ class QuestionViewModel(
 
     fun onAnswerClicked() {
         val state = _uiState.value
-        if (state !is QuestionUiState.Interactive || commandState.value.isSkipping) {
+        if (state !is QuestionUiState.Interactive || commandState.value.isBusy) {
             return
         }
         navigationEvents.tryEmit(QuestionNavigationEvent.OpenAnswer(state.question.occurrenceId))
     }
 
     fun onSkipClicked() {
-        if (commandState.value.isSkipping) {
+        if (commandState.value.isBusy) {
             return
         }
         val state = _uiState.value
@@ -111,6 +115,43 @@ class QuestionViewModel(
                 commandState.value = commandState.value.copy(
                     isSkipping = false,
                     skipError = QuestionSkipError.FAILED,
+                )
+            }
+        }
+    }
+
+    fun onDeferClicked() {
+        if (commandState.value.isBusy) {
+            return
+        }
+        val state = _uiState.value
+        if (state !is QuestionUiState.Interactive) {
+            return
+        }
+        commandState.value = commandState.value.copy(isDeferring = true, deferError = null)
+        viewModelScope.launch {
+            try {
+                val appliedMinutes = withContext(commandDispatcher) {
+                    val durationMinutes = deferDurationMinutesProvider()
+                    val result = deferOccurrenceCommand.defer(occurrenceId, durationMinutes)
+                    (result as? CycleResult.DeferCompleted)?.durationMinutes ?: durationMinutes
+                }
+                navigationEvents.tryEmit(
+                    QuestionNavigationEvent.ReturnHomeAfterDefer(appliedMinutes),
+                )
+            } catch (_: CycleDeferNotAllowedException) {
+                commandState.value = commandState.value.copy(
+                    isDeferring = false,
+                    deferError = QuestionDeferError.NOT_ALLOWED,
+                )
+            } catch (exception: CancellationException) {
+                commandState.value = commandState.value.copy(isDeferring = false)
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Defer failed", exception)
+                commandState.value = commandState.value.copy(
+                    isDeferring = false,
+                    deferError = QuestionDeferError.FAILED,
                 )
             }
         }

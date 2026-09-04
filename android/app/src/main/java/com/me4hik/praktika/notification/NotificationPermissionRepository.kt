@@ -164,11 +164,8 @@ class NotificationPermissionRepository(
     }
 
     private fun selectedChannelId(soundEnabled: Boolean): String {
-        return if (soundEnabled) {
-            PracticeNotificationChannels.SOUND
-        } else {
-            PracticeNotificationChannels.SILENT
-        }
+        // Permission / channel-blocked checks follow the due (HIGH) channels used for live questions.
+        return AndroidPracticeNotificationPresenter.dueChannelId(soundEnabled)
     }
 
     private companion object {

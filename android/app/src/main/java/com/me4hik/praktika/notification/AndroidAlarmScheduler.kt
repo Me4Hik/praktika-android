@@ -29,6 +29,7 @@ class AndroidAlarmScheduler(
         }
         plan.plannedBoundaryAlarm?.let { scheduleBoundary(it) }
         plan.expiryBoundaryAlarm?.let { scheduleBoundary(it) }
+        plan.deferredReminderAlarm?.let { scheduleBoundary(it) }
     }
 
     override fun cancelAlarms(alarms: List<BoundaryAlarmPlan>) {
@@ -124,6 +125,7 @@ class AndroidAlarmScheduler(
             null -> when (alarm.eventType) {
                 BoundaryEventType.PLANNED_BOUNDARY -> schedulePlannedReminder(triggerAt, operation, capability)
                 BoundaryEventType.EXPIRY_BOUNDARY -> scheduleMaintenanceReminder(triggerAt, operation)
+                BoundaryEventType.DEFERRED_REMINDER -> schedulePlannedReminder(triggerAt, operation, capability)
             }
         }
 
@@ -131,6 +133,7 @@ class AndroidAlarmScheduler(
         val decision = when (alarm.eventType) {
             BoundaryEventType.PLANNED_BOUNDARY -> PlannedBoundarySchedulerDecision.BIAS_SCHEDULE
             BoundaryEventType.EXPIRY_BOUNDARY -> PlannedBoundarySchedulerDecision.NORMAL_REARM
+            BoundaryEventType.DEFERRED_REMINDER -> PlannedBoundarySchedulerDecision.NORMAL_REARM
         }
         recordScheduled(alarm, scheduled, capability, decision)
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
@@ -279,6 +282,7 @@ class AndroidAlarmScheduler(
         return when (eventType) {
             BoundaryEventType.PLANNED_BOUNDARY -> "planned"
             BoundaryEventType.EXPIRY_BOUNDARY -> "expiry"
+            BoundaryEventType.DEFERRED_REMINDER -> "deferred"
         }
     }
 
@@ -286,13 +290,9 @@ class AndroidAlarmScheduler(
         alarm: BoundaryAlarmPlan,
         flags: Int,
     ): PendingIntent? {
-        val intent = Intent(context, PracticeAlarmReceiver::class.java).apply {
-            action = actionFor(alarm)
-            putExtra(PracticeAlarmReceiver.EXTRA_OCCURRENCE_ID, alarm.occurrenceId)
-            putExtra(PracticeAlarmReceiver.EXTRA_EVENT_TYPE, alarm.eventType.name)
-            putExtra(PracticeAlarmReceiver.EXTRA_BOUNDARY_EPOCH_MILLIS, alarm.triggerAtEpochMillis)
-            putExtra(PracticeAlarmReceiver.EXTRA_PLANNED_AT_EPOCH_MILLIS, alarm.plannedAtEpochMillis)
-        }
+        // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik START - shared canonical Intent
+        val intent = PracticeAlarmIntents.buildReceiverIntent(context, alarm)
+        // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik END
         return PendingIntent.getBroadcast(
             context,
             requestCodeFor(alarm),

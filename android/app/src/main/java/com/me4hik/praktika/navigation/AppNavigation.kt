@@ -45,6 +45,8 @@ import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.runtime.PraktikaRuntime
 import androidx.activity.ComponentActivity
 import com.me4hik.praktika.ui.components.PracticeSnackbarHost
+import com.me4hik.praktika.ui.components.showPracticeActionSnackbar
+import com.me4hik.praktika.ui.components.showPracticeInfoSnackbar
 import com.me4hik.praktika.ui.archive.ArchiveDatesScreen
 import com.me4hik.praktika.ui.archive.ArchiveDatesViewModel
 import com.me4hik.praktika.ui.archive.ArchiveDayScreen
@@ -182,6 +184,7 @@ fun AppNavigation(
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingSaveConfirmation by remember { mutableStateOf<PendingSaveConfirmation?>(null) }
     var pendingSettingsSnackbarMessage by remember { mutableStateOf<String?>(null) }
+    var pendingDeferSnackbarMessage by remember { mutableStateOf<String?>(null) }
     // 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik START - export orchestration wiring
     // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik START - format dialog before export
     val context = LocalContext.current
@@ -365,18 +368,19 @@ fun AppNavigation(
     val settingsPracticeResumedMessage = stringResource(R.string.settings_practice_resumed)
     val settingsScheduleSaveFailedMessage = stringResource(R.string.settings_schedule_save_error)
     val settingsSoundChangeFailedMessage = stringResource(R.string.settings_sound_error)
+    val settingsDeferChangeFailedMessage = stringResource(R.string.settings_defer_error)
     val settingsPauseChangeFailedMessage = stringResource(R.string.settings_pause_error)
 
     LaunchedEffect(pendingSaveConfirmation) {
         when (val pending = pendingSaveConfirmation) {
             null -> return@LaunchedEffect
             PendingSaveConfirmation.ConfirmationOnly -> {
-                snackbarHostState.showSnackbar(message = saveConfirmationMessage)
+                snackbarHostState.showPracticeInfoSnackbar(saveConfirmationMessage)
                 pendingSaveConfirmation = null
             }
             // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik START - history offer snackbar action
             is PendingSaveConfirmation.WithHistoryOffer -> {
-                val result = snackbarHostState.showSnackbar(
+                val result = snackbarHostState.showPracticeActionSnackbar(
                     message = saveConfirmationMessage,
                     actionLabel = viewHistoryActionLabel,
                 )
@@ -393,8 +397,14 @@ fun AppNavigation(
 
     LaunchedEffect(pendingSettingsSnackbarMessage) {
         val message = pendingSettingsSnackbarMessage ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(message = message)
+        snackbarHostState.showPracticeInfoSnackbar(message)
         pendingSettingsSnackbarMessage = null
+    }
+
+    LaunchedEffect(pendingDeferSnackbarMessage) {
+        val message = pendingDeferSnackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showPracticeInfoSnackbar(message)
+        pendingDeferSnackbarMessage = null
     }
 
     LaunchedEffect(runtime.notificationOpenRequestStore, navController) {
@@ -508,6 +518,7 @@ fun AppNavigation(
                         uiState = QuestionUiState.Blocked(null, QuestionBlockedReason.NOT_FOUND),
                         commandState = QuestionCommandState(),
                         onAnswer = {},
+                        onDefer = {},
                         onSkip = {},
                         onBackHome = {
                             navController.popBackStack(Routes.HOME, inclusive = false)
@@ -537,6 +548,19 @@ fun AppNavigation(
                                         }
                                     }
                                 }
+                                is QuestionNavigationEvent.ReturnHomeAfterDefer -> {
+                                    val popped = navController.popBackStack(Routes.HOME, inclusive = false)
+                                    if (!popped) {
+                                        navController.navigate(Routes.HOME) {
+                                            popUpTo(Routes.HOME) { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                    pendingDeferSnackbarMessage = context.getString(
+                                        R.string.question_deferred_for_minutes,
+                                        event.durationMinutes,
+                                    )
+                                }
                             }
                         }
                     }
@@ -545,6 +569,7 @@ fun AppNavigation(
                         uiState = questionUiState,
                         commandState = commandState,
                         onAnswer = questionViewModel::onAnswerClicked,
+                        onDefer = questionViewModel::onDeferClicked,
                         onSkip = questionViewModel::onSkipClicked,
                         onBackHome = {
                             navController.popBackStack(Routes.HOME, inclusive = false)
@@ -811,6 +836,7 @@ fun AppNavigation(
                             SettingsSnackbarEvent.PracticeResumed -> settingsPracticeResumedMessage
                             SettingsSnackbarEvent.ScheduleSaveFailed -> settingsScheduleSaveFailedMessage
                             SettingsSnackbarEvent.SoundChangeFailed -> settingsSoundChangeFailedMessage
+                            SettingsSnackbarEvent.DeferDurationChangeFailed -> settingsDeferChangeFailedMessage
                             SettingsSnackbarEvent.PauseStateChangeFailed -> settingsPauseChangeFailedMessage
                             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
                             is SettingsSnackbarEvent.BackupMessage ->
@@ -845,6 +871,7 @@ fun AppNavigation(
                     uiState = settingsUiState,
                     onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
                     onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
+                    onDeferDurationMinutesChanged = settingsViewModel::onDeferDurationMinutesChanged,
                     onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
                     onTogglePauseState = settingsViewModel::togglePauseState,
                     onBack = settingsViewModel::onBackRequested,

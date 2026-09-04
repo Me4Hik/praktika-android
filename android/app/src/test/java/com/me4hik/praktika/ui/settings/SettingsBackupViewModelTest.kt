@@ -15,7 +15,10 @@ import com.me4hik.praktika.data.backup.settings.BackupSettingsSetupVerifyResult
 import com.me4hik.praktika.data.backup.setup.SetupCandidateClassification
 import com.me4hik.praktika.data.cycle.ScheduleUpdateResult
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
+import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
+import kotlinx.coroutines.flow.flowOf
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.PracticeReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleReadRepository
@@ -74,23 +77,23 @@ class SettingsBackupViewModelTest {
                 )
             },
             practiceReadRepository = object : PracticeReadRepository {
-                override fun observeSnapshot(): Flow<PracticeReadSnapshot> = MutableStateFlow(
-                    PracticeReadSnapshot(
-                        practiceState = PracticeStateEntity(
-                            id = 1,
-                            isPracticeStarted = true,
-                            isPaused = false,
-                            practiceStartedAtEpochMillis = 1L,
-                            currentCycleNumber = 1,
-                            nextCyclePosition = 2,
-                            lastProcessedAtEpochMillis = 1L,
-                            pausedAtEpochMillis = null,
-                            activeZoneId = "UTC",
-                            seedVersion = 1,
-                        ),
-                        incompleteOccurrence = null,
+                private val snapshot = PracticeReadSnapshot(
+                    practiceState = PracticeStateEntity(
+                        id = 1,
+                        isPracticeStarted = true,
+                        isPaused = false,
+                        practiceStartedAtEpochMillis = 1L,
+                        currentCycleNumber = 1,
+                        nextCyclePosition = 2,
+                        lastProcessedAtEpochMillis = 1L,
+                        pausedAtEpochMillis = null,
+                        activeZoneId = "UTC",
+                        seedVersion = 1,
                     ),
+                    incompleteOccurrence = null,
                 )
+                override fun observeSnapshot(): Flow<PracticeReadSnapshot> = MutableStateFlow(snapshot)
+                override suspend fun readSnapshot(): PracticeReadSnapshot = snapshot
             },
             updateScheduleCommand = UpdateScheduleCommand { ScheduleUpdateResult.Success },
             pausePracticeCommand = PausePracticeCommand {
@@ -105,6 +108,10 @@ class SettingsBackupViewModelTest {
                 override suspend fun setSoundEnabled(enabled: Boolean) {
                     state.value = enabled
                 }
+            },
+            deferDurationPreferenceRepository = object : DeferDurationPreferenceRepository {
+                override val deferDurationMinutes: Flow<Int> = flowOf(DeferDurationOptions.DEFAULT_MINUTES)
+                override suspend fun setDeferDurationMinutes(minutes: Int) = Unit
             },
             notificationPermissionRepository = object : NotificationPermissionPolicy {
                 private val revision = MutableStateFlow(0L)

@@ -1,5 +1,6 @@
 package com.me4hik.praktika.notification
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.service.notification.StatusBarNotification
@@ -147,18 +148,137 @@ class AndroidPracticeNotificationPresenterTest {
     fun findActive_readsOccurrenceFromStableNotificationExtras() {
         presenter.showNotification(showPlan(occurrenceId = 77L, text = "current"))
         assertEquals(77L, presenter.findActivePracticeNotificationOccurrenceId())
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.findActivePracticeNotificationKind())
+    }
+
+    @Test
+    fun snoozedNotification_usesSameTagId_andRepeatCopy() {
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 10L,
+                plannedAt = 1_000L,
+                text = "Q",
+                kind = PracticeNotificationKind.SNOOZED,
+                deferredUntil = 1_800_000L,
+                zoneId = "UTC",
+            ),
+        )
+        val posted = practiceNotifications().single()
+        assertEquals(AndroidPracticeNotificationPresenter.PRACTICE_NOTIFICATION_ID, posted.id)
+        assertEquals(AndroidPracticeNotificationPresenter.NOTIFICATION_TAG, posted.tag)
+        assertEquals(
+            PracticeNotificationKind.SNOOZED,
+            presenter.findActivePracticeNotificationKind(),
+        )
+        val expectedBody = context.getString(
+            com.me4hik.praktika.R.string.notification_snoozed_body,
+            SnoozedNotificationCopy.formatRepeatAt(1_800_000L, "UTC"),
+        )
+        assertEquals(expectedBody, posted.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())
+        assertEquals(1, posted.notification.actions?.size ?: 0)
+        assertEquals(
+            context.getString(com.me4hik.praktika.R.string.notification_action_answer_now),
+            posted.notification.actions!![0].title.toString(),
+        )
+
+        val bodyIntent = Shadows.shadowOf(posted.notification.contentIntent).savedIntent
+        assertEquals(MainActivity::class.java.name, bodyIntent.component?.className)
+        assertEquals(10L, bodyIntent.getLongExtra(MainActivity.EXTRA_NOTIFICATION_OCCURRENCE_ID, -1L))
+        assertEquals(1_000L, bodyIntent.getLongExtra(MainActivity.EXTRA_NOTIFICATION_PLANNED_AT, -1L))
+        assertEquals(
+            MainActivity.NOTIFICATION_SOURCE_VALUE,
+            bodyIntent.getStringExtra(MainActivity.EXTRA_NOTIFICATION_SOURCE),
+        )
+
+        val answerNowIntent = Shadows.shadowOf(posted.notification.actions!![0].actionIntent).savedIntent
+        assertEquals(MainActivity::class.java.name, answerNowIntent.component?.className)
+        assertEquals(10L, answerNowIntent.getLongExtra(MainActivity.EXTRA_NOTIFICATION_OCCURRENCE_ID, -1L))
+        assertEquals(1_000L, answerNowIntent.getLongExtra(MainActivity.EXTRA_NOTIFICATION_PLANNED_AT, -1L))
+        assertEquals(
+            MainActivity.NOTIFICATION_SOURCE_VALUE,
+            answerNowIntent.getStringExtra(MainActivity.EXTRA_NOTIFICATION_SOURCE),
+        )
+        assertEquals(PracticeNotificationChannels.SNOOZED, posted.notification.channelId)
+    }
+
+    @Test
+    fun dueQuestion_keepsAnswerAndDeferActions() {
+        presenter.showNotification(
+            showPlan(occurrenceId = 5L, plannedAt = 2_000L, text = "due question"),
+        )
+        val posted = practiceNotifications().single()
+        assertEquals(AndroidPracticeNotificationPresenter.PRACTICE_NOTIFICATION_ID, posted.id)
+        assertEquals(AndroidPracticeNotificationPresenter.NOTIFICATION_TAG, posted.tag)
+        assertEquals(2, posted.notification.actions?.size ?: 0)
+        assertEquals(
+            context.getString(com.me4hik.praktika.R.string.notification_action_answer),
+            posted.notification.actions!![0].title.toString(),
+        )
+        assertEquals(
+            context.getString(com.me4hik.praktika.R.string.notification_action_defer),
+            posted.notification.actions!![1].title.toString(),
+        )
+        val answerIntent = Shadows.shadowOf(posted.notification.actions!![0].actionIntent).savedIntent
+        assertEquals(MainActivity::class.java.name, answerIntent.component?.className)
+        assertEquals(5L, answerIntent.getLongExtra(MainActivity.EXTRA_NOTIFICATION_OCCURRENCE_ID, -1L))
+        val deferIntent = Shadows.shadowOf(posted.notification.actions!![1].actionIntent).savedIntent
+        assertEquals(
+            NotificationDeferActionReceiver::class.java.name,
+            deferIntent.component?.className,
+        )
+    }
+
+    @Test
+    fun dueQuestion_usesHighImportanceChannel() {
+        presenter.ensureChannelsCreated()
+        presenter.showNotification(showPlan(occurrenceId = 3L, text = "due", soundEnabled = true))
+        val posted = practiceNotifications().single()
+        assertEquals(PracticeNotificationChannels.DUE_SOUND, posted.notification.channelId)
+        val channel = notificationManager.getNotificationChannel(PracticeNotificationChannels.DUE_SOUND)
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, channel.importance)
+
+        presenter.showNotification(showPlan(occurrenceId = 3L, text = "due", soundEnabled = false))
+        val silentPosted = practiceNotifications().single()
+        assertEquals(PracticeNotificationChannels.DUE_SILENT, silentPosted.notification.channelId)
+        val silentChannel = notificationManager.getNotificationChannel(PracticeNotificationChannels.DUE_SILENT)
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, silentChannel.importance)
+    }
+
+    @Test
+    fun snoozedThenDue_refreshesSameIdToQuestion() {
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 10L,
+                text = "Q",
+                kind = PracticeNotificationKind.SNOOZED,
+                deferredUntil = 1_800L,
+            ),
+        )
+        presenter.showNotification(showPlan(occurrenceId = 10L, text = "Q again"))
+        val posted = practiceNotifications().single()
+        assertEquals(AndroidPracticeNotificationPresenter.PRACTICE_NOTIFICATION_ID, posted.id)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.findActivePracticeNotificationKind())
+        assertEquals("Q again", posted.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())
+        assertEquals(PracticeNotificationChannels.DUE_SILENT, posted.notification.channelId)
     }
 
     private fun showPlan(
         occurrenceId: Long,
         plannedAt: Long = 1_000L,
         text: String,
+        soundEnabled: Boolean = false,
+        kind: PracticeNotificationKind = PracticeNotificationKind.QUESTION,
+        deferredUntil: Long? = null,
+        zoneId: String = "UTC",
     ): NotificationShowPlan {
         return NotificationShowPlan(
             occurrenceId = occurrenceId,
             plannedAtEpochMillis = plannedAt,
             questionTextSnapshot = text,
-            soundEnabled = false,
+            soundEnabled = soundEnabled,
+            kind = kind,
+            deferredUntilEpochMillis = deferredUntil,
+            zoneId = zoneId,
         )
     }
 

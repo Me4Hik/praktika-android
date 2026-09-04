@@ -6,6 +6,8 @@ interface PracticeNotificationPresenter {
 
     fun findActivePracticeNotificationOccurrenceId(): Long?
 
+    fun findActivePracticeNotificationKind(): PracticeNotificationKind?
+
     fun showNotification(plan: NotificationShowPlan)
 
     fun cancelCurrentPracticeNotification()

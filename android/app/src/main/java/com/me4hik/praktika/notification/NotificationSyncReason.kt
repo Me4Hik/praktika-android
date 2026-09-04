@@ -6,6 +6,7 @@ enum class NotificationSyncReason {
     FOREGROUND,
     PLANNED_ALARM,
     EXPIRY_ALARM,
+    DEFERRED_ALARM,
     MUTATION,
     SOUND_CHANGED,
     PERMISSION_CHANGED,

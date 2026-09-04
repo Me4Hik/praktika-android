@@ -17,10 +17,13 @@ sealed interface SettingsUiState {
         val isSavingSchedule: Boolean,
         val soundEnabled: Boolean,
         val isChangingSound: Boolean,
+        val deferDurationMinutes: Int,
+        val isChangingDeferDuration: Boolean,
         val isPracticePaused: Boolean,
         val isChangingPauseState: Boolean,
         val scheduleError: SettingsScheduleError?,
         val soundError: SettingsSoundError?,
+        val deferError: SettingsDeferError?,
         val pauseError: SettingsPauseError?,
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
         val backup: BackupSettingsUiState = BackupSettingsUiState(),
@@ -42,6 +45,10 @@ enum class SettingsSoundError {
     SAVE_FAILED,
 }
 
+enum class SettingsDeferError {
+    SAVE_FAILED,
+}
+
 enum class SettingsPauseError {
     PAUSE_FAILED,
     RESUME_FAILED,
@@ -57,6 +64,7 @@ sealed interface SettingsSnackbarEvent {
     data object PracticeResumed : SettingsSnackbarEvent
     data object ScheduleSaveFailed : SettingsSnackbarEvent
     data object SoundChangeFailed : SettingsSnackbarEvent
+    data object DeferDurationChangeFailed : SettingsSnackbarEvent
     data object PauseStateChangeFailed : SettingsSnackbarEvent
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
     data class BackupMessage(val messageResId: Int) : SettingsSnackbarEvent
@@ -87,6 +95,11 @@ object SettingsTestTags {
     const val SETTINGS_SCHEDULE_PROGRESS = "settings_schedule_progress"
     const val SETTINGS_SCHEDULE_ERROR = "settings_schedule_error"
     const val SETTINGS_SOUND_SWITCH = "settings_sound_switch"
+    const val SETTINGS_DEFER_SECTION = "settings_defer_section"
+    const val SETTINGS_DEFER_5 = "settings_defer_5"
+    const val SETTINGS_DEFER_10 = "settings_defer_10"
+    const val SETTINGS_DEFER_15 = "settings_defer_15"
+    const val SETTINGS_DEFER_30 = "settings_defer_30"
     const val SETTINGS_NOTIFICATION_SETTINGS = "settings_notification_settings"
     const val SETTINGS_PAUSE_RESUME = "settings_pause_resume"
     const val SETTINGS_PAUSE_PROGRESS = "settings_pause_progress"

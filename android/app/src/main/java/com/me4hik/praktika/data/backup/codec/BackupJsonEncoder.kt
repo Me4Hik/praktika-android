@@ -135,6 +135,8 @@ object BackupJsonEncoder {
             writeNullableLong(occurrenceWriter, occurrence.openedAtEpochMillis)
             occurrenceWriter.key("completedAtEpochMillis")
             writeNullableLong(occurrenceWriter, occurrence.completedAtEpochMillis)
+            occurrenceWriter.key("deferredUntilEpochMillis")
+            writeNullableLong(occurrenceWriter, occurrence.deferredUntilEpochMillis)
             occurrenceWriter.key("status")
             occurrenceWriter.value(occurrence.status)
             occurrenceWriter.key("zoneId")

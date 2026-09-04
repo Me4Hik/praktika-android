@@ -23,6 +23,7 @@ import com.me4hik.praktika.notification.NotificationOpenRequestStore
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.notification.PlatformAlarmScheduler
 import com.me4hik.praktika.notification.PracticeNotificationCoordinator
+import com.me4hik.praktika.notification.PracticeNotificationKind
 import com.me4hik.praktika.notification.PracticeNotificationPresenter
 import com.me4hik.praktika.notification.BoundaryAlarmPlan
 import com.me4hik.praktika.notification.NotificationShowPlan
@@ -564,6 +565,8 @@ private class NoOpPracticeNotificationPresenter : PracticeNotificationPresenter 
     override fun ensureChannelsCreated() = Unit
 
     override fun findActivePracticeNotificationOccurrenceId(): Long? = null
+
+    override fun findActivePracticeNotificationKind(): PracticeNotificationKind? = null
 
     override fun showNotification(plan: NotificationShowPlan) = Unit
 

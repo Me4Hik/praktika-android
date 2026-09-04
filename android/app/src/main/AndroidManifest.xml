@@ -40,6 +40,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".notification.NotificationDeferActionReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".notification.SystemEventReceiver"
             android:exported="false">
             <!-- No-data system events: BOOT/TIME intents have null data and must not share package: scheme. -->

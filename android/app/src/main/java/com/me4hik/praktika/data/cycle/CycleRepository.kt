@@ -281,6 +281,22 @@ class CycleRepository(
         result
     }
 
+    suspend fun deferAvailableOccurrence(
+        expectedOccurrenceId: Long,
+        durationMinutes: Int,
+    ): CycleResult = mutex.withLock {
+        val result = runCycleTransaction {
+            deferAvailableOccurrenceInternal(
+                expectedOccurrenceId = expectedOccurrenceId,
+                durationMinutes = durationMinutes,
+            )
+        }
+        if (result is CycleResult.DeferCompleted) {
+            requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+        }
+        result
+    }
+
     // 05.08.2026 Answer Save cursor by Me4Hik START - атомарное сохранение ответа
     suspend fun saveAnswer(
         expectedOccurrenceId: Long,
@@ -680,6 +696,64 @@ class CycleRepository(
         return CycleResult.SkipCompleted
     }
 
+    private suspend fun deferAvailableOccurrenceInternal(
+        expectedOccurrenceId: Long,
+        durationMinutes: Int,
+    ): CycleResult {
+        require(durationMinutes in ALLOWED_DEFER_DURATION_MINUTES) {
+            "Unsupported defer durationMinutes=$durationMinutes"
+        }
+        val state = loadPracticeState()
+        ensurePracticeActive(state)
+
+        val now = timeProvider.nowEpochMillis()
+        val slots = loadValidatedSlots()
+        val zoneId = state.activeZoneId
+
+        reconcileInternal(state, slots, zoneId, now)
+
+        val refreshedState = loadPracticeState()
+        validateInvariants(slots)
+
+        val incomplete = database.questionOccurrenceDao().getIncompleteOrdered()
+        if (incomplete.size != 1 || incomplete.single().status != QuestionOccurrenceStatus.AVAILABLE) {
+            throw CycleDeferNotAllowedException("No active AVAILABLE occurrence to defer")
+        }
+
+        val available = incomplete.single()
+        if (available.id != expectedOccurrenceId) {
+            throw CycleDeferNotAllowedException(
+                "Expected occurrence $expectedOccurrenceId but current is ${available.id}",
+            )
+        }
+        if (now >= available.availableUntilEpochMillis) {
+            throw CycleDeferNotAllowedException(
+                "Defer is not allowed after deadline; reconciliation must mark MISSED_BY_TIME first",
+            )
+        }
+
+        val deferredUntil = now + durationMinutes * MINUTE_MILLIS
+        val updatedRows = database.questionOccurrenceDao().deferAvailableOccurrence(
+            id = available.id,
+            deferredUntilEpochMillis = deferredUntil,
+        )
+        if (updatedRows != 1) {
+            throw CycleCorruptionException("Failed to defer AVAILABLE occurrence ${available.id}")
+        }
+
+        database.practiceStateDao().update(
+            refreshedState.copy(
+                lastProcessedAtEpochMillis = maxLastProcessed(refreshedState.lastProcessedAtEpochMillis, now),
+            ),
+        )
+        validateInvariants(slots)
+        return CycleResult.DeferCompleted(
+            occurrenceId = available.id,
+            deferredUntilEpochMillis = deferredUntil,
+            durationMinutes = durationMinutes,
+        )
+    }
+
     suspend fun pausePractice(): CycleResult = mutex.withLock {
         val result = runCycleTransaction {
             val state = loadPracticeState()
@@ -881,6 +955,15 @@ class CycleRepository(
                 QuestionOccurrenceStatus.AVAILABLE -> {
                     when {
                         now < current.availableUntilEpochMillis -> {
+                            // Matured defer promise: one-shot consume before notification planning.
+                            // Expiry branch below wins when availableUntil has already passed.
+                            val consumed = database.questionOccurrenceDao().consumeMaturedDeferIfDue(
+                                id = current.id,
+                                nowEpochMillis = now,
+                            )
+                            if (consumed == 1) {
+                                changed = true
+                            }
                             persistPracticeStateIfNeeded(state, cursorState, changed, now)
                             return changed
                         }
@@ -1245,6 +1328,8 @@ class CycleRepository(
     private companion object {
         const val TAG = "CycleRepository"
         const val MAX_RECONCILE_ITERATIONS = 10_000
+        const val MINUTE_MILLIS = 60_000L
+        val ALLOWED_DEFER_DURATION_MINUTES = setOf(5, 10, 15, 30)
         // 06.08.2026 Settings Schedule cursor by Me4Hik START - staged minutes вне 0..1439
         const val STAGED_SLOT_MINUTES_BASE = 10_000
         // 06.08.2026 Settings Schedule cursor by Me4Hik END

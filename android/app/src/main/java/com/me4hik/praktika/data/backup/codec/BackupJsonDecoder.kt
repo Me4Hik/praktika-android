@@ -53,7 +53,7 @@ object BackupJsonDecoder {
         "timeOfDayMinutes",
     )
 
-    private val OCCURRENCE_KEYS = setOf(
+    private val OCCURRENCE_KEYS_REQUIRED = setOf(
         "questionId",
         "questionTextSnapshot",
         "cycleNumber",
@@ -66,6 +66,8 @@ object BackupJsonDecoder {
         "status",
         "zoneId",
     )
+
+    private val OCCURRENCE_KEYS_ALLOWED = OCCURRENCE_KEYS_REQUIRED + "deferredUntilEpochMillis"
 
     private val ANSWER_KEYS = setOf(
         "cycleNumber",
@@ -193,7 +195,12 @@ object BackupJsonDecoder {
         val result = mutableListOf<BackupOccurrence>()
         for (index in 0 until array.length()) {
             val item = readArrayObject(array, index, "occurrences[$index]") ?: return null
-            keyFailure(item, OCCURRENCE_KEYS, "occurrences[$index]")?.let { return null }
+            keyFailure(
+                item,
+                requiredKeys = OCCURRENCE_KEYS_REQUIRED,
+                allowedKeys = OCCURRENCE_KEYS_ALLOWED,
+                path = "occurrences[$index]",
+            )?.let { return null }
             val questionId = readInt(item, "questionId", "occurrences[$index]") ?: return null
             val questionTextSnapshot = readNonNullString(item, "questionTextSnapshot", "occurrences[$index]") ?: return null
             val cycleNumber = readInt(item, "cycleNumber", "occurrences[$index]") ?: return null
@@ -204,6 +211,12 @@ object BackupJsonDecoder {
             val openedAtEpochMillis = readNullableLong(item, "openedAtEpochMillis", "occurrences[$index]")
             if (decodeFailed) return null
             val completedAtEpochMillis = readNullableLong(item, "completedAtEpochMillis", "occurrences[$index]")
+            if (decodeFailed) return null
+            val deferredUntilEpochMillis = if (item.has("deferredUntilEpochMillis")) {
+                readNullableLong(item, "deferredUntilEpochMillis", "occurrences[$index]")
+            } else {
+                null
+            }
             if (decodeFailed) return null
             val status = readNonNullString(item, "status", "occurrences[$index]") ?: return null
             if (status !in ALLOWED_STATUS_NAMES) {
@@ -221,6 +234,7 @@ object BackupJsonDecoder {
                 availableUntilEpochMillis = availableUntilEpochMillis,
                 openedAtEpochMillis = openedAtEpochMillis,
                 completedAtEpochMillis = completedAtEpochMillis,
+                deferredUntilEpochMillis = deferredUntilEpochMillis,
                 status = status,
                 zoneId = zoneId,
             )
@@ -265,12 +279,26 @@ object BackupJsonDecoder {
         expectedKeys: Set<String>,
         path: String,
     ): BackupJsonDecodeResult.Failure? {
+        return keyFailure(
+            json = json,
+            requiredKeys = expectedKeys,
+            allowedKeys = expectedKeys,
+            path = path,
+        )
+    }
+
+    private fun keyFailure(
+        json: JSONObject,
+        requiredKeys: Set<String>,
+        allowedKeys: Set<String>,
+        path: String,
+    ): BackupJsonDecodeResult.Failure? {
         val actualKeys = json.keys().asSequence().toSet()
-        val unknown = actualKeys - expectedKeys
+        val unknown = actualKeys - allowedKeys
         if (unknown.isNotEmpty()) {
             return failure(BackupFormatFailureReason.UnknownField, "Unknown field at $path")
         }
-        val missing = expectedKeys - actualKeys
+        val missing = requiredKeys - actualKeys
         if (missing.isNotEmpty()) {
             return failure(BackupFormatFailureReason.MissingField, "Missing field at $path")
         }

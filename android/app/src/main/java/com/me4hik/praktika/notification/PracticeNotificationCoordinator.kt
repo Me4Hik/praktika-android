@@ -4,8 +4,11 @@ package com.me4hik.praktika.notification
 
 import android.util.Log
 import com.me4hik.praktika.data.cycle.CycleRepository
+import com.me4hik.praktika.data.cycle.CycleResult
 import com.me4hik.praktika.data.cycle.TimeProvider
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
+import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.PracticeReadSnapshot
 import com.me4hik.praktika.diagnostics.DiagnosticCategory
@@ -68,80 +71,98 @@ class PracticeNotificationCoordinator(
             return
         }
         mutex.withLock {
-            try {
-                notificationPresenter.ensureChannelsCreated()
-                cycleRepository.syncEnvironmentAndReconcile()
-                val snapshot = readSnapshot()
-                val permissionRequested = permissionRepository.permissionRequested.first()
-                val permissionState = permissionRepository.evaluateUiState(
-                    permissionRequested = permissionRequested,
-                    soundEnabled = soundEnabledProvider(),
+            syncLocked(reason)
+        }
+    }
+
+    /** Must run under [mutex]. */
+    private suspend fun syncLocked(reason: NotificationSyncReason) {
+        try {
+            notificationPresenter.ensureChannelsCreated()
+            cycleRepository.syncEnvironmentAndReconcile()
+            val snapshot = readSnapshot()
+            val permissionRequested = permissionRepository.permissionRequested.first()
+            val permissionState = permissionRepository.evaluateUiState(
+                permissionRequested = permissionRequested,
+                soundEnabled = soundEnabledProvider(),
+            )
+            val capability = permissionRepository.toDeliveryCapability(permissionState)
+            TargetedBugDiagnostics.NotificationTraceContext.syncReason = reason.name
+            TargetedBugDiagnostics.NotificationTraceContext.deliveryCapability = capability.name
+            val activeNotificationOccurrenceId = readActiveOccurrenceIdBestEffort()
+            val activeNotificationKind = readActiveKindBestEffort()
+            val soundEnabled = soundEnabledProvider()
+            val plan = NotificationPlanner.plan(
+                input = NotificationPlanningInput(
+                    isPracticeStarted = snapshot.practiceState.isPracticeStarted,
+                    isPaused = snapshot.practiceState.isPaused,
+                    nowEpochMillis = timeProvider.nowEpochMillis(),
+                    currentOccurrence = snapshot.incompleteOccurrence?.toNotificationSnapshot(),
+                    notificationCapability = capability,
+                    activeNotificationOccurrenceId = activeNotificationOccurrenceId,
+                    activeNotificationKind = activeNotificationKind,
+                ),
+                soundEnabled = soundEnabled,
+            )
+            if (plan.cancelNotification) {
+                cancelPracticeNotificationsBestEffort()
+            } else {
+                cancelLegacyPracticeNotificationsBestEffort(
+                    currentOccurrenceId = snapshot.incompleteOccurrence?.id,
+                    syncReason = reason.name,
                 )
-                val capability = permissionRepository.toDeliveryCapability(permissionState)
-                TargetedBugDiagnostics.NotificationTraceContext.syncReason = reason.name
-                TargetedBugDiagnostics.NotificationTraceContext.deliveryCapability = capability.name
-                val activeNotificationOccurrenceId = readActiveOccurrenceIdBestEffort()
-                val soundEnabled = soundEnabledProvider()
-                val plan = NotificationPlanner.plan(
-                    input = NotificationPlanningInput(
-                        isPracticeStarted = snapshot.practiceState.isPracticeStarted,
-                        isPaused = snapshot.practiceState.isPaused,
-                        nowEpochMillis = timeProvider.nowEpochMillis(),
-                        currentOccurrence = snapshot.incompleteOccurrence?.toNotificationSnapshot(),
-                        notificationCapability = capability,
-                        activeNotificationOccurrenceId = activeNotificationOccurrenceId,
+            }
+            val previousAlarms = scheduledAlarms
+            scheduledAlarms = listOfNotNull(
+                plan.plannedBoundaryAlarm,
+                plan.expiryBoundaryAlarm,
+                plan.deferredReminderAlarm,
+            )
+            alarmScheduler.scheduleAlarms(plan, previousAlarms)
+            plan.showNotification?.let { showPlan ->
+                notificationPresenter.showNotification(showPlan)
+            }
+            if (DiagnosticsRecorder.isInitialized()) {
+                val occurrence = snapshot.incompleteOccurrence
+                DiagnosticsRecorder.get().record(
+                    category = DiagnosticCategory.NOTIFICATION,
+                    name = "notification_sync_result",
+                    metadata = mapOf(
+                        "reason" to reason.name,
+                        "capability" to capability.name,
+                        "cancel_notification" to plan.cancelNotification.toString(),
+                        "show_notification" to (plan.showNotification != null).toString(),
+                        "show_kind" to (plan.showNotification?.kind?.name ?: ""),
+                        "alarm_count" to scheduledAlarms.size.toString(),
+                        "occurrence_id" to (occurrence?.id?.toString() ?: ""),
+                        "occurrence_status" to (occurrence?.status?.name ?: ""),
+                        "planned_alarm_trigger_at" to (
+                            plan.plannedBoundaryAlarm?.triggerAtEpochMillis?.toString() ?: ""
+                        ),
+                        "expiry_alarm_trigger_at" to (
+                            plan.expiryBoundaryAlarm?.triggerAtEpochMillis?.toString() ?: ""
+                        ),
+                        "deferred_alarm_trigger_at" to (
+                            plan.deferredReminderAlarm?.triggerAtEpochMillis?.toString() ?: ""
+                        ),
                     ),
-                    soundEnabled = soundEnabled,
                 )
-                if (plan.cancelNotification) {
-                    cancelPracticeNotificationsBestEffort()
-                } else {
-                    cancelLegacyPracticeNotificationsBestEffort(
-                        currentOccurrenceId = snapshot.incompleteOccurrence?.id,
-                        syncReason = reason.name,
-                    )
-                }
-                val previousAlarms = scheduledAlarms
-                scheduledAlarms = listOfNotNull(plan.plannedBoundaryAlarm, plan.expiryBoundaryAlarm)
-                alarmScheduler.scheduleAlarms(plan, previousAlarms)
-                plan.showNotification?.let { showPlan ->
-                    notificationPresenter.showNotification(showPlan)
-                }
-                if (DiagnosticsRecorder.isInitialized()) {
-                    val occurrence = snapshot.incompleteOccurrence
-                    DiagnosticsRecorder.get().record(
-                        category = DiagnosticCategory.NOTIFICATION,
-                        name = "notification_sync_result",
-                        metadata = mapOf(
-                            "reason" to reason.name,
-                            "capability" to capability.name,
-                            "cancel_notification" to plan.cancelNotification.toString(),
-                            "show_notification" to (plan.showNotification != null).toString(),
-                            "alarm_count" to scheduledAlarms.size.toString(),
-                            "occurrence_id" to (occurrence?.id?.toString() ?: ""),
-                            "occurrence_status" to (occurrence?.status?.name ?: ""),
-                            "planned_alarm_trigger_at" to (
-                                plan.plannedBoundaryAlarm?.triggerAtEpochMillis?.toString() ?: ""
-                            ),
-                            "expiry_alarm_trigger_at" to (
-                                plan.expiryBoundaryAlarm?.triggerAtEpochMillis?.toString() ?: ""
-                            ),
-                        ),
-                    )
-                }
-            } catch (exception: Exception) {
-                Log.e(TAG, "Notification sync failed reason=$reason", exception)
-                if (DiagnosticsRecorder.isInitialized()) {
-                    DiagnosticsRecorder.get().recordCaughtException("PracticeNotificationCoordinator.sync", exception)
-                    DiagnosticsRecorder.get().record(
-                        category = DiagnosticCategory.NOTIFICATION,
-                        name = "notification_sync_error",
-                        metadata = mapOf(
-                            "reason" to reason.name,
-                            "error" to exception.javaClass.simpleName,
-                        ),
-                    )
-                }
+            }
+        } catch (exception: Exception) {
+            Log.e(TAG, "Notification sync failed reason=$reason", exception)
+            if (DiagnosticsRecorder.isInitialized()) {
+                DiagnosticsRecorder.get().recordCaughtException(
+                    "PracticeNotificationCoordinator.sync",
+                    exception,
+                )
+                DiagnosticsRecorder.get().record(
+                    category = DiagnosticCategory.NOTIFICATION,
+                    name = "notification_sync_error",
+                    metadata = mapOf(
+                        "reason" to reason.name,
+                        "error" to exception.javaClass.simpleName,
+                    ),
+                )
             }
         }
     }
@@ -209,6 +230,54 @@ class PracticeNotificationCoordinator(
         }
     }
 
+    suspend fun handleNotificationDefer(
+        occurrenceId: Long,
+        plannedAtEpochMillis: Long,
+        durationMinutes: Int,
+    ): NotificationDeferDecision {
+        if (!initializer.ensureInitialized()) {
+            return NotificationDeferDecision.Ignore
+        }
+        return mutex.withLock {
+            try {
+                cycleRepository.syncEnvironmentAndReconcile()
+                val snapshot = readSnapshot()
+                val practiceState = snapshot.practiceState
+                if (!practiceState.isPracticeStarted || practiceState.isPaused) {
+                    return@withLock NotificationDeferDecision.Ignore
+                }
+                val target = snapshot.incompleteOccurrence?.takeIf { it.id == occurrenceId }
+                    ?: cycleRepository.getOccurrenceById(occurrenceId)
+                val occurrence = target ?: return@withLock NotificationDeferDecision.Ignore
+                if (occurrence.id != occurrenceId) {
+                    return@withLock NotificationDeferDecision.Ignore
+                }
+                if (occurrence.plannedAtEpochMillis != plannedAtEpochMillis) {
+                    return@withLock NotificationDeferDecision.Ignore
+                }
+                if (snapshot.incompleteOccurrence?.id != occurrence.id) {
+                    return@withLock NotificationDeferDecision.Ignore
+                }
+                if (occurrence.status != QuestionOccurrenceStatus.AVAILABLE) {
+                    return@withLock NotificationDeferDecision.Ignore
+                }
+                val sanitizedMinutes = DeferDurationOptions.sanitize(durationMinutes)
+                val result = cycleRepository.deferAvailableOccurrence(
+                    expectedOccurrenceId = occurrenceId,
+                    durationMinutes = sanitizedMinutes,
+                )
+                // Re-plan under the same lock: Clock-like snoozed notification on the same id.
+                syncLocked(NotificationSyncReason.MUTATION)
+                val appliedMinutes = (result as? CycleResult.DeferCompleted)?.durationMinutes
+                    ?: sanitizedMinutes
+                NotificationDeferDecision.Deferred(appliedMinutes)
+            } catch (exception: Exception) {
+                Log.e(TAG, "Notification defer handling failed", exception)
+                NotificationDeferDecision.Ignore
+            }
+        }
+    }
+
     private fun readActiveOccurrenceIdBestEffort(): Long? {
         return try {
             notificationPresenter.findActivePracticeNotificationOccurrenceId()
@@ -223,6 +292,18 @@ class PracticeNotificationCoordinator(
                     exception,
                 )
             }
+            null
+        }
+    }
+
+    private fun readActiveKindBestEffort(): PracticeNotificationKind? {
+        return try {
+            notificationPresenter.findActivePracticeNotificationKind()
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            Log.w(TAG, "Failed to read active Practice notification kind", exception)
             null
         }
     }
@@ -273,30 +354,11 @@ class PracticeNotificationCoordinator(
     }
 
     private suspend fun syncAfterTap() {
-        val snapshot = readSnapshot()
-        val permissionRequested = permissionRepository.permissionRequested.first()
-        val permissionState = permissionRepository.evaluateUiState(
-            permissionRequested = permissionRequested,
-            soundEnabled = soundEnabledProvider(),
-        )
-        val plan = NotificationPlanner.plan(
-            input = NotificationPlanningInput(
-                isPracticeStarted = snapshot.practiceState.isPracticeStarted,
-                isPaused = snapshot.practiceState.isPaused,
-                nowEpochMillis = timeProvider.nowEpochMillis(),
-                currentOccurrence = snapshot.incompleteOccurrence?.toNotificationSnapshot(),
-                notificationCapability = permissionRepository.toDeliveryCapability(permissionState),
-                activeNotificationOccurrenceId =
-                    notificationPresenter.findActivePracticeNotificationOccurrenceId(),
-            ),
-            soundEnabled = soundEnabledProvider(),
-        )
-        alarmScheduler.scheduleAlarms(plan, scheduledAlarms)
-        scheduledAlarms = listOfNotNull(plan.plannedBoundaryAlarm, plan.expiryBoundaryAlarm)
+        syncLocked(NotificationSyncReason.NOTIFICATION_TAP)
     }
 
     private suspend fun readSnapshot(): PracticeReadSnapshot {
-        return practiceReadRepository.observeSnapshot().first()
+        return practiceReadRepository.readSnapshot()
     }
 
     private fun QuestionOccurrenceEntity.toNotificationSnapshot(): NotificationOccurrenceSnapshot {
@@ -307,6 +369,8 @@ class PracticeNotificationCoordinator(
             availableUntilEpochMillis = availableUntilEpochMillis,
             questionTextSnapshot = questionTextSnapshot,
             openedAtEpochMillis = openedAtEpochMillis,
+            deferredUntilEpochMillis = deferredUntilEpochMillis,
+            zoneId = zoneId,
         )
     }
 

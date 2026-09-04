@@ -45,6 +45,7 @@ data class QuestionOccurrenceEntity(
     val availableUntilEpochMillis: Long,
     val openedAtEpochMillis: Long? = null,
     val completedAtEpochMillis: Long? = null,
+    val deferredUntilEpochMillis: Long? = null,
     val status: QuestionOccurrenceStatus,
     val zoneId: String,
 )

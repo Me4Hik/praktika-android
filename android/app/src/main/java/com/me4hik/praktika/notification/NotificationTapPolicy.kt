@@ -10,6 +10,11 @@ sealed interface NotificationTapDecision {
     data object Ignore : NotificationTapDecision
 }
 
+sealed interface NotificationDeferDecision {
+    data class Deferred(val durationMinutes: Int) : NotificationDeferDecision
+    data object Ignore : NotificationDeferDecision
+}
+
 object NotificationTapPolicy {
     fun evaluate(
         practiceState: PracticeStateEntity,

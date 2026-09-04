@@ -133,6 +133,7 @@ class SettingsSlotAffordanceInstrumentedTest {
                     uiState = sampleContent(isSavingSchedule = true),
                     onSlotTimeChange = { _, _ -> },
                     onSoundEnabledChanged = {},
+                    onDeferDurationMinutesChanged = {},
                     onOpenNotificationSettings = {},
                     onTogglePauseState = {},
                     onBack = {},
@@ -276,10 +277,13 @@ class SettingsSlotAffordanceInstrumentedTest {
             isSavingSchedule = isSavingSchedule,
             soundEnabled = true,
             isChangingSound = false,
+            deferDurationMinutes = 15,
+            isChangingDeferDuration = false,
             isPracticePaused = false,
             isChangingPauseState = false,
             scheduleError = null,
             soundError = null,
+            deferError = null,
             pauseError = null,
         )
     }

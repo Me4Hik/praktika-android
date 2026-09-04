@@ -6,6 +6,7 @@ import android.content.Context
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.SystemTimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
+import com.me4hik.praktika.data.preferences.DataStoreDeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.DataStoreSoundPreferenceRepository
 import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
@@ -79,6 +80,7 @@ object RuntimeFactory {
         val answerDeleteRepository = RoomAnswerDeleteRepository(database, backupMutationRequestSink)
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END
         val soundPreferenceRepository = DataStoreSoundPreferenceRepository(appContext)
+        val deferDurationPreferenceRepository = DataStoreDeferDurationPreferenceRepository(appContext)
         val openRequestStore = NotificationOpenRequestStore()
         val alarmScheduler = AndroidAlarmScheduler(appContext)
         val notificationPresenter = AndroidPracticeNotificationPresenter(appContext)
@@ -122,6 +124,7 @@ object RuntimeFactory {
             foregroundDriver = foregroundDriver,
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
+            deferDurationPreferenceRepository = deferDurationPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
             answerDeleteRepository = answerDeleteRepository,

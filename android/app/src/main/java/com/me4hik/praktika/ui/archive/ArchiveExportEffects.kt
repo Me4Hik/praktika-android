@@ -8,6 +8,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.me4hik.praktika.export.csv.CsvArchiveFormatter
+import com.me4hik.praktika.ui.components.showPracticeInfoSnackbar
 
 @Composable
 fun ArchiveExportEffects(
@@ -44,13 +45,13 @@ fun ArchiveExportEffects(
                     }
                 }
                 ArchiveExportUiEvent.NoAnswers -> {
-                    snackbarHostState.showSnackbar(noAnswersMessage)
+                    snackbarHostState.showPracticeInfoSnackbar(noAnswersMessage)
                 }
                 ArchiveExportUiEvent.Success -> {
-                    snackbarHostState.showSnackbar(successMessage)
+                    snackbarHostState.showPracticeInfoSnackbar(successMessage)
                 }
                 ArchiveExportUiEvent.WriteFailed -> {
-                    snackbarHostState.showSnackbar(writeErrorMessage)
+                    snackbarHostState.showPracticeInfoSnackbar(writeErrorMessage)
                 }
             }
         }

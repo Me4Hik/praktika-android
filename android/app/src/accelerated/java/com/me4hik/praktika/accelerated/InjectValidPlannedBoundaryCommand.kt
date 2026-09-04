@@ -10,6 +10,7 @@ import com.me4hik.praktika.notification.BoundaryAlarmPlan
 import com.me4hik.praktika.notification.BoundaryEventType
 import com.me4hik.praktika.notification.PlannedBoundaryTiming
 import com.me4hik.praktika.notification.PracticeAlarmIdentity
+import com.me4hik.praktika.notification.PracticeAlarmIntents
 import com.me4hik.praktika.notification.PracticeAlarmReceiver
 
 /**
@@ -149,13 +150,19 @@ object InjectValidPlannedBoundaryCommand {
         val plannedAt = requireNotNull(ready.plannedAtMs)
         val biasedTriggerAt = requireNotNull(ready.biasedTriggerAtMs)
         val action = requireNotNull(ready.intentAction)
-        return Intent(context, PracticeAlarmReceiver::class.java).apply {
-            this.action = action
-            putExtra(PracticeAlarmReceiver.EXTRA_OCCURRENCE_ID, occurrenceId)
-            putExtra(PracticeAlarmReceiver.EXTRA_EVENT_TYPE, BoundaryEventType.PLANNED_BOUNDARY.name)
-            putExtra(PracticeAlarmReceiver.EXTRA_BOUNDARY_EPOCH_MILLIS, biasedTriggerAt)
-            putExtra(PracticeAlarmReceiver.EXTRA_PLANNED_AT_EPOCH_MILLIS, plannedAt)
+        // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik START - shared canonical Intent
+        return PracticeAlarmIntents.buildReceiverIntent(
+            context,
+            BoundaryAlarmPlan(
+                occurrenceId = occurrenceId,
+                eventType = BoundaryEventType.PLANNED_BOUNDARY,
+                triggerAtEpochMillis = biasedTriggerAt,
+                plannedAtEpochMillis = plannedAt,
+            ),
+        ).also {
+            require(it.action == action) { "canonical action mismatch" }
         }
+        // 04.09.2026 Accelerated deferred-reminder inject harness cursor by Me4Hik END
     }
 
     /**

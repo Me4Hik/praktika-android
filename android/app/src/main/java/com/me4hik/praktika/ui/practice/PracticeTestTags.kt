@@ -38,6 +38,8 @@ object PracticeTestTags {
     const val QUESTION_LOADING = "question_loading"
     const val QUESTION_TEXT = "question_text"
     const val QUESTION_ANSWER = "question_answer_button"
+    const val QUESTION_DEFER = "question_defer_button"
+    const val QUESTION_DEFER_PROGRESS = "question_defer_progress"
     const val QUESTION_SKIP = "question_skip_button"
     const val QUESTION_SKIP_PROGRESS = "question_skip_progress"
     const val QUESTION_BLOCKED = "question_blocked"

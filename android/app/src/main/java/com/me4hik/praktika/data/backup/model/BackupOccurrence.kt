@@ -11,6 +11,7 @@ class BackupOccurrence(
     val availableUntilEpochMillis: Long,
     val openedAtEpochMillis: Long?,
     val completedAtEpochMillis: Long?,
+    val deferredUntilEpochMillis: Long? = null,
     val status: String,
     val zoneId: String,
 ) {
@@ -26,6 +27,7 @@ class BackupOccurrence(
             availableUntilEpochMillis == other.availableUntilEpochMillis &&
             openedAtEpochMillis == other.openedAtEpochMillis &&
             completedAtEpochMillis == other.completedAtEpochMillis &&
+            deferredUntilEpochMillis == other.deferredUntilEpochMillis &&
             status == other.status &&
             zoneId == other.zoneId
     }
@@ -40,6 +42,7 @@ class BackupOccurrence(
         result = 31 * result + availableUntilEpochMillis.hashCode()
         result = 31 * result + (openedAtEpochMillis?.hashCode() ?: 0)
         result = 31 * result + (completedAtEpochMillis?.hashCode() ?: 0)
+        result = 31 * result + (deferredUntilEpochMillis?.hashCode() ?: 0)
         result = 31 * result + status.hashCode()
         result = 31 * result + zoneId.hashCode()
         return result

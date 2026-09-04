@@ -29,6 +29,8 @@ import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.SystemTimeProvider
 import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
 import com.me4hik.praktika.data.local.PraktikaDatabase
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
+import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
 import com.me4hik.praktika.data.read.RoomPracticeReadRepository
@@ -45,6 +47,7 @@ import com.me4hik.praktika.notification.NotificationSyncRequester
 import com.me4hik.praktika.notification.BoundaryAlarmPlan
 import com.me4hik.praktika.notification.PlatformAlarmScheduler
 import com.me4hik.praktika.notification.PracticeNotificationCoordinator
+import com.me4hik.praktika.notification.PracticeNotificationKind
 import com.me4hik.praktika.notification.PracticeNotificationPresenter
 import com.me4hik.praktika.notification.ResidualPlannedRecoveryResult
 import java.util.concurrent.CopyOnWriteArrayList
@@ -414,6 +417,10 @@ class Stage62B1RuntimeStartupWiringTest {
             override val soundEnabled: Flow<Boolean> = flowOf(true)
             override suspend fun setSoundEnabled(enabled: Boolean) = Unit
         }
+        val deferDurationPreferenceRepository = object : DeferDurationPreferenceRepository {
+            override val deferDurationMinutes: Flow<Int> = flowOf(DeferDurationOptions.DEFAULT_MINUTES)
+            override suspend fun setDeferDurationMinutes(minutes: Int) = Unit
+        }
         val openRequestStore = NotificationOpenRequestStore()
         lateinit var runtimeRef: PraktikaRuntime
         val initializer = PraktikaRuntimeInitializer(context) { runtimeRef }
@@ -460,6 +467,7 @@ class Stage62B1RuntimeStartupWiringTest {
             notificationPresenter = object : PracticeNotificationPresenter {
                 override fun ensureChannelsCreated() = Unit
                 override fun findActivePracticeNotificationOccurrenceId(): Long? = null
+                override fun findActivePracticeNotificationKind(): PracticeNotificationKind? = null
                 override fun showNotification(plan: NotificationShowPlan) = Unit
                 override fun cancelCurrentPracticeNotification() = Unit
                 override fun cancelLegacyPracticeNotifications(
@@ -492,6 +500,7 @@ class Stage62B1RuntimeStartupWiringTest {
             },
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
+            deferDurationPreferenceRepository = deferDurationPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
             answerDeleteRepository = answerDeleteRepository,

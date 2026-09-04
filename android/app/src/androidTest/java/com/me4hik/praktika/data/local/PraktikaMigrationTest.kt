@@ -6,6 +6,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.me4hik.praktika.data.local.migration.MIGRATION_1_2
+import com.me4hik.praktika.data.local.migration.MIGRATION_2_3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -62,6 +63,51 @@ class PraktikaMigrationTest {
 
     @Test
     @Throws(IOException::class)
+    fun migrate2To3_addsNullableDeferredUntilWithoutDataLoss() {
+        helper.createDatabase(TEST_DB, 2).apply {
+            execSQL(
+                "INSERT INTO questions (id, cyclePosition, text, isActive) VALUES (1, 1, 'Keep me', 1)",
+            )
+            execSQL("INSERT INTO schedule_slots (slotIndex, timeOfDayMinutes) VALUES (1, 660)")
+            execSQL(
+                """
+                INSERT INTO question_occurrences (
+                    questionId,
+                    questionTextSnapshot,
+                    cycleNumber,
+                    cyclePosition,
+                    scheduleSlotIndex,
+                    plannedAtEpochMillis,
+                    availableUntilEpochMillis,
+                    openedAtEpochMillis,
+                    completedAtEpochMillis,
+                    status,
+                    zoneId
+                ) VALUES (1, 'Keep me', 1, 1, 1, 1000, 2000, 1500, NULL, 'AVAILABLE', 'UTC')
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 3, true, MIGRATION_2_3).apply {
+            query(
+                """
+                SELECT questionTextSnapshot, status, openedAtEpochMillis, deferredUntilEpochMillis
+                FROM question_occurrences WHERE id = 1
+                """.trimIndent(),
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Keep me", cursor.getString(0))
+                assertEquals("AVAILABLE", cursor.getString(1))
+                assertEquals(1500L, cursor.getLong(2))
+                assertTrue(cursor.isNull(3))
+            }
+            close()
+        }
+    }
+
+    @Test
+    @Throws(IOException::class)
     fun migrateFromVersion1RequiresExplicitMigration() {
         helper.createDatabase(TEST_DB, 1).close()
 
@@ -73,11 +119,11 @@ class PraktikaMigrationTest {
             PraktikaDatabase::class.java,
             databasePath,
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
         migratedDatabase.openHelper.writableDatabase.use { db ->
-            assertEquals(2, db.version)
+            assertEquals(3, db.version)
         }
         migratedDatabase.close()
     }

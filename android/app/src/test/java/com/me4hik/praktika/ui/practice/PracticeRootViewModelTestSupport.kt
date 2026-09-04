@@ -98,6 +98,7 @@ internal object PracticeRootViewModelTestSupport {
     class FakePracticeReadRepository : PracticeReadRepository {
         private val snapshots = MutableSharedFlow<PracticeReadSnapshot>(replay = 1, extraBufferCapacity = 1)
         private var failure: Throwable? = null
+        private var latest: PracticeReadSnapshot? = null
 
         override fun observeSnapshot(): Flow<PracticeReadSnapshot> {
             return flow {
@@ -106,8 +107,14 @@ internal object PracticeRootViewModelTestSupport {
             }
         }
 
+        override suspend fun readSnapshot(): PracticeReadSnapshot {
+            failure?.let { throw it }
+            return latest ?: error("FakePracticeReadRepository has no snapshot")
+        }
+
         fun emit(snapshot: PracticeReadSnapshot) {
             failure = null
+            latest = snapshot
             snapshots.tryEmit(snapshot)
         }
 
