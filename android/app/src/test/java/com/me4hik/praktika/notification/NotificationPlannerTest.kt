@@ -340,6 +340,91 @@ class NotificationPlannerTest {
     }
 
     @Test
+    fun availableCatchUp_quietSuppressesAlertFlag() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
+                quietCatchUp = true,
+            ),
+            soundEnabled = true,
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertTrue(shown.suppressAlert)
+        assertTrue(shown.soundEnabled)
+    }
+
+    @Test
+    fun availableAlarmDriven_doesNotSuppressAlert() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
+                quietCatchUp = false,
+            ),
+            soundEnabled = true,
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertFalse(shown.suppressAlert)
+    }
+
+    @Test
+    fun availableDeferredExpired_forcesQuestionAlertingEvenIfQuietCatchUp() {
+        // Maturity refresh over SNOOZED: quietCatchUp must not apply to SNOOZED branch;
+        // once deferred expired in snapshot without consume, QUESTION show respects quiet flag
+        // from input — DEFERRED_ALARM path passes quietCatchUp=false from coordinator.
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_900L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    deferredUntilEpochMillis = 1_800L,
+                ),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.SNOOZED,
+                quietCatchUp = false,
+            ),
+            soundEnabled = true,
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertFalse(shown.suppressAlert)
+    }
+
+    @Test
+    fun availableCatchUp_activeQuestionStillDedupes() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.QUESTION,
+                quietCatchUp = true,
+            ),
+            soundEnabled = true,
+        )
+        assertNull(plan.showNotification)
+    }
+
+    @Test
+    fun availableCatchUp_openedAtStillBlocksShow() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    openedAtEpochMillis = 1_400L,
+                ),
+                quietCatchUp = true,
+            ),
+            soundEnabled = true,
+        )
+        assertNull(plan.showNotification)
+    }
+
+    @Test
     fun availableDeferredExpired_showsNotificationAgain() {
         val plan = NotificationPlanner.plan(
             input = baseInput(
@@ -389,6 +474,7 @@ class NotificationPlannerTest {
         notificationCapability: NotificationDeliveryCapability = NotificationDeliveryCapability.ENABLED,
         activeNotificationOccurrenceId: Long? = null,
         activeNotificationKind: PracticeNotificationKind? = null,
+        quietCatchUp: Boolean = false,
     ): NotificationPlanningInput {
         return NotificationPlanningInput(
             isPracticeStarted = isPracticeStarted,
@@ -398,6 +484,7 @@ class NotificationPlannerTest {
             notificationCapability = notificationCapability,
             activeNotificationOccurrenceId = activeNotificationOccurrenceId,
             activeNotificationKind = activeNotificationKind,
+            quietCatchUp = quietCatchUp,
         )
     }
 }

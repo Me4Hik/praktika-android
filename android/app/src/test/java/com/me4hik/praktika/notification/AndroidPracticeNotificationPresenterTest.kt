@@ -245,6 +245,24 @@ class AndroidPracticeNotificationPresenterTest {
     }
 
     @Test
+    fun dueQuestion_suppressAlert_usesSilentChannelAndOnlyAlertOnce() {
+        presenter.ensureChannelsCreated()
+        presenter.showNotification(
+            showPlan(occurrenceId = 3L, text = "catch-up", soundEnabled = true, suppressAlert = true),
+        )
+        val posted = practiceNotifications().single()
+        assertEquals(PracticeNotificationChannels.DUE_SILENT, posted.notification.channelId)
+        assertTrue(
+            posted.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0,
+        )
+        assertEquals(
+            PracticeNotificationKind.QUESTION,
+            presenter.findActivePracticeNotificationKind(),
+        )
+        assertEquals(3L, presenter.findActivePracticeNotificationOccurrenceId())
+    }
+
+    @Test
     fun snoozedThenDue_refreshesSameIdToQuestion() {
         presenter.showNotification(
             showPlan(
@@ -270,6 +288,7 @@ class AndroidPracticeNotificationPresenterTest {
         kind: PracticeNotificationKind = PracticeNotificationKind.QUESTION,
         deferredUntil: Long? = null,
         zoneId: String = "UTC",
+        suppressAlert: Boolean = false,
     ): NotificationShowPlan {
         return NotificationShowPlan(
             occurrenceId = occurrenceId,
@@ -279,6 +298,7 @@ class AndroidPracticeNotificationPresenterTest {
             kind = kind,
             deferredUntilEpochMillis = deferredUntil,
             zoneId = zoneId,
+            suppressAlert = suppressAlert,
         )
     }
 

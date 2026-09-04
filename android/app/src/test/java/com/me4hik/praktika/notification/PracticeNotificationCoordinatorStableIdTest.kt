@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -86,7 +87,64 @@ class PracticeNotificationCoordinatorStableIdTest {
         assertEquals(1, presenter.legacyCancelCalls)
         assertEquals(1, presenter.shown.size)
         assertEquals(currentOccurrenceId(), presenter.shown.single().occurrenceId)
+        assertTrue(presenter.shown.single().suppressAlert)
         assertEquals(0, presenter.cancelAllCalls)
+    }
+
+    @Test
+    fun foregroundCatchUp_postsQuietDueWhenShadeEmpty() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+
+        assertEquals(1, presenter.shown.size)
+        val shown = presenter.shown.single()
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertTrue(shown.suppressAlert)
+        assertTrue(shown.soundEnabled)
+    }
+
+    @Test
+    fun plannedAlarm_postsAlertingDue() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+
+        coordinator.sync(NotificationSyncReason.PLANNED_ALARM)
+
+        assertEquals(1, presenter.shown.size)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.single().kind)
+        assertFalse(presenter.shown.single().suppressAlert)
+    }
+
+    @Test
+    fun deferredAlarmMaturity_postsAlertingDue() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        timeProvider.setEpochMillis(epochAt(11, 40, 0))
+        presenter.resetShowsOnly()
+        presenter.activeOccurrenceId = occurrence.id
+        presenter.activeKind = PracticeNotificationKind.SNOOZED
+
+        coordinator.sync(NotificationSyncReason.DEFERRED_ALARM)
+
+        assertEquals(1, presenter.shown.size)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.single().kind)
+        assertFalse(presenter.shown.single().suppressAlert)
+    }
+
+    @Test
+    fun foregroundCatchUp_keepsDedupeWhenActiveQuestionPresent() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        presenter.activeOccurrenceId = occurrence.id
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.resetShowsOnly()
+
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+
+        assertTrue(presenter.shown.isEmpty())
     }
 
     @Test
@@ -333,6 +391,7 @@ class PracticeNotificationCoordinatorStableIdTest {
         assertEquals(QuestionOccurrenceStatus.AVAILABLE, current.status)
         assertEquals(listOf(current.id), presenter.shown.map { it.occurrenceId })
         assertTrue(presenter.shown.none { it.occurrenceId == occurrenceA.id })
+        assertFalse(presenter.shown.single().suppressAlert)
     }
 
     @Test

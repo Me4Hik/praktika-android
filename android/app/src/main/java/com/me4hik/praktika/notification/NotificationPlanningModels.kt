@@ -38,6 +38,8 @@ data class NotificationPlanningInput(
     val notificationCapability: NotificationDeliveryCapability,
     val activeNotificationOccurrenceId: Long?,
     val activeNotificationKind: PracticeNotificationKind? = null,
+    /** When true, due QUESTION re-posts without audible/heads-up alert (FG/APP_START catch-up). */
+    val quietCatchUp: Boolean = false,
 )
 
 data class BoundaryAlarmPlan(
@@ -55,6 +57,8 @@ data class NotificationShowPlan(
     val kind: PracticeNotificationKind = PracticeNotificationKind.QUESTION,
     val deferredUntilEpochMillis: Long? = null,
     val zoneId: String = "UTC",
+    /** Quiet re-materialize: same content/actions, no sound / heads-up interruption. */
+    val suppressAlert: Boolean = false,
 )
 
 data class NotificationPlan(

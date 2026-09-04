@@ -101,6 +101,7 @@ class PracticeNotificationCoordinator(
                     notificationCapability = capability,
                     activeNotificationOccurrenceId = activeNotificationOccurrenceId,
                     activeNotificationKind = activeNotificationKind,
+                    quietCatchUp = reason.isQuietCatchUp(),
                 ),
                 soundEnabled = soundEnabled,
             )
@@ -133,6 +134,7 @@ class PracticeNotificationCoordinator(
                         "cancel_notification" to plan.cancelNotification.toString(),
                         "show_notification" to (plan.showNotification != null).toString(),
                         "show_kind" to (plan.showNotification?.kind?.name ?: ""),
+                        "suppress_alert" to (plan.showNotification?.suppressAlert?.toString() ?: ""),
                         "alarm_count" to scheduledAlarms.size.toString(),
                         "occurrence_id" to (occurrence?.id?.toString() ?: ""),
                         "occurrence_status" to (occurrence?.status?.name ?: ""),

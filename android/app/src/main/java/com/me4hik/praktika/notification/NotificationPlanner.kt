@@ -106,6 +106,7 @@ object NotificationPlanner {
                     soundEnabled = soundEnabled,
                     kind = PracticeNotificationKind.QUESTION,
                     zoneId = occurrence.zoneId,
+                    suppressAlert = input.quietCatchUp,
                 )
             } else {
                 null

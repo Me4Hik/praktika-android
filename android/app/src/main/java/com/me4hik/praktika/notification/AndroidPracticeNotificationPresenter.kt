@@ -111,10 +111,11 @@ class AndroidPracticeNotificationPresenter(
     }
 
     private fun showQuestionNotification(plan: NotificationShowPlan) {
-        val channelId = if (plan.soundEnabled) {
-            PracticeNotificationChannels.DUE_SOUND
-        } else {
-            PracticeNotificationChannels.DUE_SILENT
+        // Quiet catch-up uses existing DUE_SILENT (no new channel) + setSilent to avoid re-alert.
+        val channelId = when {
+            plan.suppressAlert -> PracticeNotificationChannels.DUE_SILENT
+            plan.soundEnabled -> PracticeNotificationChannels.DUE_SOUND
+            else -> PracticeNotificationChannels.DUE_SILENT
         }
         val contentIntent = PendingIntent.getActivity(
             context,
@@ -140,7 +141,7 @@ class AndroidPracticeNotificationPresenter(
             .setContentText(context.getString(R.string.notification_public_body))
             .setSmallIcon(R.drawable.ic_notification_practice)
             .build()
-        val notification = NotificationCompat.Builder(context, channelId)
+        val builder = NotificationCompat.Builder(context, channelId)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(plan.questionTextSnapshot)
             .setStyle(NotificationCompat.BigTextStyle().bigText(plan.questionTextSnapshot))
@@ -163,8 +164,11 @@ class AndroidPracticeNotificationPresenter(
                 deferActionIntent,
             )
             .addExtras(identityExtras)
-            .build()
-        postPracticeNotification(plan.occurrenceId, channelId, notification)
+        if (plan.suppressAlert) {
+            builder.setSilent(true)
+            builder.setOnlyAlertOnce(true)
+        }
+        postPracticeNotification(plan.occurrenceId, channelId, builder.build())
     }
 
     private fun showSnoozedNotification(plan: NotificationShowPlan) {
