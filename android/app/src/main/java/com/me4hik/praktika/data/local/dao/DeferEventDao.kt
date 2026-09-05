@@ -6,6 +6,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.me4hik.praktika.data.local.entity.DeferEventEntity
+import com.me4hik.praktika.data.local.model.ArchiveDeferEventRow
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DeferEventDao {
@@ -43,4 +45,44 @@ interface DeferEventDao {
 
     @Query("DELETE FROM defer_events")
     suspend fun deleteAll()
+
+    // PROMPT 115 — defer archive history rows (joined occurrence snapshot/cycle)
+    @Query(
+        """
+        SELECT
+            d.id AS deferEventId,
+            d.occurrenceId AS occurrenceId,
+            d.questionId AS questionId,
+            o.questionTextSnapshot AS questionTextSnapshot,
+            o.cycleNumber AS cycleNumber,
+            o.cyclePosition AS cyclePosition,
+            d.occurredAtEpochMillis AS occurredAtEpochMillis,
+            d.deferredUntilEpochMillis AS deferredUntilEpochMillis,
+            d.durationMinutes AS durationMinutes
+        FROM defer_events d
+        INNER JOIN question_occurrences o ON d.occurrenceId = o.id
+        WHERE d.questionId = :questionId
+        ORDER BY d.occurredAtEpochMillis ASC, d.id ASC
+        """,
+    )
+    fun observeArchiveDeferRowsForQuestion(questionId: Int): Flow<List<ArchiveDeferEventRow>>
+
+    @Query(
+        """
+        SELECT
+            d.id AS deferEventId,
+            d.occurrenceId AS occurrenceId,
+            d.questionId AS questionId,
+            o.questionTextSnapshot AS questionTextSnapshot,
+            o.cycleNumber AS cycleNumber,
+            o.cyclePosition AS cyclePosition,
+            d.occurredAtEpochMillis AS occurredAtEpochMillis,
+            d.deferredUntilEpochMillis AS deferredUntilEpochMillis,
+            d.durationMinutes AS durationMinutes
+        FROM defer_events d
+        INNER JOIN question_occurrences o ON d.occurrenceId = o.id
+        ORDER BY d.occurredAtEpochMillis ASC, d.id ASC
+        """,
+    )
+    fun observeArchiveDeferRows(): Flow<List<ArchiveDeferEventRow>>
 }

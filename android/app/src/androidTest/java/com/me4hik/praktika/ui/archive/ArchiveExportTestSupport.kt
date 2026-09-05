@@ -4,11 +4,13 @@ package com.me4hik.praktika.ui.archive
 
 import android.net.Uri
 import com.me4hik.praktika.data.read.ArchiveEntry
+import com.me4hik.praktika.data.read.ArchiveHistoryEvent
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import com.me4hik.praktika.export.ExportDocumentWriter
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 internal class AndroidTestArchiveReadRepository : ArchiveReadRepository {
@@ -37,6 +39,12 @@ internal class AndroidTestArchiveReadRepository : ArchiveReadRepository {
                 )
         }
     }
+
+    override fun observeHistoryForQuestion(questionId: Int): Flow<List<ArchiveHistoryEvent>> =
+        flowOf(emptyList())
+
+    override fun observeAllHistoryEvents(): Flow<List<ArchiveHistoryEvent>> =
+        flowOf(emptyList())
 
     fun emit(value: List<ArchiveEntry>) {
         entries.value = value

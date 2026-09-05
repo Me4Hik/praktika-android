@@ -3,10 +3,12 @@ package com.me4hik.praktika.ui.archive
 
 import com.me4hik.praktika.data.delete.AnswerDeleteRepository
 import com.me4hik.praktika.data.read.ArchiveEntry
+import com.me4hik.praktika.data.read.ArchiveHistoryEvent
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 internal class FakeArchiveReadRepository : ArchiveReadRepository {
@@ -37,6 +39,12 @@ internal class FakeArchiveReadRepository : ArchiveReadRepository {
         }
     }
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
+
+    override fun observeHistoryForQuestion(questionId: Int): Flow<List<ArchiveHistoryEvent>> =
+        flowOf(emptyList())
+
+    override fun observeAllHistoryEvents(): Flow<List<ArchiveHistoryEvent>> =
+        flowOf(emptyList())
 
     fun emit(value: List<ArchiveEntry>) {
         entries.value = value

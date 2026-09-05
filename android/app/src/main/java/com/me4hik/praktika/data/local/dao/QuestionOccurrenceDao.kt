@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
+import com.me4hik.praktika.data.local.model.ArchiveTerminalOccurrenceRow
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -214,6 +215,50 @@ interface QuestionOccurrenceDao {
 
     @Query("DELETE FROM question_occurrences")
     suspend fun deleteAll()
+
+    // PROMPT 115 — terminal archive history (LEFT JOIN answer for ANSWERED)
+    @Query(
+        """
+        SELECT
+            o.id AS occurrenceId,
+            o.questionId AS questionId,
+            o.questionTextSnapshot AS questionTextSnapshot,
+            o.cycleNumber AS cycleNumber,
+            o.cyclePosition AS cyclePosition,
+            o.status AS status,
+            o.completedAtEpochMillis AS completedAtEpochMillis,
+            a.id AS answerId,
+            a.text AS answerText,
+            a.createdAtEpochMillis AS answerCreatedAtEpochMillis
+        FROM question_occurrences o
+        LEFT JOIN answers a ON a.occurrenceId = o.id
+        WHERE o.status IN ('ANSWERED', 'SKIPPED_BY_USER', 'MISSED_BY_TIME')
+          AND o.questionId = :questionId
+        ORDER BY o.completedAtEpochMillis ASC, o.id ASC
+        """,
+    )
+    fun observeTerminalArchiveRowsForQuestion(questionId: Int): Flow<List<ArchiveTerminalOccurrenceRow>>
+
+    @Query(
+        """
+        SELECT
+            o.id AS occurrenceId,
+            o.questionId AS questionId,
+            o.questionTextSnapshot AS questionTextSnapshot,
+            o.cycleNumber AS cycleNumber,
+            o.cyclePosition AS cyclePosition,
+            o.status AS status,
+            o.completedAtEpochMillis AS completedAtEpochMillis,
+            a.id AS answerId,
+            a.text AS answerText,
+            a.createdAtEpochMillis AS answerCreatedAtEpochMillis
+        FROM question_occurrences o
+        LEFT JOIN answers a ON a.occurrenceId = o.id
+        WHERE o.status IN ('ANSWERED', 'SKIPPED_BY_USER', 'MISSED_BY_TIME')
+        ORDER BY o.completedAtEpochMillis ASC, o.id ASC
+        """,
+    )
+    fun observeTerminalArchiveRows(): Flow<List<ArchiveTerminalOccurrenceRow>>
 }
 // 04.08.2026 Cycle Engine cursor by Me4Hik END
 // 04.08.2026 DB Refactoring cursor by Me4Hik END
