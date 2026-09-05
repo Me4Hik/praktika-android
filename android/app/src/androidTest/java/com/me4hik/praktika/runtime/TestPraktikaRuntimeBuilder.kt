@@ -9,6 +9,7 @@ import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
+import com.me4hik.praktika.data.read.RoomAnalyticsReadRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
 import com.me4hik.praktika.data.read.RoomPracticeReadRepository
 import com.me4hik.praktika.data.read.RoomScheduleReadRepository
@@ -78,6 +79,7 @@ object TestPraktikaRuntimeBuilder {
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
         val archiveReadRepository = RoomArchiveReadRepository(database)
+        val analyticsReadRepository = RoomAnalyticsReadRepository(database)
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - test delete repository
         val answerDeleteRepository = RoomAnswerDeleteRepository(database, backupMutationRequestSink)
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END
@@ -116,6 +118,7 @@ object TestPraktikaRuntimeBuilder {
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
+            analyticsReadRepository = analyticsReadRepository,
             answerDeleteRepository = answerDeleteRepository,
             notificationCoordinator = coordinator,
             notificationPermissionRepository = resolvedPermissionRepository,

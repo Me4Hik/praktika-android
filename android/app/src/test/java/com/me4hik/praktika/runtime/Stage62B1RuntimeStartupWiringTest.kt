@@ -32,6 +32,7 @@ import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
+import com.me4hik.praktika.data.read.RoomAnalyticsReadRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
 import com.me4hik.praktika.data.read.RoomPracticeReadRepository
 import com.me4hik.praktika.data.read.RoomScheduleReadRepository
@@ -412,6 +413,7 @@ class Stage62B1RuntimeStartupWiringTest {
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
         val archiveReadRepository = RoomArchiveReadRepository(database)
+        val analyticsReadRepository = RoomAnalyticsReadRepository(database)
         val answerDeleteRepository = RoomAnswerDeleteRepository(database, backupMutationRequestSink)
         val soundPreferenceRepository = object : SoundPreferenceRepository {
             override val soundEnabled: Flow<Boolean> = flowOf(true)
@@ -517,6 +519,7 @@ class Stage62B1RuntimeStartupWiringTest {
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
+            analyticsReadRepository = analyticsReadRepository,
             answerDeleteRepository = answerDeleteRepository,
             notificationCoordinator = coordinator,
             notificationPermissionRepository = permissionPolicy,

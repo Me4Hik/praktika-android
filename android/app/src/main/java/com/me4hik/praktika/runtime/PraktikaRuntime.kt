@@ -12,6 +12,7 @@ import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.delete.AnswerDeleteRepository
+import com.me4hik.praktika.data.read.AnalyticsReadRepository
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadRepository
@@ -35,6 +36,8 @@ data class PraktikaRuntime(
     val deferDurationPreferenceRepository: DeferDurationPreferenceRepository,
     val practiceReadRepository: PracticeReadRepository,
     val archiveReadRepository: ArchiveReadRepository,
+    // PROMPT 133 — analytics read repository wiring
+    val analyticsReadRepository: AnalyticsReadRepository,
     // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - delete repository wiring
     val answerDeleteRepository: AnswerDeleteRepository,
     // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END
