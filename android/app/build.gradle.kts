@@ -54,7 +54,7 @@ android {
         applicationId = "com.me4hik.praktika"
         minSdk = 24
         targetSdk = 36
-        versionCode = 13
+        versionCode = 14
         versionName = "1.0"
 
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
