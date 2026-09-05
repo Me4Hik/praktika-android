@@ -16,6 +16,7 @@ sealed interface SettingsUiState {
         val isScheduleValid: Boolean,
         val isSavingSchedule: Boolean,
         val soundEnabled: Boolean,
+        val selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
         val isChangingSound: Boolean,
         val deferDurationMinutes: Int,
         val isChangingDeferDuration: Boolean,
@@ -95,6 +96,7 @@ object SettingsTestTags {
     const val SETTINGS_SCHEDULE_PROGRESS = "settings_schedule_progress"
     const val SETTINGS_SCHEDULE_ERROR = "settings_schedule_error"
     const val SETTINGS_SOUND_SWITCH = "settings_sound_switch"
+    const val SOUND_LIBRARY_ENTRY = "sound_library_entry"
     const val SETTINGS_DEFER_SECTION = "settings_defer_section"
     const val SETTINGS_DEFER_5 = "settings_defer_5"
     const val SETTINGS_DEFER_10 = "settings_defer_10"

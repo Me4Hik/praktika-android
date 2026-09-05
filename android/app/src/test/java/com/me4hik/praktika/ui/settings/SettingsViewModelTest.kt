@@ -554,6 +554,7 @@ class SettingsViewModelTest {
         override fun evaluateUiState(
             permissionRequested: Boolean,
             soundEnabled: Boolean,
+            selectedSoundId: String,
         ): NotificationPermissionUiState = NotificationPermissionUiState.ENABLED
 
         override fun toDeliveryCapability(state: NotificationPermissionUiState): NotificationDeliveryCapability {
@@ -562,12 +563,18 @@ class SettingsViewModelTest {
 
         override fun createAppNotificationSettingsIntent() = android.content.Intent()
 
-        override fun createChannelSettingsIntent(soundEnabled: Boolean) = android.content.Intent()
+        override fun createChannelSettingsIntent(
+            soundEnabled: Boolean,
+            selectedSoundId: String,
+        ) = android.content.Intent()
         override fun shouldRequestRuntimePermission(): Boolean = false
         override fun hasRuntimePermission(): Boolean = true
         override fun areAppNotificationsEnabled(): Boolean = true
         override fun shouldShowRequestPermissionRationale(): Boolean = false
-        override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+        override fun isSelectedChannelEnabled(
+            soundEnabled: Boolean,
+            selectedSoundId: String,
+        ): Boolean = true
     }
 
     private class RecordingNotificationSyncRequester : NotificationSyncRequester {
@@ -583,6 +590,9 @@ class SettingsViewModelTest {
         var failNextWrite = false
         private val state = MutableStateFlow(true)
         override val soundEnabled: Flow<Boolean> = state
+        override val selectedSoundId =
+            MutableStateFlow(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+        override val hiddenBuiltinIds = MutableStateFlow(emptySet<String>())
         override suspend fun setSoundEnabled(enabled: Boolean) {
             if (failNextWrite) {
                 failNextWrite = false
@@ -591,6 +601,12 @@ class SettingsViewModelTest {
             currentValue = enabled
             state.value = enabled
         }
+        override suspend fun selectSound(id: String) {
+            selectedSoundId.value = com.me4hik.praktika.sound.BuiltinSoundCatalog.resolveOrDefault(id).id
+        }
+        override suspend fun hideBuiltin(id: String) = Unit
+        override suspend fun restoreBuiltin(id: String) = Unit
+        override suspend fun restoreAllHidden() = Unit
     }
 
     private class MutableFakeDeferDurationPreferenceRepository : DeferDurationPreferenceRepository {

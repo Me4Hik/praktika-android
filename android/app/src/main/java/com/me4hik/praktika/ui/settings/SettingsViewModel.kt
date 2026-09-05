@@ -78,6 +78,9 @@ class SettingsViewModel(
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
     private val persistedMinutes = MutableStateFlow<List<Int>?>(null)
+    private var latestSelectedSoundId: String =
+        com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT
+
     private var isSavingSchedule = false
     private var pendingAutosaveAfterCurrent = false
     private var isChangingSound = false
@@ -108,12 +111,14 @@ class SettingsViewModel(
                 scheduleReadRepository.observeSchedule(),
                 practiceReadRepository.observeSnapshot(),
                 soundPreferenceRepository.soundEnabled,
+                soundPreferenceRepository.selectedSoundId,
                 deferDurationPreferenceRepository.deferDurationMinutes,
-            ) { scheduleSnapshot, practiceSnapshot, soundEnabled, deferDurationMinutes ->
+            ) { scheduleSnapshot, practiceSnapshot, soundEnabled, selectedSoundId, deferDurationMinutes ->
                 SettingsSourceSnapshot(
                     slots = scheduleSnapshot.slots,
                     isPracticePaused = practiceSnapshot.practiceState.isPaused,
                     soundEnabled = soundEnabled,
+                    selectedSoundId = selectedSoundId,
                     deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
                 )
             }.collect { source ->
@@ -121,6 +126,7 @@ class SettingsViewModel(
                     slots = source.slots,
                     isPracticePaused = source.isPracticePaused,
                     soundEnabled = source.soundEnabled,
+                    selectedSoundId = source.selectedSoundId,
                     deferDurationMinutes = source.deferDurationMinutes,
                 )
             }
@@ -131,6 +137,7 @@ class SettingsViewModel(
         val slots: List<ScheduleSlotReadModel>,
         val isPracticePaused: Boolean,
         val soundEnabled: Boolean,
+        val selectedSoundId: String,
         val deferDurationMinutes: Int,
     )
 
@@ -527,9 +534,11 @@ class SettingsViewModel(
         slots: List<ScheduleSlotReadModel>,
         isPracticePaused: Boolean,
         soundEnabled: Boolean,
+        selectedSoundId: String,
         deferDurationMinutes: Int,
     ) {
         try {
+            latestSelectedSoundId = selectedSoundId
             val ordered = slots.sortedBy { it.slotIndex }.map { it.timeOfDayMinutes }
             val previousPersisted = persistedMinutes.value
             persistedMinutes.value = ordered
@@ -591,6 +600,7 @@ class SettingsViewModel(
             isScheduleValid = duplicateError == null,
             isSavingSchedule = isSavingSchedule,
             soundEnabled = soundEnabled,
+            selectedSoundId = latestSelectedSoundId,
             isChangingSound = isChangingSound,
             deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
             isChangingDeferDuration = isChangingDeferDuration,

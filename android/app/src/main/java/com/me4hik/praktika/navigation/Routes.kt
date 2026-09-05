@@ -19,6 +19,7 @@ object Routes {
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
     const val QUESTION_HISTORY = "question_history"
     const val SETTINGS = "settings"
+    const val SOUND_LIBRARY = "settings/sound"
 
     fun question(occurrenceId: Long): String = "question/$occurrenceId"
 

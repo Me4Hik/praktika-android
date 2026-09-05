@@ -90,6 +90,7 @@ fun SettingsScreen(
     onSoundEnabledChanged: (Boolean) -> Unit,
     onDeferDurationMinutesChanged: (Int) -> Unit,
     onOpenNotificationSettings: () -> Unit,
+    onOpenSoundLibrary: () -> Unit = {},
     onTogglePauseState: () -> Unit,
     onBack: () -> Unit,
     onStayOnDirtyBack: () -> Unit,
@@ -159,6 +160,7 @@ fun SettingsScreen(
                 onSoundEnabledChanged = onSoundEnabledChanged,
                 onDeferDurationMinutesChanged = onDeferDurationMinutesChanged,
                 onOpenNotificationSettings = onOpenNotificationSettings,
+                onOpenSoundLibrary = onOpenSoundLibrary,
                 onTogglePauseState = onTogglePauseState,
                 onOpenBugReport = onOpenBugReport,
                 onBack = onBack,
@@ -227,6 +229,7 @@ private fun SettingsContentScreen(
     onSoundEnabledChanged: (Boolean) -> Unit,
     onDeferDurationMinutesChanged: (Int) -> Unit,
     onOpenNotificationSettings: () -> Unit,
+    onOpenSoundLibrary: () -> Unit,
     onTogglePauseState: () -> Unit,
     onOpenBugReport: () -> Unit,
     onBack: () -> Unit,
@@ -345,6 +348,16 @@ private fun SettingsContentScreen(
                             ),
                         )
                     }
+                    val selectedAsset = com.me4hik.praktika.sound.BuiltinSoundCatalog
+                        .resolveOrDefault(content.selectedSoundId)
+                    val selectedDisplayName = com.me4hik.praktika.sound.SoundDisplayNames
+                        .forAsset(LocalContext.current, selectedAsset)
+                    PracticeGlassActionRow(
+                        title = stringResource(R.string.sound_library_entry_title),
+                        supportingText = selectedDisplayName,
+                        onClick = onOpenSoundLibrary,
+                        modifier = Modifier.testTag(SettingsTestTags.SOUND_LIBRARY_ENTRY),
+                    )
                 }
                 content.soundError?.let {
                     Text(

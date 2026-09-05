@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -83,6 +84,9 @@ import com.me4hik.praktika.ui.settings.SettingsTestTags
 import com.me4hik.praktika.ui.settings.BugReportUiState
 import com.me4hik.praktika.ui.settings.SettingsViewModel
 import com.me4hik.praktika.ui.settings.SettingsViewModelFactory
+import com.me4hik.praktika.ui.settings.SoundLibraryScreen
+import com.me4hik.praktika.ui.settings.SoundLibraryViewModel
+import com.me4hik.praktika.ui.settings.SoundLibraryViewModelFactory
 import com.me4hik.praktika.ui.practice.AnswerBlockedReason
 import com.me4hik.praktika.ui.practice.AnswerNavigationEvent
 import com.me4hik.praktika.ui.practice.AnswerUiState
@@ -873,6 +877,7 @@ fun AppNavigation(
                     onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
                     onDeferDurationMinutesChanged = settingsViewModel::onDeferDurationMinutesChanged,
                     onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
+                    onOpenSoundLibrary = { navController.navigate(Routes.SOUND_LIBRARY) },
                     onTogglePauseState = settingsViewModel::togglePauseState,
                     onBack = settingsViewModel::onBackRequested,
                     onStayOnDirtyBack = { showDirtyDialog = false },
@@ -907,6 +912,44 @@ fun AppNavigation(
                     onBackupReconnectDifferentCancel = settingsViewModel::onBackupReconnectDifferentCancelled,
                     // 10.08.2026 Post-release fixes cursor by Me4Hik END
                 )
+            }
+            composable(Routes.SOUND_LIBRARY) { backStackEntry ->
+                val appContext = LocalContext.current.applicationContext as android.app.Application
+                val soundLibraryViewModel: SoundLibraryViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = SoundLibraryViewModelFactory(
+                        application = appContext,
+                        runtime = runtime,
+                    ),
+                )
+                val soundLibraryUiState by soundLibraryViewModel.uiState.collectAsStateWithLifecycle()
+                val snackbarHostState = remember { SnackbarHostState() }
+                val previewUnavailable = stringResource(R.string.sound_library_preview_unavailable)
+                val genericError = stringResource(R.string.sound_library_error_generic)
+                LaunchedEffect(soundLibraryUiState.messageResId) {
+                    val resId = soundLibraryUiState.messageResId ?: return@LaunchedEffect
+                    val message = when (resId) {
+                        R.string.sound_library_preview_unavailable -> previewUnavailable
+                        else -> genericError
+                    }
+                    snackbarHostState.showSnackbar(message)
+                    soundLibraryViewModel.consumeMessage()
+                }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    SoundLibraryScreen(
+                        uiState = soundLibraryUiState,
+                        onSelect = soundLibraryViewModel::select,
+                        onTogglePreview = soundLibraryViewModel::togglePreview,
+                        onHide = soundLibraryViewModel::hide,
+                        onRestoreAllHidden = soundLibraryViewModel::restoreAllHidden,
+                        onStopPreview = soundLibraryViewModel::stopPreview,
+                        onBack = { navController.popBackStack() },
+                    )
+                    PracticeSnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
             }
         }
         ProductionRestoreSessionHost(

@@ -56,6 +56,7 @@ class RootNavigationPolicyTest {
             ),
         )
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.SETTINGS))
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.SOUND_LIBRARY))
     }
 
     @Test

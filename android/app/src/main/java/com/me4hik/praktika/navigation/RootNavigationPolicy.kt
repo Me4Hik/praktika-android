@@ -17,6 +17,7 @@ object RootNavigationPolicy {
             Routes.ARCHIVE_QUESTIONS,
             Routes.QUESTION_HISTORY,
             Routes.SETTINGS,
+            Routes.SOUND_LIBRARY,
             -> true
             else -> currentRoute?.startsWith("question/") == true ||
                 currentRoute?.startsWith("answer/") == true ||
