@@ -1,4 +1,5 @@
 // 07.08.2026 Stage 24 Final Design cursor by Me4Hik START - archive journal entry card
+// PROMPT 123 — eventLabel + optional body for mixed history kinds
 package com.me4hik.praktika.ui.archive
 
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +25,6 @@ import com.me4hik.praktika.ui.theme.TextPrimary
 
 @Composable
 fun ArchiveEntryCard(
-    answerText: String,
     metadata: String,
     onShare: () -> Unit,
     onDelete: () -> Unit,
@@ -32,10 +32,20 @@ fun ArchiveEntryCard(
     deleteTestTag: String,
     modifier: Modifier = Modifier,
     questionText: String? = null,
+    /** When null, defaults to «Ответ» for answer-only Day/Dates callers. */
+    eventLabel: String? = null,
+    /**
+     * Primary body under the event label.
+     * Prefer [bodyText]; [answerText] remains for Day/answer-only call sites.
+     */
+    bodyText: String? = null,
+    answerText: String? = null,
     cycleLabel: String? = null,
     showShare: Boolean = true,
     showDelete: Boolean = true,
 ) {
+    val resolvedLabel = eventLabel ?: stringResource(R.string.archive_answer_label)
+    val resolvedBody = bodyText ?: answerText
     PracticeSurface(modifier = modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (questionText != null) {
@@ -46,12 +56,14 @@ fun ArchiveEntryCard(
                     color = TextPrimary,
                 )
             }
-            MetadataText(text = stringResource(R.string.archive_answer_label))
-            Text(
-                text = answerText,
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary,
-            )
+            MetadataText(text = resolvedLabel)
+            if (resolvedBody != null) {
+                Text(
+                    text = resolvedBody,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextPrimary,
+                )
+            }
             MetadataText(text = metadata)
             if (cycleLabel != null) {
                 MetadataText(text = cycleLabel)

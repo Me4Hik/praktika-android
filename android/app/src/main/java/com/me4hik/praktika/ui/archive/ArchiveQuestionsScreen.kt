@@ -124,13 +124,42 @@ fun ArchiveQuestionsScreen(
                             )
                         }
                         itemsIndexed(uiState.questions, key = { _, item -> item.questionId }) { index, questionItem ->
+                            val summarySegments = ArchiveQuestionSummaryFormatter.nonzeroSegments(
+                                answerCount = questionItem.answerCount,
+                                rejectedCount = questionItem.rejectedCount,
+                                missedCount = questionItem.missedCount,
+                                deferredCount = questionItem.deferredCount,
+                            )
+                            val supporting = if (summarySegments.isEmpty()) {
+                                null
+                            } else {
+                                ArchiveQuestionSummaryFormatter.join(
+                                    summarySegments.map { segment ->
+                                        when (segment.kind) {
+                                            ArchiveSummaryCountKind.Answer -> stringResource(
+                                                R.string.archive_question_answer_count,
+                                                segment.count,
+                                            )
+                                            ArchiveSummaryCountKind.Rejected -> stringResource(
+                                                R.string.archive_question_rejected_count,
+                                                segment.count,
+                                            )
+                                            ArchiveSummaryCountKind.Missed -> stringResource(
+                                                R.string.archive_question_missed_count,
+                                                segment.count,
+                                            )
+                                            ArchiveSummaryCountKind.Deferred -> stringResource(
+                                                R.string.archive_question_deferred_count,
+                                                segment.count,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
                             ArchiveListRow(
                                 title = questionItem.questionText,
                                 titleStyle = HomeQuestionSerifStyle,
-                                supporting = stringResource(
-                                    R.string.archive_question_answer_count,
-                                    questionItem.answerCount,
-                                ),
+                                supporting = supporting,
                                 leading = {
                                     Text(
                                         text = "${index + 1}",

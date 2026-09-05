@@ -130,9 +130,29 @@ fun ArchiveQuestionHistoryScreen(
                     ) {
                         items(uiState.entries, key = { it.stableKey }) { entry ->
                             val actionTagId = entry.answerId?.toString() ?: entry.stableKey
+                            val eventLabel = when (entry.kind) {
+                                ArchiveHistoryItemKind.Answer -> stringResource(R.string.archive_answer_label)
+                                ArchiveHistoryItemKind.Rejected -> stringResource(R.string.archive_rejected_label)
+                                ArchiveHistoryItemKind.Missed -> stringResource(R.string.archive_missed_label)
+                                ArchiveHistoryItemKind.Deferred -> stringResource(
+                                    R.string.archive_deferred_label,
+                                    entry.durationMinutes ?: 0,
+                                )
+                            }
+                            val bodyText = when (entry.kind) {
+                                ArchiveHistoryItemKind.Answer -> {
+                                    entry.answerText
+                                        ?: stringResource(R.string.archive_answer_deleted_body)
+                                }
+                                ArchiveHistoryItemKind.Rejected,
+                                ArchiveHistoryItemKind.Missed,
+                                ArchiveHistoryItemKind.Deferred,
+                                -> null
+                            }
                             ArchiveEntryCard(
-                                questionText = entry.questionText,
-                                answerText = entry.answerText.orEmpty(),
+                                questionText = null,
+                                eventLabel = eventLabel,
+                                bodyText = bodyText,
                                 metadata = entry.dateTimeText,
                                 cycleLabel = stringResource(
                                     R.string.archive_cycle_label,
