@@ -130,7 +130,7 @@ class ArchiveDeleteNavigationAcceleratedInstrumentedTest {
 
     private fun openQuestionHistory() {
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.openArchiveQuestions(composeRule)
         ArchiveComposeTestSupport.waitForArchiveQuestionsContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveQuestion(composeRule, questionId = 1)

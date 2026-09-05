@@ -18,6 +18,36 @@ object ArchiveComposeTestSupport {
         PracticeComposeTestSupport.clickHomeArchive(composeRule)
     }
 
+    // PROMPT 167 — archive root is hub; date list lives on archive/days
+    fun waitForArchiveHubScreen(composeRule: ComposeContentTestRule) {
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            runCatching {
+                composeRule.onNodeWithTag(ArchiveTestTags.HUB_SCREEN).assertExists()
+                true
+            }.getOrDefault(false)
+        }
+    }
+
+    fun openArchiveDaysFromHub(composeRule: ComposeContentTestRule) {
+        composeRule.onNodeWithTag(ArchiveTestTags.OPEN_DAYS)
+            .assertIsDisplayed()
+            .performClick()
+    }
+
+    fun ensureArchiveHubScreen(composeRule: ComposeContentTestRule) {
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.HUB_SCREEN) ||
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.DATES_SCREEN)
+        }
+        if (
+            PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.DATES_SCREEN) &&
+            !PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.HUB_SCREEN)
+        ) {
+            clickArchiveBack(composeRule)
+        }
+        waitForArchiveHubScreen(composeRule)
+    }
+
     fun waitForArchiveDatesScreen(composeRule: ComposeContentTestRule) {
         composeRule.waitUntil(timeoutMillis = 15_000) {
             runCatching {
@@ -28,6 +58,14 @@ object ArchiveComposeTestSupport {
     }
 
     fun waitForArchiveDatesContent(composeRule: ComposeContentTestRule) {
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.HUB_SCREEN) ||
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.DATES_SCREEN)
+        }
+        if (!PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.DATES_SCREEN)) {
+            waitForArchiveHubScreen(composeRule)
+            openArchiveDaysFromHub(composeRule)
+        }
         waitForArchiveDatesScreen(composeRule)
         composeRule.waitUntil(timeoutMillis = 15_000) {
             runCatching {
@@ -86,6 +124,7 @@ object ArchiveComposeTestSupport {
 
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - helpers архива по вопросам
     fun openArchiveQuestions(composeRule: ComposeContentTestRule) {
+        ensureArchiveHubScreen(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.OPEN_QUESTIONS)
             .assertIsDisplayed()
             .performClick()

@@ -110,7 +110,7 @@ class Stage23ProductionIntegratedJourneyInstrumentedTest {
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveQuestionsContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
 
         PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)

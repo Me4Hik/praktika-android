@@ -58,6 +58,7 @@ import com.me4hik.praktika.ui.archive.ArchiveExportCoordinator
 import com.me4hik.praktika.ui.archive.ArchiveExportEffects
 import com.me4hik.praktika.ui.archive.ArchiveExportFormatDialog
 import com.me4hik.praktika.ui.archive.ArchiveEntryShareDialog
+import com.me4hik.praktika.ui.archive.ArchiveHubScreen
 import com.me4hik.praktika.ui.archive.ArchivePeriodExportDialog
 import com.me4hik.praktika.ui.archive.ArchiveShareCoordinator
 import com.me4hik.praktika.ui.archive.ArchiveShareEffects
@@ -667,16 +668,10 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(Routes.ARCHIVE) { backStackEntry ->
-                val archiveDatesViewModel: ArchiveDatesViewModel = viewModel(
-                    viewModelStoreOwner = backStackEntry,
-                    factory = ArchiveViewModelFactory.dates(backStackEntry, runtime),
-                )
-                val archiveDatesUiState by archiveDatesViewModel.uiState.collectAsStateWithLifecycle()
-                ArchiveDatesScreen(
-                    uiState = archiveDatesUiState,
-                    onDateSelected = { epochDay ->
-                        navController.navigate(Routes.archiveDay(epochDay)) {
+            composable(Routes.ARCHIVE) {
+                ArchiveHubScreen(
+                    onOpenDays = {
+                        navController.navigate(Routes.ARCHIVE_DAYS) {
                             launchSingleTop = true
                         }
                     },
@@ -703,6 +698,23 @@ fun AppNavigation(
                         showPeriodShareDialog = true
                     },
                     onBack = { navController.popBackStack(Routes.HOME, inclusive = false) },
+                )
+            }
+            // PROMPT 167 — archive by days list
+            composable(Routes.ARCHIVE_DAYS) { backStackEntry ->
+                val archiveDatesViewModel: ArchiveDatesViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = ArchiveViewModelFactory.dates(backStackEntry, runtime),
+                )
+                val archiveDatesUiState by archiveDatesViewModel.uiState.collectAsStateWithLifecycle()
+                ArchiveDatesScreen(
+                    uiState = archiveDatesUiState,
+                    onDateSelected = { epochDay ->
+                        navController.navigate(Routes.archiveDay(epochDay)) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onBack = { navController.popBackStack(Routes.ARCHIVE, inclusive = false) },
                 )
             }
             // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - archive questions routes

@@ -216,9 +216,8 @@ class Stage21ShareComposeInstrumentedTest {
                 coordinator.events.collect { events += it }
             }
             Box(modifier = Modifier.fillMaxSize()) {
-                ArchiveDatesScreen(
-                    uiState = ArchiveDatesUiState.Empty,
-                    onDateSelected = {},
+                ArchiveHubScreen(
+                    onOpenDays = {},
                     onOpenQuestions = {},
                     onOpenInsights = {},
                     onExportAll = {},
@@ -272,9 +271,8 @@ class Stage21ShareComposeInstrumentedTest {
                 coordinator.events.collect { events += it }
             }
             Box(modifier = Modifier.fillMaxSize()) {
-                ArchiveDatesScreen(
-                    uiState = ArchiveDatesUiState.Empty,
-                    onDateSelected = {},
+                ArchiveHubScreen(
+                    onOpenDays = {},
                     onOpenQuestions = {},
                     onOpenInsights = {},
                     onExportAll = {},

@@ -14,6 +14,7 @@ object RootNavigationPolicy {
     fun isSecondaryRoute(currentRoute: String?): Boolean {
         return when (currentRoute) {
             Routes.ARCHIVE,
+            Routes.ARCHIVE_DAYS,
             Routes.ARCHIVE_QUESTIONS,
             Routes.ARCHIVE_INSIGHTS,
             Routes.QUESTION_HISTORY,

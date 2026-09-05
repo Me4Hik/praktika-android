@@ -225,6 +225,8 @@
     <string name="archive_question_label">Вопрос</string>
     <string name="archive_answer_label">Ответ</string>
     <!-- 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - строки архива по вопросам -->
+    <string name="archive_open_days">Архив по дням</string>
+    <string name="archive_by_days_title">Архив по дням</string>
     <string name="archive_open_questions">Архив по вопросам</string>
     <string name="archive_open_insights">Закономерности</string>
     <string name="archive_questions_title">Архив по вопросам</string>

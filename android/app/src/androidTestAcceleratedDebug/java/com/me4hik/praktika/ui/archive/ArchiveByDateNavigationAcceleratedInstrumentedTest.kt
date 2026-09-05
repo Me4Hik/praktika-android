@@ -59,7 +59,7 @@ class ArchiveByDateNavigationAcceleratedInstrumentedTest {
     fun homeOpensArchiveEmptyState() {
         setContent(started = true)
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
         ArchiveComposeTestSupport.assertArchiveEmpty(composeRule)
     }
 
@@ -116,6 +116,8 @@ class ArchiveByDateNavigationAcceleratedInstrumentedTest {
         ArchiveComposeTestSupport.waitForArchiveDayContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
+        ArchiveComposeTestSupport.clickArchiveBack(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
     }

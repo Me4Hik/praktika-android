@@ -92,7 +92,7 @@ class Stage19MarkdownExportBlackviewSmokeInstrumentedTest {
                 PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
         }
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_ALL).assertIsDisplayed().performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_MARKDOWN).performClick()
         composeRule.waitForIdle()

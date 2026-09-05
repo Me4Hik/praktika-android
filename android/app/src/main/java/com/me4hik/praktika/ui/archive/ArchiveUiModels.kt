@@ -39,6 +39,9 @@ data class ArchiveDayEntryUi(
 )
 
 object ArchiveTestTags {
+    // PROMPT 167 — archive hub root
+    const val HUB_SCREEN = "archive_hub_screen"
+    const val OPEN_DAYS = "archive_open_days_button"
     const val DATES_SCREEN = "archive_dates_screen"
     const val DATES_EMPTY = "archive_dates_empty"
     const val DATES_LIST = "archive_dates_list"

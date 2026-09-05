@@ -128,7 +128,7 @@ class ArchiveByQuestionBlackviewSmokeInstrumentedTest {
         }
 
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.openArchiveQuestions(composeRule)
         ArchiveComposeTestSupport.waitForArchiveQuestionsContent(composeRule)
         ArchiveComposeTestSupport.assertArchiveQuestionItemContainsText(composeRule, questionId = 1, "Smoke snapshot A2")
@@ -147,7 +147,7 @@ class ArchiveByQuestionBlackviewSmokeInstrumentedTest {
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveQuestionsContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
     }

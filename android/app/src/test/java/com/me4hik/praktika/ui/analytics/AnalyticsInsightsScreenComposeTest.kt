@@ -10,8 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.me4hik.praktika.data.read.analytics.AnalyticsMultiDeferMetrics
-import com.me4hik.praktika.ui.archive.ArchiveDatesScreen
-import com.me4hik.praktika.ui.archive.ArchiveDatesUiState
+import com.me4hik.praktika.ui.archive.ArchiveHubScreen
 import com.me4hik.praktika.ui.archive.ArchiveTestTags
 import com.me4hik.praktika.ui.theme.PraktikaTheme
 import org.junit.Assert.assertEquals
@@ -40,9 +39,8 @@ class AnalyticsInsightsScreenComposeTest {
         val opened = AtomicBoolean(false)
         composeRule.setContent {
             PraktikaTheme {
-                ArchiveDatesScreen(
-                    uiState = ArchiveDatesUiState.Empty,
-                    onDateSelected = {},
+                ArchiveHubScreen(
+                    onOpenDays = {},
                     onOpenQuestions = {},
                     onOpenInsights = { opened.set(true) },
                     onExportAll = {},

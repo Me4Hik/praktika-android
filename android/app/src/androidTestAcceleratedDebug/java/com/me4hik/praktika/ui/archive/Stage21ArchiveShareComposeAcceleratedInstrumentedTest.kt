@@ -71,6 +71,7 @@ class Stage21ArchiveShareComposeAcceleratedInstrumentedTest {
             )
         })
         openArchive()
+        ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveDate(composeRule, day.toEpochDay())
         ArchiveComposeTestSupport.waitForArchiveDayContent(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.SHARE_DAY).performClick()
@@ -116,7 +117,7 @@ class Stage21ArchiveShareComposeAcceleratedInstrumentedTest {
 
     private fun openArchive() {
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
     }
 
     private fun setContent(

@@ -1,4 +1,5 @@
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - экран списка дат архива
+// PROMPT 167 — date list only on archive/days (hub actions moved to ArchiveHubScreen)
 package com.me4hik.praktika.ui.archive
 
 import androidx.compose.foundation.layout.Arrangement
@@ -16,10 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.Insights
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,10 +29,8 @@ import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
-import com.me4hik.praktika.ui.components.PracticeGlassActionRow
 import com.me4hik.praktika.ui.components.PracticeHeroAccent
 import com.me4hik.praktika.ui.components.PracticeSectionHeader
-import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.components.PracticeTopBar
 import com.me4hik.praktika.ui.theme.TextPrimary
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
@@ -46,12 +41,6 @@ import com.me4hik.praktika.ui.theme.TitleSerifStyle
 fun ArchiveDatesScreen(
     uiState: ArchiveDatesUiState,
     onDateSelected: (epochDay: Long) -> Unit,
-    onOpenQuestions: () -> Unit,
-    onOpenInsights: () -> Unit,
-    onExportAll: () -> Unit,
-    onExportPeriod: () -> Unit,
-    onShareAll: () -> Unit,
-    onSharePeriod: () -> Unit,
     onBack: () -> Unit,
 ) {
     // 07.08.2026 Stage 24 Final Design cursor by Me4Hik START - archive dates glass layout
@@ -88,7 +77,7 @@ fun ArchiveDatesScreen(
                 },
             )
             Text(
-                text = stringResource(R.string.archive_title),
+                text = stringResource(R.string.archive_by_days_title),
                 style = TitleSerifStyle,
                 color = TextQuestionSoft,
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -136,7 +125,7 @@ fun ArchiveDatesScreen(
                     ) {
                         item {
                             PracticeSectionHeader(
-                                title = stringResource(R.string.archive_title),
+                                title = stringResource(R.string.archive_by_days_title),
                                 icon = Icons.Outlined.CalendarMonth,
                             )
                         }
@@ -159,65 +148,6 @@ fun ArchiveDatesScreen(
                                 ),
                             )
                         }
-                    }
-                }
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                if (uiState is ArchiveDatesUiState.Content && uiState.dates.isNotEmpty()) {
-                    ArchiveDecorativeSeparator()
-                }
-                PracticeSurface(contentPadding = PaddingValues(4.dp)) {
-                    PracticeGlassActionRow(
-                        title = stringResource(R.string.archive_open_questions),
-                        icon = Icons.Outlined.HelpOutline,
-                        onClick = onOpenQuestions,
-                        modifier = Modifier.testTag(ArchiveTestTags.OPEN_QUESTIONS),
-                    )
-                }
-                PracticeSurface(contentPadding = PaddingValues(4.dp)) {
-                    PracticeGlassActionRow(
-                        title = stringResource(R.string.archive_open_insights),
-                        icon = Icons.Outlined.Insights,
-                        onClick = onOpenInsights,
-                        modifier = Modifier.testTag(ArchiveTestTags.OPEN_INSIGHTS),
-                    )
-                }
-                PracticeSurface(contentPadding = PaddingValues(4.dp)) {
-                    Column {
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_export_all),
-                            icon = Icons.Outlined.FileDownload,
-                            showChevron = false,
-                            onClick = onExportAll,
-                            modifier = Modifier.testTag(ArchiveTestTags.EXPORT_ALL),
-                        )
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_export_period),
-                            icon = Icons.Outlined.FileDownload,
-                            showChevron = false,
-                            onClick = onExportPeriod,
-                            modifier = Modifier.testTag(ArchiveTestTags.EXPORT_PERIOD),
-                        )
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_share_all),
-                            icon = Icons.Outlined.Share,
-                            showChevron = false,
-                            onClick = onShareAll,
-                            modifier = Modifier.testTag(ArchiveTestTags.SHARE_ALL),
-                        )
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_share_period),
-                            icon = Icons.Outlined.Share,
-                            showChevron = false,
-                            onClick = onSharePeriod,
-                            modifier = Modifier.testTag(ArchiveTestTags.SHARE_PERIOD),
-                        )
                     }
                 }
             }

@@ -46,8 +46,10 @@ class RootNavigationPolicyTest {
             ),
         )
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE))
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE_DAYS))
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE_QUESTIONS))
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE_INSIGHTS))
+        assertEquals("archive/days", Routes.ARCHIVE_DAYS)
     }
 
     @Test

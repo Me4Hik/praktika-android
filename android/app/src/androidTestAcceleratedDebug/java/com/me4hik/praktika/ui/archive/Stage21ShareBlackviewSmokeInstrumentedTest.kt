@@ -86,7 +86,7 @@ class Stage21ShareBlackviewSmokeInstrumentedTest {
                 PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
         }
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.SHARE_ALL).assertIsDisplayed().performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_MARKDOWN).performClick()
         waitForExternalChooser(device, appPackage, timeoutMs = 20_000)

@@ -77,7 +77,7 @@ class ArchiveByDateBlackviewSmokeInstrumentedTest {
         }
 
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
         composeRule.onNodeWithTag("${ArchiveTestTags.DATE_ITEM_PREFIX}${dayTwo.toEpochDay()}").assertIsDisplayed()
         composeRule.onNodeWithTag("${ArchiveTestTags.DATE_ITEM_PREFIX}${dayOne.toEpochDay()}").assertIsDisplayed()
         saveArtifact("archive_dates.png")
@@ -94,6 +94,8 @@ class ArchiveByDateBlackviewSmokeInstrumentedTest {
 
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.clickArchiveBack(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
     }

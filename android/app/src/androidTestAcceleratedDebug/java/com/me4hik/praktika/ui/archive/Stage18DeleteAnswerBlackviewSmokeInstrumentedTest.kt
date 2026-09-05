@@ -102,7 +102,7 @@ class Stage18DeleteAnswerBlackviewSmokeInstrumentedTest {
         check(seededHistory.any { it.answerId == answerTwoId })
 
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.openArchiveQuestions(composeRule)
         ArchiveComposeTestSupport.waitForArchiveQuestionsContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveQuestion(composeRule, questionId = 1)
@@ -160,7 +160,7 @@ class Stage18DeleteAnswerBlackviewSmokeInstrumentedTest {
         composeRule.onNodeWithTag("${ArchiveTestTags.QUESTION_ITEM_PREFIX}1").assertIsDisplayed()
         ArchiveComposeTestSupport.assertArchiveQuestionItemContainsText(composeRule, questionId = 1, "Ответов: 1")
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesScreen(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
     }

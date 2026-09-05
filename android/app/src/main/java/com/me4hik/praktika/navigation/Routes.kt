@@ -10,6 +10,8 @@ object Routes {
     const val QUESTION_PATTERN = "question/{$QUESTION_ARGUMENT}"
     const val ANSWER_PATTERN = "answer/{$QUESTION_ARGUMENT}"
     const val ARCHIVE = "archive"
+    // PROMPT 167 — archive by days list (hub root no longer embeds dates)
+    const val ARCHIVE_DAYS = "archive/days"
     const val ARCHIVE_DAY_ARGUMENT = "epochDay"
     const val ARCHIVE_DAY_PATTERN = "archive/day/{$ARCHIVE_DAY_ARGUMENT}"
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - routes архива по вопросам

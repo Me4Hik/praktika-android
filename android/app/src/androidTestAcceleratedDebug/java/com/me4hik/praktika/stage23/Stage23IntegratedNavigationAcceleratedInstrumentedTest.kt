@@ -100,7 +100,7 @@ class Stage23IntegratedNavigationAcceleratedInstrumentedTest {
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveQuestionsContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
 
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_ALL).performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_DIALOG).assertIsDisplayed()
@@ -118,6 +118,7 @@ class Stage23IntegratedNavigationAcceleratedInstrumentedTest {
         composeRule.onNodeWithTag(ArchiveTestTags.SHARE_PERIOD_DIALOG).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_PERIOD_CANCEL).performClick()
 
+        ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
         ArchiveComposeTestSupport.clickArchiveDate(composeRule, seededDayEpoch)
         ArchiveComposeTestSupport.waitForArchiveDayContent(composeRule)
         composeRule.onNodeWithTag("${ArchiveTestTags.SHARE_BUTTON_PREFIX}$seededAnswerIdOne")
@@ -127,6 +128,8 @@ class Stage23IntegratedNavigationAcceleratedInstrumentedTest {
         composeRule.onNodeWithTag(ArchiveTestTags.ENTRY_SHARE_CANCEL).performClick()
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
+        ArchiveComposeTestSupport.clickArchiveBack(composeRule)
+        ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         PracticeComposeTestSupport.waitForHome(composeRule)
 
