@@ -47,7 +47,7 @@ internal fun questionLayoutTokensFor(
 ): QuestionLayoutTokens {
     val widthBucket = when {
         widthDp >= 840 -> QuestionWidthBucket.Expanded
-        widthDp >= 600 -> QuestionWidthBucket.Medium
+        widthDp >= 560 -> QuestionWidthBucket.Medium
         else -> QuestionWidthBucket.Compact
     }
     val useCenteredCluster = widthBucket != QuestionWidthBucket.Compact

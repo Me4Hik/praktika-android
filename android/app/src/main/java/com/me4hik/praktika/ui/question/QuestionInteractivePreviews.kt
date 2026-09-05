@@ -101,6 +101,12 @@ private fun PreviewQuestion430x932TallCompact() {
     QuestionInteractivePreview(MEDIUM_QUESTION)
 }
 
+@Preview(name = "Boundary 560x900 medium", widthDp = 560, heightDp = 900, showBackground = true)
+@Composable
+private fun PreviewQuestion560x900Medium() {
+    QuestionInteractivePreview(MEDIUM_QUESTION)
+}
+
 @Preview(name = "Tablet 600x960 medium", widthDp = 600, heightDp = 960, showBackground = true)
 @Composable
 private fun PreviewQuestion600x960Medium() {
