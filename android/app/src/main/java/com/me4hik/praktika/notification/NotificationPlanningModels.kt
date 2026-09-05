@@ -38,7 +38,7 @@ data class NotificationPlanningInput(
     val notificationCapability: NotificationDeliveryCapability,
     val activeNotificationOccurrenceId: Long?,
     val activeNotificationKind: PracticeNotificationKind? = null,
-    /** When true, due QUESTION re-posts without audible/heads-up alert (FG/APP_START catch-up). */
+    /** When true, due QUESTION re-posts without audible/heads-up alert (FOREGROUND catch-up). */
     val quietCatchUp: Boolean = false,
 )
 

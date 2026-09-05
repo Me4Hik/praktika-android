@@ -111,13 +111,18 @@ class PracticeNotificationCoordinator(
                 soundEnabled = soundEnabled,
                 selectedSoundId = selectedSoundId,
             )
-            if (plan.cancelNotification) {
-                cancelPracticeNotificationsBestEffort()
-            } else {
-                cancelLegacyPracticeNotificationsBestEffort(
-                    currentOccurrenceId = snapshot.incompleteOccurrence?.id,
-                    syncReason = reason.name,
-                )
+            // APP_START: reconcile + arm alarms only. Never post/cancel via NotificationManager —
+            // nested ensureInitialized must not steal alerting ownership from EXPIRY/PLANNED/DEFERRED.
+            val applyNotificationPresentation = reason != NotificationSyncReason.APP_START
+            if (applyNotificationPresentation) {
+                if (plan.cancelNotification) {
+                    cancelPracticeNotificationsBestEffort()
+                } else {
+                    cancelLegacyPracticeNotificationsBestEffort(
+                        currentOccurrenceId = snapshot.incompleteOccurrence?.id,
+                        syncReason = reason.name,
+                    )
+                }
             }
             val previousAlarms = scheduledAlarms
             scheduledAlarms = listOfNotNull(
@@ -126,8 +131,12 @@ class PracticeNotificationCoordinator(
                 plan.deferredReminderAlarm,
             )
             alarmScheduler.scheduleAlarms(plan, previousAlarms)
-            plan.showNotification?.let { showPlan ->
-                notificationPresenter.showNotification(showPlan)
+            val presented = if (applyNotificationPresentation) {
+                plan.showNotification?.also { showPlan ->
+                    notificationPresenter.showNotification(showPlan)
+                }
+            } else {
+                null
             }
             if (DiagnosticsRecorder.isInitialized()) {
                 val occurrence = snapshot.incompleteOccurrence
@@ -137,10 +146,16 @@ class PracticeNotificationCoordinator(
                     metadata = mapOf(
                         "reason" to reason.name,
                         "capability" to capability.name,
-                        "cancel_notification" to plan.cancelNotification.toString(),
-                        "show_notification" to (plan.showNotification != null).toString(),
-                        "show_kind" to (plan.showNotification?.kind?.name ?: ""),
-                        "suppress_alert" to (plan.showNotification?.suppressAlert?.toString() ?: ""),
+                        "cancel_notification" to (
+                            if (applyNotificationPresentation) {
+                                plan.cancelNotification.toString()
+                            } else {
+                                "false"
+                            }
+                        ),
+                        "show_notification" to (presented != null).toString(),
+                        "show_kind" to (presented?.kind?.name ?: ""),
+                        "suppress_alert" to (presented?.suppressAlert?.toString() ?: ""),
                         "alarm_count" to scheduledAlarms.size.toString(),
                         "occurrence_id" to (occurrence?.id?.toString() ?: ""),
                         "occurrence_status" to (occurrence?.status?.name ?: ""),

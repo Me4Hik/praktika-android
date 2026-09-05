@@ -21,9 +21,12 @@ enum class NotificationSyncReason {
     /**
      * Catch-up sync that may re-materialize a due QUESTION after dismiss/process death.
      * Must not re-fire audible/heads-up alert; alarm-driven reasons stay alerting.
+     *
+     * APP_START is intentionally excluded: coordinator skips NotificationManager presentation
+     * entirely on APP_START (reconcile/schedule only) so nested init cannot steal alarm alerts.
      */
     fun isQuietCatchUp(): Boolean {
-        return this == APP_START || this == FOREGROUND
+        return this == FOREGROUND
     }
 }
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

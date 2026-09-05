@@ -26,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -79,16 +80,70 @@ class PracticeNotificationCoordinatorStableIdTest {
     }
 
     @Test
-    fun currentAvailable_prunesLegacyThenShowsStableCurrent() = runBlocking {
+    fun appStart_availableDue_doesNotPost_butSchedulesAlarms() = runBlocking {
         startAvailableOccurrence()
+        presenter.reset()
+        alarmScheduler.lastPlan = null
 
         coordinator.sync(NotificationSyncReason.APP_START)
 
-        assertEquals(1, presenter.legacyCancelCalls)
-        assertEquals(1, presenter.shown.size)
-        assertEquals(currentOccurrenceId(), presenter.shown.single().occurrenceId)
-        assertTrue(presenter.shown.single().suppressAlert)
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(0, presenter.legacyCancelCalls)
         assertEquals(0, presenter.cancelAllCalls)
+        assertNull(presenter.activeOccurrenceId)
+        val plan = checkNotNull(alarmScheduler.lastPlan)
+        assertEquals(
+            currentOccurrence().availableUntilEpochMillis,
+            plan.expiryBoundaryAlarm?.triggerAtEpochMillis,
+        )
+    }
+
+    @Test
+    fun appStartThenForeground_quietRestoreAfterDismiss() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+
+        coordinator.sync(NotificationSyncReason.APP_START)
+        assertTrue(presenter.shown.isEmpty())
+
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+
+        assertEquals(1, presenter.shown.size)
+        val shown = presenter.shown.single()
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertTrue(shown.suppressAlert)
+        assertTrue(shown.soundEnabled)
+    }
+
+    @Test
+    fun appStartThenExpiry_alertingDueWithoutSilentOwnershipSteal() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+
+        coordinator.sync(NotificationSyncReason.APP_START)
+        assertTrue(presenter.shown.isEmpty())
+        assertNull(presenter.activeOccurrenceId)
+
+        coordinator.sync(NotificationSyncReason.EXPIRY_ALARM)
+
+        assertEquals(1, presenter.shown.size)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.single().kind)
+        assertFalse(presenter.shown.single().suppressAlert)
+    }
+
+    @Test
+    fun appStartThenPlanned_alertingDue() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+
+        coordinator.sync(NotificationSyncReason.APP_START)
+        assertTrue(presenter.shown.isEmpty())
+
+        coordinator.sync(NotificationSyncReason.PLANNED_ALARM)
+
+        assertEquals(1, presenter.shown.size)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.single().kind)
+        assertFalse(presenter.shown.single().suppressAlert)
     }
 
     @Test
@@ -135,6 +190,28 @@ class PracticeNotificationCoordinatorStableIdTest {
     }
 
     @Test
+    fun appStartThenDeferred_alertingMaturity() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        cycleRepository.deferAvailableOccurrence(occurrence.id, durationMinutes = 5)
+        timeProvider.setEpochMillis(epochAt(11, 40, 0))
+        presenter.reset()
+        presenter.activeOccurrenceId = occurrence.id
+        presenter.activeKind = PracticeNotificationKind.SNOOZED
+
+        coordinator.sync(NotificationSyncReason.APP_START)
+        assertTrue(presenter.shown.isEmpty())
+        // Shade still shows SNOOZED from before process wake; APP_START must not touch it.
+        assertEquals(PracticeNotificationKind.SNOOZED, presenter.activeKind)
+
+        coordinator.sync(NotificationSyncReason.DEFERRED_ALARM)
+
+        assertEquals(1, presenter.shown.size)
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.shown.single().kind)
+        assertFalse(presenter.shown.single().suppressAlert)
+    }
+
+    @Test
     fun foregroundCatchUp_keepsDedupeWhenActiveQuestionPresent() = runBlocking {
         startAvailableOccurrence()
         val occurrence = currentOccurrence()
@@ -150,11 +227,11 @@ class PracticeNotificationCoordinatorStableIdTest {
     @Test
     fun noCurrentNotification_removesAllPracticeNotifications() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         presenter.reset()
         cycleRepository.pausePractice()
 
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
 
         assertEquals(1, presenter.cancelAllCalls)
         assertTrue(presenter.shown.isEmpty())
@@ -162,9 +239,23 @@ class PracticeNotificationCoordinatorStableIdTest {
     }
 
     @Test
+    fun appStart_whilePaused_doesNotCancelNotifications() = runBlocking {
+        startAvailableOccurrence()
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+        presenter.reset()
+        cycleRepository.pausePractice()
+
+        coordinator.sync(NotificationSyncReason.APP_START)
+
+        assertEquals(0, presenter.cancelAllCalls)
+        assertTrue(presenter.shown.isEmpty())
+        assertNotNull(alarmScheduler.lastPlan)
+    }
+
+    @Test
     fun missedA_availableB_finalNotificationIsBOnly() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         val occurrenceA = currentOccurrence()
         presenter.reset()
         timeProvider.setEpochMillis(epochAt(15, 30, 0))
@@ -182,7 +273,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     @Test
     fun multipleStaleOccurrences_convergeToOneCurrentNotification() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         val occurrenceA = currentOccurrence()
         presenter.reset()
         timeProvider.setEpochMillis(epochAt(19, 30, 0))
@@ -200,14 +291,14 @@ class PracticeNotificationCoordinatorStableIdTest {
     }
 
     @Test
-    fun repeatedSync_doesNotAccumulateShowsOnceActiveMatches() = runBlocking {
+    fun repeatedForegroundSync_doesNotAccumulateShowsOnceActiveMatches() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         val firstShow = presenter.shown.single()
         presenter.activeOccurrenceId = firstShow.occurrenceId
 
-        coordinator.sync(NotificationSyncReason.APP_START)
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
 
         assertEquals(1, presenter.shown.size)
         assertEquals(3, presenter.legacyCancelCalls)
@@ -216,7 +307,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     @Test
     fun tapCurrent_cancelsStableNotification() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         val occurrence = currentOccurrence()
 
         val decision = coordinator.handleNotificationTap(
@@ -397,7 +488,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     @Test
     fun tapStaleMissedOccurrence_doesNotResurrectAnswerableA() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         val occurrenceA = currentOccurrence()
         timeProvider.setEpochMillis(epochAt(15, 30, 0))
         coordinator.sync(NotificationSyncReason.EXPIRY_ALARM)
@@ -422,7 +513,7 @@ class PracticeNotificationCoordinatorStableIdTest {
         startAvailableOccurrence()
         presenter.throwOnLegacyCancel = true
 
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
 
         assertEquals(1, presenter.legacyCancelCalls)
         assertEquals(1, presenter.shown.size)
@@ -432,7 +523,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     @Test
     fun staleActiveOccurrenceDoesNotRepostAWhenBIsCurrent() = runBlocking {
         startAvailableOccurrence()
-        coordinator.sync(NotificationSyncReason.APP_START)
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
         val occurrenceA = currentOccurrence()
         timeProvider.setEpochMillis(epochAt(15, 30, 0))
         presenter.activeOccurrenceId = occurrenceA.id
