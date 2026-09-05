@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
+import com.me4hik.praktika.data.local.model.AnalyticsTerminalOccurrenceRow
 import com.me4hik.praktika.data.local.model.ArchiveTerminalOccurrenceRow
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import kotlinx.coroutines.flow.Flow
@@ -259,6 +260,25 @@ interface QuestionOccurrenceDao {
         """,
     )
     fun observeTerminalArchiveRows(): Flow<List<ArchiveTerminalOccurrenceRow>>
+
+    // PROMPT 129 — analytics terminal rows (includes stored zoneId)
+    @Query(
+        """
+        SELECT
+            id AS occurrenceId,
+            questionId AS questionId,
+            questionTextSnapshot AS questionTextSnapshot,
+            cyclePosition AS cyclePosition,
+            status AS status,
+            completedAtEpochMillis AS completedAtEpochMillis,
+            zoneId AS zoneId
+        FROM question_occurrences
+        WHERE status IN ('ANSWERED', 'SKIPPED_BY_USER', 'MISSED_BY_TIME')
+          AND completedAtEpochMillis IS NOT NULL
+        ORDER BY completedAtEpochMillis ASC, id ASC
+        """,
+    )
+    suspend fun getAnalyticsTerminalRows(): List<AnalyticsTerminalOccurrenceRow>
 }
 // 04.08.2026 Cycle Engine cursor by Me4Hik END
 // 04.08.2026 DB Refactoring cursor by Me4Hik END

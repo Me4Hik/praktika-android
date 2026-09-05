@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.me4hik.praktika.data.local.entity.DeferEventEntity
+import com.me4hik.praktika.data.local.model.AnalyticsDeferEventRow
 import com.me4hik.praktika.data.local.model.ArchiveDeferEventRow
 import kotlinx.coroutines.flow.Flow
 
@@ -85,4 +86,20 @@ interface DeferEventDao {
         """,
     )
     fun observeArchiveDeferRows(): Flow<List<ArchiveDeferEventRow>>
+
+    // PROMPT 129 — analytics defer rows (includes stored zoneId)
+    @Query(
+        """
+        SELECT
+            id AS deferEventId,
+            occurrenceId AS occurrenceId,
+            questionId AS questionId,
+            occurredAtEpochMillis AS occurredAtEpochMillis,
+            durationMinutes AS durationMinutes,
+            zoneId AS zoneId
+        FROM defer_events
+        ORDER BY occurredAtEpochMillis ASC, id ASC
+        """,
+    )
+    suspend fun getAnalyticsDeferRows(): List<AnalyticsDeferEventRow>
 }
