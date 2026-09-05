@@ -6,8 +6,6 @@ import com.me4hik.praktika.data.local.model.AnalyticsTerminalOccurrenceRow
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import java.time.DayOfWeek
-import java.time.Instant
-import java.time.ZoneId
 
 object AnalyticsAggregator {
     private const val WEEKDAY_TERMINAL_MIN = 5
@@ -68,8 +66,12 @@ object AnalyticsAggregator {
         defers: List<AnalyticsDeferEventRow>,
         occurrencesWithAnyDefer: Set<Long>,
     ): List<AnalyticsWeekdayMetrics> {
-        val terminalsByDay = terminals.groupBy { weekdayOf(it.completedAtEpochMillis, it.zoneId) }
-        val deferEventsByDay = defers.groupBy { weekdayOf(it.occurredAtEpochMillis, it.zoneId) }
+        val terminalsByDay = terminals.groupBy {
+            AnalyticsEventTime.dayOfWeek(it.completedAtEpochMillis, it.zoneId)
+        }
+        val deferEventsByDay = defers.groupBy {
+            AnalyticsEventTime.dayOfWeek(it.occurredAtEpochMillis, it.zoneId)
+        }
 
         return DayOfWeek.entries.map { day ->
             val dayTerminals = terminalsByDay[day].orEmpty()
@@ -220,11 +222,6 @@ object AnalyticsAggregator {
             return 0.0
         }
         return numerator.toDouble() / denominator.toDouble()
-    }
-
-    private fun weekdayOf(epochMillis: Long, zoneId: String): DayOfWeek {
-        val zone = runCatching { ZoneId.of(zoneId) }.getOrElse { ZoneId.of("UTC") }
-        return Instant.ofEpochMilli(epochMillis).atZone(zone).dayOfWeek
     }
 
     private data class QuestionIdentity(
