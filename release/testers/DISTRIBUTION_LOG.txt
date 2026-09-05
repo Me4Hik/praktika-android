@@ -1,0 +1,12 @@
+# Praktika preliminary tester distribution log
+#
+# Format:
+# YYYY-MM-DD HH:mm | tester build | versionCode | recipient | channel | note
+#
+# Example (do not treat as a real event):
+# 2026-08-13 12:30 | t001 | vc8 | Костя | Telegram | first external test
+#
+# Update this file only AFTER an APK was actually sent.
+# make-tester-release.ps1 does not append rows here.
+
+2026-09-04 --:-- | t006 | vc13 | Нина | Telegram | sent; exact send time not recorded
