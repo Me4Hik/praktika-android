@@ -8,6 +8,7 @@ import com.me4hik.praktika.diagnostics.DiagnosticCategory
 import com.me4hik.praktika.diagnostics.DiagnosticsRecorder
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.local.entity.AnswerEntity
+import com.me4hik.praktika.data.local.entity.DeferEventEntity
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
@@ -740,6 +741,18 @@ class CycleRepository(
         if (updatedRows != 1) {
             throw CycleCorruptionException("Failed to defer AVAILABLE occurrence ${available.id}")
         }
+
+        // PROMPT 110 — append durable defer event in the same Room transaction
+        database.deferEventDao().insert(
+            DeferEventEntity(
+                occurrenceId = available.id,
+                questionId = available.questionId,
+                occurredAtEpochMillis = now,
+                deferredUntilEpochMillis = deferredUntil,
+                durationMinutes = durationMinutes,
+                zoneId = refreshedState.activeZoneId,
+            ),
+        )
 
         database.practiceStateDao().update(
             refreshedState.copy(

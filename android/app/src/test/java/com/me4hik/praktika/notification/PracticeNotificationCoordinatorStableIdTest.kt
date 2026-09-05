@@ -509,6 +509,28 @@ class PracticeNotificationCoordinatorStableIdTest {
     }
 
     @Test
+    fun notificationDefer_writesSameDeferEvent() = runBlocking {
+        startAvailableOccurrence()
+        coordinator.sync(NotificationSyncReason.FOREGROUND)
+        val occurrence = currentOccurrence()
+        timeProvider.setEpochMillis(epochAt(11, 20, 0))
+
+        val decision = coordinator.handleNotificationDefer(
+            occurrenceId = occurrence.id,
+            plannedAtEpochMillis = occurrence.plannedAtEpochMillis,
+            durationMinutes = 15,
+        )
+
+        assertTrue(decision is NotificationDeferDecision.Deferred)
+        val events = database.deferEventDao().getForOccurrenceOrdered(occurrence.id)
+        assertEquals(1, events.size)
+        assertEquals(15, events.single().durationMinutes)
+        assertEquals(epochAt(11, 20, 0), events.single().occurredAtEpochMillis)
+        assertEquals(epochAt(11, 35, 0), events.single().deferredUntilEpochMillis)
+        assertEquals(ZONE_KIEV, events.single().zoneId)
+    }
+
+    @Test
     fun cleanupFailure_stillShowsCurrentNotification() = runBlocking {
         startAvailableOccurrence()
         presenter.throwOnLegacyCancel = true
