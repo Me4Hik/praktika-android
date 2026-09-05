@@ -589,15 +589,22 @@ private class EnabledNotificationPermissionPolicy : NotificationPermissionPolicy
     override fun evaluateUiState(
         permissionRequested: Boolean,
         soundEnabled: Boolean,
+        selectedSoundId: String,
     ): NotificationPermissionUiState = NotificationPermissionUiState.ENABLED
     override fun toDeliveryCapability(
         state: NotificationPermissionUiState,
     ): NotificationDeliveryCapability = NotificationDeliveryCapability.ENABLED
     override fun createAppNotificationSettingsIntent(): Intent = Intent()
-    override fun createChannelSettingsIntent(soundEnabled: Boolean): Intent = Intent()
+    override fun createChannelSettingsIntent(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): Intent = Intent()
     override fun shouldRequestRuntimePermission(): Boolean = false
     override fun hasRuntimePermission(): Boolean = true
     override fun areAppNotificationsEnabled(): Boolean = true
     override fun shouldShowRequestPermissionRationale(): Boolean = false
-    override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+    override fun isSelectedChannelEnabled(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): Boolean = true
 }

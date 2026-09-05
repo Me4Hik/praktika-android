@@ -4,7 +4,11 @@ package com.me4hik.praktika.notification
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 
 object NotificationPlanner {
-    fun plan(input: NotificationPlanningInput, soundEnabled: Boolean): NotificationPlan {
+    fun plan(
+        input: NotificationPlanningInput,
+        soundEnabled: Boolean,
+        selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
+    ): NotificationPlan {
         if (!input.isPracticeStarted || input.isPaused) {
             return NotificationPlan(cancelAllAlarms = true, cancelNotification = true)
         }
@@ -17,7 +21,8 @@ object NotificationPlanner {
 
         return when (occurrence.status) {
             QuestionOccurrenceStatus.SCHEDULED -> planScheduled(input.nowEpochMillis, occurrence)
-            QuestionOccurrenceStatus.AVAILABLE -> planAvailable(input, occurrence, soundEnabled)
+            QuestionOccurrenceStatus.AVAILABLE ->
+                planAvailable(input, occurrence, soundEnabled, selectedSoundId)
             else -> NotificationPlan(cancelAllAlarms = true, cancelNotification = true)
         }
     }
@@ -55,6 +60,7 @@ object NotificationPlanner {
         input: NotificationPlanningInput,
         occurrence: NotificationOccurrenceSnapshot,
         soundEnabled: Boolean,
+        selectedSoundId: String,
     ): NotificationPlan {
         val deferredUntil = occurrence.deferredUntilEpochMillis
         val isDeferred = deferredUntil != null && input.nowEpochMillis < deferredUntil
@@ -82,6 +88,7 @@ object NotificationPlanner {
                     kind = PracticeNotificationKind.SNOOZED,
                     deferredUntilEpochMillis = deferredUntil,
                     zoneId = occurrence.zoneId,
+                    selectedSoundId = selectedSoundId,
                 ),
             )
         }
@@ -107,6 +114,7 @@ object NotificationPlanner {
                     kind = PracticeNotificationKind.QUESTION,
                     zoneId = occurrence.zoneId,
                     suppressAlert = input.quietCatchUp,
+                    selectedSoundId = selectedSoundId,
                 )
             } else {
                 null

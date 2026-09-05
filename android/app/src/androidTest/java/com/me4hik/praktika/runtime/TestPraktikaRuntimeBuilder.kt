@@ -95,6 +95,7 @@ object TestPraktikaRuntimeBuilder {
             practiceReadRepository = practiceReadRepository,
             permissionRepository = resolvedPermissionRepository,
             soundEnabledProvider = { soundPreferenceRepository.soundEnabled.first() },
+            selectedSoundIdProvider = { soundPreferenceRepository.selectedSoundId.first() },
             alarmScheduler = alarmScheduler,
             notificationPresenter = notificationPresenter,
             openRequestStore = openRequestStore,

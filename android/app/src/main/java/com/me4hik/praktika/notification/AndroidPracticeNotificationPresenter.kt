@@ -114,8 +114,18 @@ class AndroidPracticeNotificationPresenter(
         // Quiet catch-up uses existing DUE_SILENT (no new channel) + setSilent to avoid re-alert.
         val channelId = when {
             plan.suppressAlert -> PracticeNotificationChannels.DUE_SILENT
-            plan.soundEnabled -> PracticeNotificationChannels.DUE_SOUND
-            else -> PracticeNotificationChannels.DUE_SILENT
+            !plan.soundEnabled -> PracticeNotificationChannels.DUE_SILENT
+            else -> {
+                PracticeDueSoundChannelRouter.ensureCustomDueSoundChannelForId(
+                    context = context,
+                    notificationManager = notificationManager,
+                    selectedSoundId = plan.selectedSoundId,
+                )
+                PracticeDueSoundChannelRouter.dueChannelId(
+                    soundEnabled = true,
+                    selectedSoundId = plan.selectedSoundId,
+                )
+            }
         }
         val contentIntent = PendingIntent.getActivity(
             context,
@@ -430,12 +440,11 @@ class AndroidPracticeNotificationPresenter(
         fun deferActionRequestCode(occurrenceId: Long): Int =
             ("practice_defer_$occurrenceId").hashCode()
 
-        fun dueChannelId(soundEnabled: Boolean): String {
-            return if (soundEnabled) {
-                PracticeNotificationChannels.DUE_SOUND
-            } else {
-                PracticeNotificationChannels.DUE_SILENT
-            }
+        fun dueChannelId(
+            soundEnabled: Boolean,
+            selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
+        ): String {
+            return PracticeDueSoundChannelRouter.dueChannelId(soundEnabled, selectedSoundId)
         }
     }
 }

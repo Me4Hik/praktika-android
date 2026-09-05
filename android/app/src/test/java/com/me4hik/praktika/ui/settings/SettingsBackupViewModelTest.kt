@@ -105,9 +105,16 @@ class SettingsBackupViewModelTest {
             soundPreferenceRepository = object : SoundPreferenceRepository {
                 private val state = MutableStateFlow(true)
                 override val soundEnabled: Flow<Boolean> = state
+                override val selectedSoundId: Flow<String> =
+                    MutableStateFlow(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+                override val hiddenBuiltinIds: Flow<Set<String>> = MutableStateFlow(emptySet())
                 override suspend fun setSoundEnabled(enabled: Boolean) {
                     state.value = enabled
                 }
+                override suspend fun selectSound(id: String) = Unit
+                override suspend fun hideBuiltin(id: String) = Unit
+                override suspend fun restoreBuiltin(id: String) = Unit
+                override suspend fun restoreAllHidden() = Unit
             },
             deferDurationPreferenceRepository = object : DeferDurationPreferenceRepository {
                 override val deferDurationMinutes: Flow<Int> = flowOf(DeferDurationOptions.DEFAULT_MINUTES)
@@ -119,17 +126,26 @@ class SettingsBackupViewModelTest {
                 override fun notifyPermissionStateChanged(source: String) = Unit
                 override val permissionRequested = MutableStateFlow(false)
                 override suspend fun markPermissionRequested() = Unit
-                override fun evaluateUiState(permissionRequested: Boolean, soundEnabled: Boolean) =
-                    NotificationPermissionUiState.ENABLED
+                override fun evaluateUiState(
+                    permissionRequested: Boolean,
+                    soundEnabled: Boolean,
+                    selectedSoundId: String,
+                ) = NotificationPermissionUiState.ENABLED
                 override fun toDeliveryCapability(state: NotificationPermissionUiState) =
                     NotificationDeliveryCapability.ENABLED
                 override fun createAppNotificationSettingsIntent() = android.content.Intent()
-                override fun createChannelSettingsIntent(soundEnabled: Boolean) = android.content.Intent()
+                override fun createChannelSettingsIntent(
+                    soundEnabled: Boolean,
+                    selectedSoundId: String,
+                ) = android.content.Intent()
                 override fun shouldRequestRuntimePermission(): Boolean = false
                 override fun hasRuntimePermission(): Boolean = true
                 override fun areAppNotificationsEnabled(): Boolean = true
                 override fun shouldShowRequestPermissionRationale(): Boolean = false
-                override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+                override fun isSelectedChannelEnabled(
+                    soundEnabled: Boolean,
+                    selectedSoundId: String,
+                ): Boolean = true
             },
             notificationSyncRequester = object : NotificationSyncRequester {
                 override suspend fun requestSync(reason: NotificationSyncReason) = Unit

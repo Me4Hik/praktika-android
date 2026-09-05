@@ -70,16 +70,20 @@ class NotificationPermissionRepository(
         }
     }
 
-    suspend fun currentUiState(soundEnabled: Boolean): NotificationPermissionUiState {
+    suspend fun currentUiState(
+        soundEnabled: Boolean,
+        selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
+    ): NotificationPermissionUiState {
         val requested = permissionRequested.first()
-        return evaluateUiState(requested, soundEnabled)
+        return evaluateUiState(requested, soundEnabled, selectedSoundId)
     }
 
     override fun evaluateUiState(
         permissionRequested: Boolean,
         soundEnabled: Boolean,
+        selectedSoundId: String,
     ): NotificationPermissionUiState {
-        val channelId = selectedChannelId(soundEnabled)
+        val channelId = selectedChannelId(soundEnabled, selectedSoundId)
         return NotificationPermissionStateResolver.resolve(
             supportsRuntimePermission = shouldRequestRuntimePermission(),
             runtimeGranted = hasRuntimePermission(),
@@ -112,8 +116,11 @@ class NotificationPermissionRepository(
         return rationaleChecker()
     }
 
-    override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean {
-        return !isChannelBlocked(selectedChannelId(soundEnabled))
+    override fun isSelectedChannelEnabled(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): Boolean {
+        return !isChannelBlocked(selectedChannelId(soundEnabled, selectedSoundId))
     }
 
     fun isChannelBlocked(channelId: String): Boolean {
@@ -137,8 +144,11 @@ class NotificationPermissionRepository(
         }
     }
 
-    override fun createChannelSettingsIntent(soundEnabled: Boolean): Intent {
-        val channelId = selectedChannelId(soundEnabled)
+    override fun createChannelSettingsIntent(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): Intent {
+        val channelId = selectedChannelId(soundEnabled, selectedSoundId)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -163,9 +173,12 @@ class NotificationPermissionRepository(
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    private fun selectedChannelId(soundEnabled: Boolean): String {
+    private fun selectedChannelId(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): String {
         // Permission / channel-blocked checks follow the due (HIGH) channels used for live questions.
-        return AndroidPracticeNotificationPresenter.dueChannelId(soundEnabled)
+        return PracticeDueSoundChannelRouter.dueChannelId(soundEnabled, selectedSoundId)
     }
 
     private companion object {

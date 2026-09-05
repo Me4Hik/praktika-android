@@ -289,7 +289,14 @@ class PraktikaRuntimeInitializerInitFailureObservabilityHostTest {
         val answerDeleteRepository = RoomAnswerDeleteRepository(database, backupMutationRequestSink)
         val soundPreferenceRepository = object : SoundPreferenceRepository {
             override val soundEnabled: Flow<Boolean> = flowOf(true)
+            override val selectedSoundId: Flow<String> =
+                flowOf(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+            override val hiddenBuiltinIds: Flow<Set<String>> = flowOf(emptySet())
             override suspend fun setSoundEnabled(enabled: Boolean) = Unit
+            override suspend fun selectSound(id: String) = Unit
+            override suspend fun hideBuiltin(id: String) = Unit
+            override suspend fun restoreBuiltin(id: String) = Unit
+            override suspend fun restoreAllHidden() = Unit
         }
         val deferDurationPreferenceRepository = object : DeferDurationPreferenceRepository {
             override val deferDurationMinutes: Flow<Int> = flowOf(DeferDurationOptions.DEFAULT_MINUTES)
@@ -309,17 +316,24 @@ class PraktikaRuntimeInitializerInitFailureObservabilityHostTest {
             override fun evaluateUiState(
                 permissionRequested: Boolean,
                 soundEnabled: Boolean,
+                selectedSoundId: String,
             ): NotificationPermissionUiState = NotificationPermissionUiState.ENABLED
             override fun toDeliveryCapability(
                 state: NotificationPermissionUiState,
             ): NotificationDeliveryCapability = NotificationDeliveryCapability.ENABLED
             override fun createAppNotificationSettingsIntent(): Intent = Intent()
-            override fun createChannelSettingsIntent(soundEnabled: Boolean): Intent = Intent()
+            override fun createChannelSettingsIntent(
+                soundEnabled: Boolean,
+                selectedSoundId: String,
+            ): Intent = Intent()
             override fun shouldRequestRuntimePermission(): Boolean = false
             override fun hasRuntimePermission(): Boolean = true
             override fun areAppNotificationsEnabled(): Boolean = true
             override fun shouldShowRequestPermissionRationale(): Boolean = false
-            override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+            override fun isSelectedChannelEnabled(
+                soundEnabled: Boolean,
+                selectedSoundId: String,
+            ): Boolean = true
         }
         val coordinator = PracticeNotificationCoordinator(
             initializer = initializer,

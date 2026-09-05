@@ -20,13 +20,17 @@ interface NotificationPermissionPolicy {
     fun evaluateUiState(
         permissionRequested: Boolean,
         soundEnabled: Boolean,
+        selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
     ): NotificationPermissionUiState
 
     fun toDeliveryCapability(state: NotificationPermissionUiState): NotificationDeliveryCapability
 
     fun createAppNotificationSettingsIntent(): Intent
 
-    fun createChannelSettingsIntent(soundEnabled: Boolean): Intent
+    fun createChannelSettingsIntent(
+        soundEnabled: Boolean,
+        selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
+    ): Intent
 
     fun shouldRequestRuntimePermission(): Boolean
 
@@ -36,7 +40,10 @@ interface NotificationPermissionPolicy {
 
     fun shouldShowRequestPermissionRationale(): Boolean
 
-    fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean
+    fun isSelectedChannelEnabled(
+        soundEnabled: Boolean,
+        selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
+    ): Boolean
 }
 // 10.08.2026 Post-release fixes cursor by Me4Hik END
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

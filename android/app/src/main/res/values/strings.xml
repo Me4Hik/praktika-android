@@ -194,6 +194,10 @@
     <string name="notification_channel_due_silent_description">Всплывающие уведомления о доступных вопросах без звука.</string>
     <string name="notification_channel_snoozed_name">Отложенные вопросы</string>
     <string name="notification_channel_snoozed_description">Тихий статус отложенного вопроса без всплывающего окна.</string>
+    <string name="notification_channel_due_custom_sound_name">Вопросы (всплывающие): %1$s</string>
+    <string name="notification_channel_due_custom_sound_description">Всплывающие уведомления со звуком «%1$s».</string>
+    <string name="notif_sound_display_system">Системный звук</string>
+    <string name="notif_sound_display_numbered">Звук %1$d</string>
     <string name="notification_public_title">Практика</string>
     <string name="notification_public_body">Доступен новый вопрос</string>
     <string name="notification_snoozed_body">Повтор в %1$s</string>

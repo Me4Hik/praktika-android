@@ -98,6 +98,7 @@ object RuntimeFactory {
             practiceReadRepository = practiceReadRepository,
             permissionRepository = permissionRepository,
             soundEnabledProvider = { soundPreferenceRepository.soundEnabled.first() },
+            selectedSoundIdProvider = { soundPreferenceRepository.selectedSoundId.first() },
             alarmScheduler = alarmScheduler,
             notificationPresenter = notificationPresenter,
             openRequestStore = openRequestStore,

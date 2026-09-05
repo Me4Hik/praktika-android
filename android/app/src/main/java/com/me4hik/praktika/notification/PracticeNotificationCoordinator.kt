@@ -26,6 +26,9 @@ class PracticeNotificationCoordinator(
     private val practiceReadRepository: PracticeReadRepository,
     private val permissionRepository: NotificationPermissionPolicy,
     private val soundEnabledProvider: suspend () -> Boolean,
+    private val selectedSoundIdProvider: suspend () -> String = {
+        com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT
+    },
     private val alarmScheduler: PlatformAlarmScheduler,
     private val notificationPresenter: PracticeNotificationPresenter,
     private val openRequestStore: NotificationOpenRequestStore,
@@ -82,16 +85,18 @@ class PracticeNotificationCoordinator(
             cycleRepository.syncEnvironmentAndReconcile()
             val snapshot = readSnapshot()
             val permissionRequested = permissionRepository.permissionRequested.first()
+            val soundEnabled = soundEnabledProvider()
+            val selectedSoundId = selectedSoundIdProvider()
             val permissionState = permissionRepository.evaluateUiState(
                 permissionRequested = permissionRequested,
-                soundEnabled = soundEnabledProvider(),
+                soundEnabled = soundEnabled,
+                selectedSoundId = selectedSoundId,
             )
             val capability = permissionRepository.toDeliveryCapability(permissionState)
             TargetedBugDiagnostics.NotificationTraceContext.syncReason = reason.name
             TargetedBugDiagnostics.NotificationTraceContext.deliveryCapability = capability.name
             val activeNotificationOccurrenceId = readActiveOccurrenceIdBestEffort()
             val activeNotificationKind = readActiveKindBestEffort()
-            val soundEnabled = soundEnabledProvider()
             val plan = NotificationPlanner.plan(
                 input = NotificationPlanningInput(
                     isPracticeStarted = snapshot.practiceState.isPracticeStarted,
@@ -104,6 +109,7 @@ class PracticeNotificationCoordinator(
                     quietCatchUp = reason.isQuietCatchUp(),
                 ),
                 soundEnabled = soundEnabled,
+                selectedSoundId = selectedSoundId,
             )
             if (plan.cancelNotification) {
                 cancelPracticeNotificationsBestEffort()

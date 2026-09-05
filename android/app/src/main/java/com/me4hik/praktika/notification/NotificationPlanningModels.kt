@@ -59,6 +59,8 @@ data class NotificationShowPlan(
     val zoneId: String = "UTC",
     /** Quiet re-materialize: same content/actions, no sound / heads-up interruption. */
     val suppressAlert: Boolean = false,
+    /** Stable sound-library id; ignored when [soundEnabled] is false or [suppressAlert] is true. */
+    val selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
 )
 
 data class NotificationPlan(

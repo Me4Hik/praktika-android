@@ -99,6 +99,7 @@ class PracticeRootViewModelPermissionRefreshTest {
         override fun evaluateUiState(
             permissionRequested: Boolean,
             soundEnabled: Boolean,
+            selectedSoundId: String,
         ): NotificationPermissionUiState {
             return NotificationPermissionStateResolver.resolve(
                 supportsRuntimePermission = true,
@@ -120,7 +121,10 @@ class PracticeRootViewModelPermissionRefreshTest {
 
         override fun createAppNotificationSettingsIntent(): Intent = Intent()
 
-        override fun createChannelSettingsIntent(soundEnabled: Boolean): Intent = Intent()
+        override fun createChannelSettingsIntent(
+            soundEnabled: Boolean,
+            selectedSoundId: String,
+        ): Intent = Intent()
 
         override fun shouldRequestRuntimePermission(): Boolean = true
 
@@ -130,7 +134,10 @@ class PracticeRootViewModelPermissionRefreshTest {
 
         override fun shouldShowRequestPermissionRationale(): Boolean = false
 
-        override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = channelEnabled
+        override fun isSelectedChannelEnabled(
+            soundEnabled: Boolean,
+            selectedSoundId: String,
+        ): Boolean = channelEnabled
     }
 }
 // 10.08.2026 Post-release fixes cursor by Me4Hik END

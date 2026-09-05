@@ -170,10 +170,21 @@ internal object PracticeRootViewModelTestSupport {
 
     class FakeSoundPreferenceRepository : SoundPreferenceRepository {
         override val soundEnabled = MutableStateFlow(true)
+        override val selectedSoundId =
+            MutableStateFlow(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+        override val hiddenBuiltinIds = MutableStateFlow(emptySet<String>())
 
         override suspend fun setSoundEnabled(enabled: Boolean) {
             soundEnabled.value = enabled
         }
+
+        override suspend fun selectSound(id: String) {
+            selectedSoundId.value = com.me4hik.praktika.sound.BuiltinSoundCatalog.resolveOrDefault(id).id
+        }
+
+        override suspend fun hideBuiltin(id: String) = Unit
+        override suspend fun restoreBuiltin(id: String) = Unit
+        override suspend fun restoreAllHidden() = Unit
     }
 
     class FakeNotificationPermissionPolicy(
@@ -196,6 +207,7 @@ internal object PracticeRootViewModelTestSupport {
         override fun evaluateUiState(
             permissionRequested: Boolean,
             soundEnabled: Boolean,
+            selectedSoundId: String,
         ): NotificationPermissionUiState = uiState
 
         fun setUiState(state: NotificationPermissionUiState) {
@@ -212,7 +224,10 @@ internal object PracticeRootViewModelTestSupport {
 
         override fun createAppNotificationSettingsIntent() = android.content.Intent()
 
-        override fun createChannelSettingsIntent(soundEnabled: Boolean) = android.content.Intent()
+        override fun createChannelSettingsIntent(
+            soundEnabled: Boolean,
+            selectedSoundId: String,
+        ) = android.content.Intent()
 
         override fun shouldRequestRuntimePermission(): Boolean = true
 
@@ -222,7 +237,10 @@ internal object PracticeRootViewModelTestSupport {
 
         override fun shouldShowRequestPermissionRationale(): Boolean = false
 
-        override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+        override fun isSelectedChannelEnabled(
+            soundEnabled: Boolean,
+            selectedSoundId: String,
+        ): Boolean = true
     }
 
     class FakeExactAlarmCapabilityPolicy(
