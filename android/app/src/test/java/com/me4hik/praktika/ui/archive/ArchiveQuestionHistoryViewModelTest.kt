@@ -1,4 +1,5 @@
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - unit tests ArchiveQuestionHistoryViewModel
+// PROMPT 119 — detail VM maps mixed history ASC
 package com.me4hik.praktika.ui.archive
 
 import java.time.LocalDate
@@ -12,6 +13,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -36,48 +39,91 @@ class ArchiveQuestionHistoryViewModelTest {
     }
 
     @Test
-    fun selectedQuestionHistoryPreservesOrderDateTimeAndCycle() = runTest {
+    fun twoDeferThenAnswer_preservesAscOrder() = runTest {
         val day = LocalDate.of(2026, 8, 7)
-        repository.emit(
+        repository.emitHistory(
             listOf(
-                sampleArchiveEntry(
-                    answerId = 2,
-                    epochMillis = epoch(day, 18, 42),
+                sampleDeferredEvent(1, 10, epoch(day, 10, 0), questionId = 1, durationMinutes = 15),
+                sampleDeferredEvent(2, 10, epoch(day, 11, 0), questionId = 1, durationMinutes = 5),
+                sampleAnswerEvent(
+                    occurrenceId = 10,
+                    eventAt = epoch(day, 18, 42),
                     questionId = 1,
+                    answerId = 55,
+                    answerText = "Final",
                     questionText = "Snapshot B",
-                    answerText = "Answer 2",
                     cycleNumber = 2,
                 ),
-                sampleArchiveEntry(
-                    answerId = 1,
-                    epochMillis = epoch(day, 10, 0),
-                    questionId = 1,
-                    questionText = "Snapshot A",
-                    answerText = "Answer 1",
-                    cycleNumber = 1,
-                ),
-                sampleArchiveEntry(
-                    answerId = 3,
-                    epochMillis = epoch(day, 12, 0),
-                    questionId = 2,
-                    questionText = "Other",
-                    answerText = "Other answer",
-                    cycleNumber = 1,
-                ),
+                sampleMissedEvent(99, epoch(day, 12, 0), questionId = 2),
             ),
         )
         val viewModel = createViewModel(questionId = 1)
         dispatcher.scheduler.advanceUntilIdle()
         val content = viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content
-        assertEquals(2, content.entries.size)
-        assertEquals(1L, content.entries[0].answerId)
-        assertEquals(2L, content.entries[1].answerId)
-        assertEquals("Snapshot A", content.entries[0].questionText)
-        assertEquals("Snapshot B", content.entries[1].questionText)
-        assertEquals("Answer 1", content.entries[0].answerText)
+        assertEquals(3, content.entries.size)
+        assertEquals(ArchiveHistoryItemKind.Deferred, content.entries[0].kind)
+        assertEquals(15, content.entries[0].durationMinutes)
+        assertEquals(ArchiveHistoryItemKind.Deferred, content.entries[1].kind)
+        assertEquals(5, content.entries[1].durationMinutes)
+        assertEquals(ArchiveHistoryItemKind.Answer, content.entries[2].kind)
+        assertEquals(55L, content.entries[2].answerId)
+        assertEquals("Final", content.entries[2].answerText)
+        assertTrue(content.entries[2].canShare)
+        assertTrue(content.entries[2].canDelete)
         assertTrue(content.entries[0].dateTimeText.contains("10:00"))
-        assertEquals(1, content.entries[0].cycleNumber)
-        assertEquals(2, content.entries[1].cycleNumber)
+    }
+
+    @Test
+    fun mapsMissedRejectedDeferredKinds() = runTest {
+        repository.emitHistory(
+            listOf(
+                sampleMissedEvent(1, 1_000L, questionId = 1, questionText = "M"),
+                sampleRejectedEvent(2, 2_000L, questionId = 1, questionText = "R"),
+                sampleDeferredEvent(3, 2, 3_000L, questionId = 1, durationMinutes = 30, questionText = "D"),
+            ),
+        )
+        val viewModel = createViewModel(questionId = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+        val content = viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content
+        assertEquals(
+            listOf(
+                ArchiveHistoryItemKind.Missed,
+                ArchiveHistoryItemKind.Rejected,
+                ArchiveHistoryItemKind.Deferred,
+            ),
+            content.entries.map { it.kind },
+        )
+        content.entries.forEach { entry ->
+            assertFalse(entry.canShare)
+            assertFalse(entry.canDelete)
+            assertNull(entry.answerId)
+        }
+        assertEquals(30, content.entries[2].durationMinutes)
+    }
+
+    @Test
+    fun deletedAnswerDetail_noShareDelete() = runTest {
+        repository.emitHistory(
+            listOf(
+                sampleAnswerEvent(
+                    occurrenceId = 7,
+                    eventAt = 7_000L,
+                    questionId = 1,
+                    answerId = null,
+                    answerText = null,
+                    questionText = "Gone",
+                ),
+            ),
+        )
+        val viewModel = createViewModel(questionId = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+        val entry = (viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content).entries.single()
+        assertEquals(ArchiveHistoryItemKind.Answer, entry.kind)
+        assertEquals("o:7:answered", entry.stableKey)
+        assertNull(entry.answerId)
+        assertNull(entry.answerText)
+        assertFalse(entry.canShare)
+        assertFalse(entry.canDelete)
     }
 
     @Test
@@ -89,7 +135,7 @@ class ArchiveQuestionHistoryViewModelTest {
 
     @Test
     fun emptyQuestionHistoryShowsEmptyState() = runTest {
-        repository.emit(emptyList())
+        repository.emitHistory(emptyList())
         val viewModel = createViewModel(questionId = 1)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals(ArchiveQuestionHistoryUiState.Empty, viewModel.uiState.value)

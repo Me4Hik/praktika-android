@@ -33,6 +33,8 @@ fun ArchiveEntryCard(
     modifier: Modifier = Modifier,
     questionText: String? = null,
     cycleLabel: String? = null,
+    showShare: Boolean = true,
+    showDelete: Boolean = true,
 ) {
     PracticeSurface(modifier = modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -54,27 +56,33 @@ fun ArchiveEntryCard(
             if (cycleLabel != null) {
                 MetadataText(text = cycleLabel)
             }
-            Row(
-                modifier = Modifier.padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(
-                    onClick = onShare,
-                    modifier = Modifier.testTag(shareTestTag),
+            if (showShare || showDelete) {
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = stringResource(R.string.archive_share_action),
-                        color = AccentViolet.copy(alpha = 0.90f),
-                    )
-                }
-                TextButton(
-                    onClick = onDelete,
-                    modifier = Modifier.testTag(deleteTestTag),
-                ) {
-                    Text(
-                        text = stringResource(R.string.archive_delete_action),
-                        color = Destructive.copy(alpha = 0.85f),
-                    )
+                    if (showShare) {
+                        TextButton(
+                            onClick = onShare,
+                            modifier = Modifier.testTag(shareTestTag),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.archive_share_action),
+                                color = AccentViolet.copy(alpha = 0.90f),
+                            )
+                        }
+                    }
+                    if (showDelete) {
+                        TextButton(
+                            onClick = onDelete,
+                            modifier = Modifier.testTag(deleteTestTag),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.archive_delete_action),
+                                color = Destructive.copy(alpha = 0.85f),
+                            )
+                        }
+                    }
                 }
             }
         }

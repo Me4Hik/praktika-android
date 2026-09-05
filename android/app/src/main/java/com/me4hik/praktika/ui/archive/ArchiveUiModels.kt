@@ -112,7 +112,12 @@ sealed interface ArchiveQuestionsUiState {
 data class ArchiveQuestionListItem(
     val questionId: Int,
     val questionText: String,
+    val cyclePosition: Int,
+    val latestEventAtEpochMillis: Long,
     val answerCount: Int,
+    val rejectedCount: Int,
+    val missedCount: Int,
+    val deferredCount: Int,
 )
 
 sealed interface ArchiveQuestionHistoryUiState {
@@ -126,12 +131,26 @@ sealed interface ArchiveQuestionHistoryUiState {
     ) : ArchiveQuestionHistoryUiState
 }
 
+enum class ArchiveHistoryItemKind {
+    Answer,
+    Rejected,
+    Missed,
+    Deferred,
+}
+
 data class ArchiveQuestionHistoryItem(
-    val answerId: Long,
+    val stableKey: String,
+    val kind: ArchiveHistoryItemKind,
+    val occurrenceId: Long,
     val questionText: String,
-    val answerText: String,
+    val answerId: Long?,
+    val answerText: String?,
     val dateTimeText: String,
     val cycleNumber: Int,
+    val cyclePosition: Int,
+    val durationMinutes: Int?,
+    val canShare: Boolean,
+    val canDelete: Boolean,
 )
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
 

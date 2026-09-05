@@ -128,23 +128,34 @@ fun ArchiveQuestionHistoryScreen(
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(uiState.entries, key = { it.answerId }) { entry ->
+                        items(uiState.entries, key = { it.stableKey }) { entry ->
+                            val actionTagId = entry.answerId?.toString() ?: entry.stableKey
                             ArchiveEntryCard(
                                 questionText = entry.questionText,
-                                answerText = entry.answerText,
+                                answerText = entry.answerText.orEmpty(),
                                 metadata = entry.dateTimeText,
                                 cycleLabel = stringResource(
                                     R.string.archive_cycle_label,
                                     entry.cycleNumber,
                                 ),
                                 onShare = {
-                                    onRequestShare(entry.questionText, entry.answerText)
+                                    val text = entry.answerText
+                                    if (entry.canShare && text != null) {
+                                        onRequestShare(entry.questionText, text)
+                                    }
                                 },
-                                onDelete = { onRequestDelete(entry.answerId) },
-                                shareTestTag = "${ArchiveTestTags.SHARE_BUTTON_PREFIX}${entry.answerId}",
-                                deleteTestTag = "${ArchiveTestTags.DELETE_BUTTON_PREFIX}${entry.answerId}",
+                                onDelete = {
+                                    val id = entry.answerId
+                                    if (entry.canDelete && id != null) {
+                                        onRequestDelete(id)
+                                    }
+                                },
+                                showShare = entry.canShare,
+                                showDelete = entry.canDelete,
+                                shareTestTag = "${ArchiveTestTags.SHARE_BUTTON_PREFIX}$actionTagId",
+                                deleteTestTag = "${ArchiveTestTags.DELETE_BUTTON_PREFIX}$actionTagId",
                                 modifier = Modifier.testTag(
-                                    "${ArchiveTestTags.QUESTION_HISTORY_ENTRY_PREFIX}${entry.answerId}",
+                                    "${ArchiveTestTags.QUESTION_HISTORY_ENTRY_PREFIX}${entry.stableKey}",
                                 ),
                             )
                         }

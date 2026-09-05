@@ -135,11 +135,18 @@ class Stage21ShareComposeInstrumentedTest {
                     uiState = ArchiveQuestionHistoryUiState.Content(
                         entries = listOf(
                             ArchiveQuestionHistoryItem(
-                                answerId = 7L,
+                                stableKey = "a:7",
+                                kind = ArchiveHistoryItemKind.Answer,
+                                occurrenceId = 7L,
                                 questionText = "History snapshot",
+                                answerId = 7L,
                                 answerText = "History answer",
                                 dateTimeText = "7 августа 2026 · 12:00",
                                 cycleNumber = 2,
+                                cyclePosition = 1,
+                                durationMinutes = null,
+                                canShare = true,
+                                canDelete = true,
                             ),
                         ),
                     ),

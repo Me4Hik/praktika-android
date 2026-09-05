@@ -1,4 +1,5 @@
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - ViewModel списка вопросов архива
+// PROMPT 119 — list from mixed history events
 package com.me4hik.praktika.ui.archive
 
 import androidx.lifecycle.ViewModel
@@ -19,23 +20,28 @@ class ArchiveQuestionsViewModel(
 
     init {
         viewModelScope.launch {
-            archiveReadRepository.observeEntries()
+            archiveReadRepository.observeAllHistoryEvents()
                 .catch { throwable ->
                     _uiState.value = ArchiveQuestionsUiState.Error(
                         message = throwable.message ?: "Archive read failed",
                     )
                 }
-                .collect { entries ->
-                    val grouped = ArchiveQuestionGrouping.groupQuestions(entries)
-                    _uiState.value = if (grouped.isEmpty()) {
+                .collect { events ->
+                    val summarized = ArchiveHistoryQuestionGrouping.summarize(events)
+                    _uiState.value = if (summarized.isEmpty()) {
                         ArchiveQuestionsUiState.Empty
                     } else {
                         ArchiveQuestionsUiState.Content(
-                            questions = grouped.map { group ->
+                            questions = summarized.map { summary ->
                                 ArchiveQuestionListItem(
-                                    questionId = group.questionId,
-                                    questionText = group.questionText,
-                                    answerCount = group.answerCount,
+                                    questionId = summary.questionId,
+                                    questionText = summary.questionText,
+                                    cyclePosition = summary.cyclePosition,
+                                    latestEventAtEpochMillis = summary.latestEventAtEpochMillis,
+                                    answerCount = summary.answerCount,
+                                    rejectedCount = summary.rejectedCount,
+                                    missedCount = summary.missedCount,
+                                    deferredCount = summary.deferredCount,
                                 )
                             },
                         )

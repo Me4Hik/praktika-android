@@ -1,4 +1,5 @@
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - unit tests ArchiveQuestionsViewModel
+// PROMPT 119 — list VM observes mixed history feed
 package com.me4hik.praktika.ui.archive
 
 import kotlinx.coroutines.Dispatchers
@@ -31,37 +32,51 @@ class ArchiveQuestionsViewModelTest {
 
     @Test
     fun emptyArchiveShowsEmptyState() = runTest {
-        repository.emit(emptyList())
+        repository.emitHistory(emptyList())
         val viewModel = ArchiveQuestionsViewModel(repository)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals(ArchiveQuestionsUiState.Empty, viewModel.uiState.value)
     }
 
     @Test
-    fun contentShowsGroupedQuestionsWithCounts() = runTest {
-        repository.emit(
+    fun contentShowsGroupedQuestionsWithMixedCounts() = runTest {
+        repository.emitHistory(
             listOf(
-                sampleArchiveEntry(1, 1_000L, questionId = 1, questionText = "Q1 old"),
-                sampleArchiveEntry(2, 2_000L, questionId = 1, questionText = "Q1 new"),
-                sampleArchiveEntry(3, 1_500L, questionId = 2, questionText = "Q2"),
+                sampleAnswerEvent(1, 1_000L, questionId = 1, answerId = 1, questionText = "Q1 old"),
+                sampleAnswerEvent(2, 2_000L, questionId = 1, answerId = 2, questionText = "Q1 new"),
+                sampleMissedEvent(3, 1_500L, questionId = 2, questionText = "Q2"),
             ),
         )
         val viewModel = ArchiveQuestionsViewModel(repository)
         dispatcher.scheduler.advanceUntilIdle()
         val content = viewModel.uiState.value as ArchiveQuestionsUiState.Content
         assertEquals(2, content.questions.size)
+        assertEquals(1, content.questions[0].questionId)
         val questionOne = content.questions.first { it.questionId == 1 }
         assertEquals(2, questionOne.answerCount)
         assertEquals("Q1 new", questionOne.questionText)
+        val questionTwo = content.questions.first { it.questionId == 2 }
+        assertEquals(1, questionTwo.missedCount)
+        assertEquals(0, questionTwo.answerCount)
+    }
+
+    @Test
+    fun deferOnlyQuestionAppearsInList() = runTest {
+        repository.emitHistory(
+            listOf(sampleDeferredEvent(9, 90, 4_000L, questionId = 7, questionText = "Defer only")),
+        )
+        val viewModel = ArchiveQuestionsViewModel(repository)
+        dispatcher.scheduler.advanceUntilIdle()
+        val content = viewModel.uiState.value as ArchiveQuestionsUiState.Content
+        assertEquals(1, content.questions.single().deferredCount)
+        assertEquals(7, content.questions.single().questionId)
     }
 
     @Test
     fun repositoryErrorShowsErrorState() = runTest {
         val failingRepository = object : com.me4hik.praktika.data.read.ArchiveReadRepository {
             override fun observeEntries() =
-                kotlinx.coroutines.flow.flow<List<com.me4hik.praktika.data.read.ArchiveEntry>> {
-                    throw IllegalStateException("boom")
-                }
+                kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveEntry>())
 
             override fun observeEntriesInRange(
                 startInclusiveEpochMillis: Long,
@@ -74,7 +89,9 @@ class ArchiveQuestionsViewModelTest {
                 kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveHistoryEvent>())
 
             override fun observeAllHistoryEvents() =
-                kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveHistoryEvent>())
+                kotlinx.coroutines.flow.flow<List<com.me4hik.praktika.data.read.ArchiveHistoryEvent>> {
+                    throw IllegalStateException("boom")
+                }
         }
         val viewModel = ArchiveQuestionsViewModel(failingRepository)
         dispatcher.scheduler.advanceUntilIdle()
