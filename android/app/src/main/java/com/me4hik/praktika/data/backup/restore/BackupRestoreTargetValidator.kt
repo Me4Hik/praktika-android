@@ -37,7 +37,8 @@ class BackupRestoreTargetValidator {
 
         if (state.isPracticeStarted ||
             database.questionOccurrenceDao().count() > 0 ||
-            database.answerDao().count() > 0
+            database.answerDao().count() > 0 ||
+            database.deferEventDao().count() > 0
         ) {
             return BackupRestoreResult.TargetNotEmpty
         }

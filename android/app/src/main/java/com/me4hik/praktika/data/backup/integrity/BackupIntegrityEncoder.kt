@@ -11,6 +11,7 @@ object BackupIntegrityEncoders {
     fun forSchemaVersion(schemaVersion: Int): BackupIntegrityEncoder? {
         return when (schemaVersion) {
             1 -> BackupIntegrityEncoderV1
+            2 -> BackupIntegrityEncoderV2
             else -> null
         }
     }

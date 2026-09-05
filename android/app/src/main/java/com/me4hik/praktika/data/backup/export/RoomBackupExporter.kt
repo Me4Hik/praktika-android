@@ -1,11 +1,15 @@
 // 11.08.2026 DATA VAULT Stage 2 cursor by Me4Hik START - Room to PraktikaBackupPayload exporter
+// PROMPT 111 — export portable deferEvents
 package com.me4hik.praktika.data.backup.export
 
+import com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV2
 import com.me4hik.praktika.data.backup.model.BackupAnswer
+import com.me4hik.praktika.data.backup.model.BackupDeferEvent
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
 import com.me4hik.praktika.data.backup.model.PraktikaBackupPayload
+import com.me4hik.praktika.data.local.entity.DeferEventEntity
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
@@ -52,11 +56,19 @@ class RoomBackupExporter(
             )
         }
 
+        val deferEvents = mutableListOf<BackupDeferEvent>()
+        snapshot.deferEvents.forEach { event ->
+            val mapped = mapDeferEvent(event, occurrenceStableKeys, snapshot.occurrences)
+                ?: return BackupExportResult.DatabaseUnsafe(BackupDatabaseUnsafeReason.ORPHAN_DEFER_EVENT_REFERENCE)
+            deferEvents += mapped
+        }
+
         val payload = PraktikaBackupPayload(
             practiceState = mapPracticeState(practiceState),
             scheduleSlots = mapScheduleSlots(snapshot.scheduleSlots),
             occurrences = mapOccurrences(snapshot.occurrences),
             answers = sortAnswers(answers),
+            deferEvents = deferEvents.sortedWith(BackupIntegrityEncoderV2.DEFER_EVENT_ORDER),
         )
 
         val unsafeReason = BackupExportDomainValidator.validate(payload)
@@ -65,6 +77,27 @@ class RoomBackupExporter(
         }
 
         return BackupExportResult.Success(payload)
+    }
+
+    private fun mapDeferEvent(
+        event: DeferEventEntity,
+        occurrenceStableKeys: Map<Long, Pair<Int, Int>>,
+        occurrences: List<QuestionOccurrenceEntity>,
+    ): BackupDeferEvent? {
+        val stableKey = occurrenceStableKeys[event.occurrenceId] ?: return null
+        val occurrence = occurrences.firstOrNull { it.id == event.occurrenceId } ?: return null
+        if (event.questionId != occurrence.questionId) {
+            return null
+        }
+        return BackupDeferEvent(
+            cycleNumber = stableKey.first,
+            cyclePosition = stableKey.second,
+            questionId = event.questionId,
+            occurredAtEpochMillis = event.occurredAtEpochMillis,
+            deferredUntilEpochMillis = event.deferredUntilEpochMillis,
+            durationMinutes = event.durationMinutes,
+            zoneId = event.zoneId,
+        )
     }
 
     private fun mapPracticeState(entity: PracticeStateEntity): BackupPracticeState {

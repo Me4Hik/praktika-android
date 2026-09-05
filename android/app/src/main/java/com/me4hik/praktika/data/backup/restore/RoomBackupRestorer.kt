@@ -6,6 +6,7 @@ import com.me4hik.praktika.data.backup.export.BackupExportResult
 import com.me4hik.praktika.data.backup.export.RoomBackupExporter
 import com.me4hik.praktika.data.backup.export.RoomBackupSnapshot
 import com.me4hik.praktika.data.backup.model.BackupAnswer
+import com.me4hik.praktika.data.backup.model.BackupDeferEvent
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.PraktikaBackupEnvelope
@@ -13,6 +14,7 @@ import com.me4hik.praktika.data.cycle.CursorConsistencyKind
 import com.me4hik.praktika.data.cycle.CycleCursorConsistency
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.local.entity.AnswerEntity
+import com.me4hik.praktika.data.local.entity.DeferEventEntity
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
@@ -85,6 +87,7 @@ class RoomBackupRestorer(
 
         val occurrenceIds = insertOccurrences(envelope.payload.occurrences)
         insertAnswers(envelope.payload.answers, occurrenceIds)
+        insertDeferEvents(envelope.payload.deferEvents, occurrenceIds, envelope.payload.occurrences)
 
         database.practiceStateDao().upsert(
             mapPracticeState(envelope.payload.practiceState),
@@ -189,6 +192,57 @@ class RoomBackupRestorer(
         }
     }
 
+    private suspend fun insertDeferEvents(
+        deferEvents: List<BackupDeferEvent>,
+        occurrenceIds: Map<StableOccurrenceKey, Long>,
+        occurrences: List<BackupOccurrence>,
+    ) {
+        val occurrenceByKey = occurrences.associateBy { it.cycleNumber to it.cyclePosition }
+        val deferEventDao = database.deferEventDao()
+        deferEvents
+            .sortedWith(
+                compareBy(
+                    { it.cycleNumber },
+                    { it.cyclePosition },
+                    { it.occurredAtEpochMillis },
+                    { it.deferredUntilEpochMillis },
+                    { it.durationMinutes },
+                ),
+            )
+            .forEach { backup ->
+                val key = backup.cycleNumber to backup.cyclePosition
+                val occurrenceId = occurrenceIds[key]
+                    ?: throw RestoreAbortException(
+                        BackupRestoreResult.InvalidBackup(
+                            BackupRestoreDomainFailureReason.ORPHAN_DEFER_EVENT_REFERENCE,
+                        ),
+                    )
+                val occurrence = occurrenceByKey[key]
+                    ?: throw RestoreAbortException(
+                        BackupRestoreResult.InvalidBackup(
+                            BackupRestoreDomainFailureReason.ORPHAN_DEFER_EVENT_REFERENCE,
+                        ),
+                    )
+                if (backup.questionId != occurrence.questionId) {
+                    throw RestoreAbortException(
+                        BackupRestoreResult.InvalidBackup(
+                            BackupRestoreDomainFailureReason.DEFER_QUESTION_ID_MISMATCH,
+                        ),
+                    )
+                }
+                deferEventDao.insert(
+                    DeferEventEntity(
+                        occurrenceId = occurrenceId,
+                        questionId = backup.questionId,
+                        occurredAtEpochMillis = backup.occurredAtEpochMillis,
+                        deferredUntilEpochMillis = backup.deferredUntilEpochMillis,
+                        durationMinutes = backup.durationMinutes,
+                        zoneId = backup.zoneId,
+                    ),
+                )
+            }
+    }
+
     private fun mapPracticeState(state: BackupPracticeState): PracticeStateEntity {
         return PracticeStateEntity(
             id = 1,
@@ -263,6 +317,7 @@ class RoomBackupRestorer(
             scheduleSlots = database.scheduleSlotDao().getAllOrderedByTime(),
             occurrences = database.questionOccurrenceDao().getAllOrderedByPlannedAt(),
             answers = database.answerDao().getAllOrderedByCreatedAt(),
+            deferEvents = database.deferEventDao().getAllOrdered(),
         )
     }
 }

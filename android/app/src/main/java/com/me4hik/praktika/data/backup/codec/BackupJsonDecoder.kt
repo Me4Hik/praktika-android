@@ -3,6 +3,7 @@ package com.me4hik.praktika.data.backup.codec
 
 import com.me4hik.praktika.data.backup.BackupConstants
 import com.me4hik.praktika.data.backup.model.BackupAnswer
+import com.me4hik.praktika.data.backup.model.BackupDeferEvent
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
@@ -29,12 +30,14 @@ object BackupJsonDecoder {
         "payload",
     )
 
-    private val PAYLOAD_KEYS = setOf(
+    private val PAYLOAD_KEYS_V1 = setOf(
         "practiceState",
         "scheduleSlots",
         "occurrences",
         "answers",
     )
+
+    private val PAYLOAD_KEYS_V2 = PAYLOAD_KEYS_V1 + "deferEvents"
 
     private val PRACTICE_STATE_KEYS = setOf(
         "isPracticeStarted",
@@ -74,6 +77,16 @@ object BackupJsonDecoder {
         "cyclePosition",
         "text",
         "createdAtEpochMillis",
+    )
+
+    private val DEFER_EVENT_KEYS = setOf(
+        "cycleNumber",
+        "cyclePosition",
+        "questionId",
+        "occurredAtEpochMillis",
+        "deferredUntilEpochMillis",
+        "durationMinutes",
+        "zoneId",
     )
 
     private val ALLOWED_STATUS_NAMES = QuestionOccurrenceStatus.entries
@@ -117,7 +130,12 @@ object BackupJsonDecoder {
         val backupChecksumSha256 = readNonNullString(root, "backupChecksumSha256", "envelope") ?: return latestFailure()
 
         val payloadObject = readObject(root, "payload", "envelope") ?: return latestFailure()
-        keyFailure(payloadObject, PAYLOAD_KEYS, "payload")?.let { return it }
+        val payloadKeys = when (backupSchemaVersion) {
+            BackupConstants.BACKUP_SCHEMA_VERSION_V1 -> PAYLOAD_KEYS_V1
+            BackupConstants.BACKUP_SCHEMA_VERSION_V2 -> PAYLOAD_KEYS_V2
+            else -> PAYLOAD_KEYS_V1
+        }
+        keyFailure(payloadObject, payloadKeys, "payload")?.let { return it }
 
         val practiceStateObject = readObject(payloadObject, "practiceState", "payload") ?: return latestFailure()
         val practiceState = decodePracticeState(practiceStateObject) ?: return latestFailure()
@@ -130,6 +148,14 @@ object BackupJsonDecoder {
 
         val answersArray = readArray(payloadObject, "answers", "payload") ?: return latestFailure()
         val answers = decodeAnswers(answersArray) ?: return latestFailure()
+
+        val deferEvents = when (backupSchemaVersion) {
+            BackupConstants.BACKUP_SCHEMA_VERSION_V2 -> {
+                val deferEventsArray = readArray(payloadObject, "deferEvents", "payload") ?: return latestFailure()
+                decodeDeferEvents(deferEventsArray) ?: return latestFailure()
+            }
+            else -> emptyList()
+        }
 
         val envelope = PraktikaBackupEnvelope(
             backupSchemaVersion = backupSchemaVersion,
@@ -144,6 +170,7 @@ object BackupJsonDecoder {
                 scheduleSlots = scheduleSlots,
                 occurrences = occurrences,
                 answers = answers,
+                deferEvents = deferEvents,
             ),
         )
 
@@ -252,6 +279,31 @@ object BackupJsonDecoder {
             val text = readNonNullString(item, "text", "answers[$index]") ?: return null
             val createdAtEpochMillis = readLong(item, "createdAtEpochMillis", "answers[$index]") ?: return null
             result += BackupAnswer(cycleNumber, cyclePosition, text, createdAtEpochMillis)
+        }
+        return result
+    }
+
+    private fun decodeDeferEvents(array: JSONArray): List<BackupDeferEvent>? {
+        val result = mutableListOf<BackupDeferEvent>()
+        for (index in 0 until array.length()) {
+            val item = readArrayObject(array, index, "deferEvents[$index]") ?: return null
+            keyFailure(item, DEFER_EVENT_KEYS, "deferEvents[$index]")?.let { return null }
+            val cycleNumber = readInt(item, "cycleNumber", "deferEvents[$index]") ?: return null
+            val cyclePosition = readInt(item, "cyclePosition", "deferEvents[$index]") ?: return null
+            val questionId = readInt(item, "questionId", "deferEvents[$index]") ?: return null
+            val occurredAtEpochMillis = readLong(item, "occurredAtEpochMillis", "deferEvents[$index]") ?: return null
+            val deferredUntilEpochMillis = readLong(item, "deferredUntilEpochMillis", "deferEvents[$index]") ?: return null
+            val durationMinutes = readInt(item, "durationMinutes", "deferEvents[$index]") ?: return null
+            val zoneId = readNonNullString(item, "zoneId", "deferEvents[$index]") ?: return null
+            result += BackupDeferEvent(
+                cycleNumber = cycleNumber,
+                cyclePosition = cyclePosition,
+                questionId = questionId,
+                occurredAtEpochMillis = occurredAtEpochMillis,
+                deferredUntilEpochMillis = deferredUntilEpochMillis,
+                durationMinutes = durationMinutes,
+                zoneId = zoneId,
+            )
         }
         return result
     }

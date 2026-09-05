@@ -16,10 +16,6 @@ object BackupFormatValidator {
             return invalid(BackupFormatFailureReason.UnsupportedSchema, "Unsupported backup schema version")
         }
 
-        if (envelope.backupSchemaVersion != BackupConstants.BACKUP_SCHEMA_VERSION_V1) {
-            return invalid(BackupFormatFailureReason.UnsupportedSchema, "Unsupported backup schema version")
-        }
-
         if (envelope.backupSequence <= 0L) {
             return invalid(BackupFormatFailureReason.InvalidMetadata, "backupSequence must be positive")
         }

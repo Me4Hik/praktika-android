@@ -4,10 +4,13 @@
 package com.me4hik.praktika.data.backup.codec
 
 import com.me4hik.praktika.data.backup.model.BackupAnswer
+import com.me4hik.praktika.data.backup.model.BackupDeferEvent
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
 import com.me4hik.praktika.data.backup.model.PraktikaBackupEnvelope
+import com.me4hik.praktika.data.backup.BackupConstants
+import com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV2
 import java.nio.charset.StandardCharsets
 
 object BackupJsonEncoder {
@@ -24,6 +27,8 @@ object BackupJsonEncoder {
         val answers = payload.answers.sortedWith(
             compareBy({ it.cycleNumber }, { it.cyclePosition }),
         )
+        val deferEvents = payload.deferEvents.sortedWith(BackupIntegrityEncoderV2.DEFER_EVENT_ORDER)
+        val includeDeferEvents = envelope.backupSchemaVersion >= BackupConstants.BACKUP_SCHEMA_VERSION_V2
 
         val writer = OrderedJsonWriter()
         writer.beginObject()
@@ -43,7 +48,14 @@ object BackupJsonEncoder {
         writer.value(envelope.backupChecksumSha256)
         writer.key("payload")
         writer.rawNestedJson(
-            encodePayload(payload.practiceState, scheduleSlots, occurrences, answers),
+            encodePayload(
+                practiceState = payload.practiceState,
+                scheduleSlots = scheduleSlots,
+                occurrences = occurrences,
+                answers = answers,
+                deferEvents = deferEvents,
+                includeDeferEvents = includeDeferEvents,
+            ),
         )
         writer.endObject()
         return writer.toJsonString()
@@ -54,6 +66,8 @@ object BackupJsonEncoder {
         scheduleSlots: List<BackupScheduleSlot>,
         occurrences: List<BackupOccurrence>,
         answers: List<BackupAnswer>,
+        deferEvents: List<BackupDeferEvent>,
+        includeDeferEvents: Boolean,
     ): String {
         val writer = OrderedJsonWriter()
         writer.beginObject()
@@ -65,6 +79,10 @@ object BackupJsonEncoder {
         writer.rawNestedJson(encodeOccurrences(occurrences))
         writer.key("answers")
         writer.rawNestedJson(encodeAnswers(answers))
+        if (includeDeferEvents) {
+            writer.key("deferEvents")
+            writer.rawNestedJson(encodeDeferEvents(deferEvents))
+        }
         writer.endObject()
         return writer.toJsonString()
     }
@@ -164,6 +182,33 @@ object BackupJsonEncoder {
             answerWriter.value(answer.createdAtEpochMillis)
             answerWriter.endObject()
             writer.rawNestedJson(answerWriter.toJsonString())
+        }
+        writer.endArray()
+        return writer.toJsonString()
+    }
+
+    private fun encodeDeferEvents(events: List<BackupDeferEvent>): String {
+        val writer = OrderedJsonWriter()
+        writer.beginArray()
+        events.forEach { event ->
+            val eventWriter = OrderedJsonWriter()
+            eventWriter.beginObject()
+            eventWriter.key("cycleNumber")
+            eventWriter.value(event.cycleNumber)
+            eventWriter.key("cyclePosition")
+            eventWriter.value(event.cyclePosition)
+            eventWriter.key("questionId")
+            eventWriter.value(event.questionId)
+            eventWriter.key("occurredAtEpochMillis")
+            eventWriter.value(event.occurredAtEpochMillis)
+            eventWriter.key("deferredUntilEpochMillis")
+            eventWriter.value(event.deferredUntilEpochMillis)
+            eventWriter.key("durationMinutes")
+            eventWriter.value(event.durationMinutes)
+            eventWriter.key("zoneId")
+            eventWriter.value(event.zoneId)
+            eventWriter.endObject()
+            writer.rawNestedJson(eventWriter.toJsonString())
         }
         writer.endArray()
         return writer.toJsonString()

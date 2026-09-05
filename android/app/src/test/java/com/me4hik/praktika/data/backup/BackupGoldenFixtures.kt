@@ -122,6 +122,9 @@ object BackupGoldenFixtures {
                 answers = payload.answers.sortedWith(
                     compareBy({ it.cycleNumber }, { it.cyclePosition }),
                 ),
+                deferEvents = payload.deferEvents.sortedWith(
+                    com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV2.DEFER_EVENT_ORDER,
+                ),
             ),
         )
     }

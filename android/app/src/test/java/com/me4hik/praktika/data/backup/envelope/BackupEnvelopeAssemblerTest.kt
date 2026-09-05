@@ -37,7 +37,7 @@ class BackupEnvelopeAssemblerTest {
 
         assertTrue(result is BackupEnvelopeAssemblyResult.Success)
         val envelope = (result as BackupEnvelopeAssemblyResult.Success).envelope
-        assertEquals(BackupConstants.BACKUP_SCHEMA_VERSION_V1, envelope.backupSchemaVersion)
+        assertEquals(BackupConstants.BACKUP_SCHEMA_VERSION_V2, envelope.backupSchemaVersion)
         assertEquals(42L, envelope.backupSequence)
         assertEquals(1_700_000_300_000L, envelope.createdAtEpochMillis)
         assertEquals(7, envelope.sourceAppVersionCode)

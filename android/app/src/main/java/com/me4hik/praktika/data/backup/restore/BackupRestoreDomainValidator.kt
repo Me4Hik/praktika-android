@@ -1,8 +1,10 @@
 // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Restore Core v1
+// PROMPT 111 — V1/V2 schema + deferEvents domain validation
 package com.me4hik.praktika.data.backup.restore
 
 import com.me4hik.praktika.data.backup.BackupConstants
 import com.me4hik.praktika.data.backup.model.BackupAnswer
+import com.me4hik.praktika.data.backup.model.BackupDeferEvent
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
@@ -10,13 +12,21 @@ import com.me4hik.praktika.data.backup.model.PraktikaBackupEnvelope
 import com.me4hik.praktika.data.backup.model.PraktikaBackupPayload
 import com.me4hik.praktika.data.cycle.CycleCursor
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.seed.SeedDataValidator
 import java.time.ZoneId
 
 class BackupRestoreDomainValidator {
     fun validateEnvelope(envelope: PraktikaBackupEnvelope): BackupRestoreDomainFailureReason? {
-        if (envelope.backupSchemaVersion != BackupConstants.BACKUP_SCHEMA_VERSION_V1) {
+        if (envelope.backupSchemaVersion < BackupConstants.MIN_SUPPORTED_SCHEMA_VERSION ||
+            envelope.backupSchemaVersion > BackupConstants.MAX_SUPPORTED_SCHEMA_VERSION
+        ) {
             return BackupRestoreDomainFailureReason.UNSUPPORTED_SCHEMA
+        }
+        if (envelope.backupSchemaVersion == BackupConstants.BACKUP_SCHEMA_VERSION_V1 &&
+            envelope.payload.deferEvents.isNotEmpty()
+        ) {
+            return BackupRestoreDomainFailureReason.DEFER_EVENTS_NOT_ALLOWED_FOR_SCHEMA
         }
         if (envelope.sourceSeedVersion != envelope.payload.practiceState.seedVersion) {
             return BackupRestoreDomainFailureReason.SOURCE_SEED_PAYLOAD_MISMATCH
@@ -29,6 +39,7 @@ class BackupRestoreDomainValidator {
         validateSchedule(payload.scheduleSlots)?.let { return it }
         validateOccurrences(payload.occurrences)?.let { return it }
         validateAnswers(payload.answers, payload.occurrences)?.let { return it }
+        validateDeferEvents(payload.deferEvents, payload.occurrences)?.let { return it }
         return null
     }
 
@@ -208,6 +219,33 @@ class BackupRestoreDomainValidator {
                 ?: return BackupRestoreDomainFailureReason.ORPHAN_ANSWER_REFERENCE
             if (occurrence.status != QuestionOccurrenceStatus.ANSWERED.name) {
                 return BackupRestoreDomainFailureReason.ANSWER_FOR_NON_ANSWERED_OCCURRENCE
+            }
+        }
+        return null
+    }
+
+    private fun validateDeferEvents(
+        deferEvents: List<BackupDeferEvent>,
+        occurrences: List<BackupOccurrence>,
+    ): BackupRestoreDomainFailureReason? {
+        val occurrenceByKey = occurrences.associateBy { it.cycleNumber to it.cyclePosition }
+        deferEvents.forEach { event ->
+            val occurrence = occurrenceByKey[event.cycleNumber to event.cyclePosition]
+                ?: return BackupRestoreDomainFailureReason.ORPHAN_DEFER_EVENT_REFERENCE
+            if (event.questionId != occurrence.questionId) {
+                return BackupRestoreDomainFailureReason.DEFER_QUESTION_ID_MISMATCH
+            }
+            if (event.durationMinutes !in DeferDurationOptions.ALLOWED_MINUTES) {
+                return BackupRestoreDomainFailureReason.INVALID_DEFER_DURATION
+            }
+            if (event.occurredAtEpochMillis <= 0L || event.deferredUntilEpochMillis <= 0L) {
+                return BackupRestoreDomainFailureReason.INVALID_DEFER_TIMESTAMP
+            }
+            if (event.deferredUntilEpochMillis < event.occurredAtEpochMillis) {
+                return BackupRestoreDomainFailureReason.INVALID_DEFER_TIMESTAMP
+            }
+            if (!isValidZoneId(event.zoneId)) {
+                return BackupRestoreDomainFailureReason.INVALID_ZONE
             }
         }
         return null

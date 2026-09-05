@@ -33,7 +33,7 @@ object BackupEnvelopeAssembler {
 
         val sourceSeedVersion = payload.practiceState.seedVersion
         val provisional = PraktikaBackupEnvelope(
-            backupSchemaVersion = BackupConstants.BACKUP_SCHEMA_VERSION_V1,
+            backupSchemaVersion = BackupConstants.BACKUP_SCHEMA_VERSION_V2,
             backupSequence = backupSequence,
             createdAtEpochMillis = metadata.createdAtEpochMillis,
             sourceAppVersionCode = metadata.sourceAppVersionCode,

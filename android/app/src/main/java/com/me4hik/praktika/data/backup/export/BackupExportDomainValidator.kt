@@ -2,13 +2,16 @@
 package com.me4hik.praktika.data.backup.export
 
 import com.me4hik.praktika.data.backup.model.BackupAnswer
+import com.me4hik.praktika.data.backup.model.BackupDeferEvent
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
 import com.me4hik.praktika.data.backup.model.PraktikaBackupPayload
 import com.me4hik.praktika.data.cycle.CycleCursor
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.seed.SeedDataValidator
+import java.time.ZoneId
 
 object BackupExportDomainValidator {
     private val incompleteStatuses = setOf(
@@ -21,6 +24,7 @@ object BackupExportDomainValidator {
         validateSchedule(payload.scheduleSlots)?.let { return it }
         validateOccurrences(payload.occurrences)?.let { return it }
         validateAnswers(payload.answers, payload.occurrences)?.let { return it }
+        validateDeferEvents(payload.deferEvents, payload.occurrences)?.let { return it }
         return null
     }
 
@@ -162,6 +166,33 @@ object BackupExportDomainValidator {
                 ?: return BackupDatabaseUnsafeReason.ORPHAN_ANSWER_REFERENCE
             if (occurrence.status != QuestionOccurrenceStatus.ANSWERED.name) {
                 return BackupDatabaseUnsafeReason.ANSWER_FOR_NON_ANSWERED_OCCURRENCE
+            }
+        }
+        return null
+    }
+
+    private fun validateDeferEvents(
+        deferEvents: List<BackupDeferEvent>,
+        occurrences: List<BackupOccurrence>,
+    ): BackupDatabaseUnsafeReason? {
+        val occurrenceByKey = occurrences.associateBy { it.cycleNumber to it.cyclePosition }
+        deferEvents.forEach { event ->
+            val occurrence = occurrenceByKey[event.cycleNumber to event.cyclePosition]
+                ?: return BackupDatabaseUnsafeReason.ORPHAN_DEFER_EVENT_REFERENCE
+            if (event.questionId != occurrence.questionId) {
+                return BackupDatabaseUnsafeReason.DEFER_QUESTION_ID_MISMATCH
+            }
+            if (event.durationMinutes !in DeferDurationOptions.ALLOWED_MINUTES) {
+                return BackupDatabaseUnsafeReason.INVALID_DEFER_DURATION
+            }
+            if (event.occurredAtEpochMillis <= 0L || event.deferredUntilEpochMillis <= 0L) {
+                return BackupDatabaseUnsafeReason.INVALID_DEFER_TIMESTAMP
+            }
+            if (event.deferredUntilEpochMillis < event.occurredAtEpochMillis) {
+                return BackupDatabaseUnsafeReason.INVALID_DEFER_TIMESTAMP
+            }
+            if (event.zoneId.isBlank() || runCatching { ZoneId.of(event.zoneId) }.isFailure) {
+                return BackupDatabaseUnsafeReason.INVALID_ZONE
             }
         }
         return null

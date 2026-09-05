@@ -1,4 +1,5 @@
 // 11.08.2026 DATA VAULT Stage 1 cursor by Me4Hik START - portable backup payload DTO
+// PROMPT 111 — V2 adds deferEvents (default empty for V1 compatibility)
 package com.me4hik.praktika.data.backup.model
 
 class PraktikaBackupPayload(
@@ -6,6 +7,7 @@ class PraktikaBackupPayload(
     val scheduleSlots: List<BackupScheduleSlot>,
     val occurrences: List<BackupOccurrence>,
     val answers: List<BackupAnswer>,
+    val deferEvents: List<BackupDeferEvent> = emptyList(),
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -13,7 +15,8 @@ class PraktikaBackupPayload(
         return practiceState == other.practiceState &&
             scheduleSlots == other.scheduleSlots &&
             occurrences == other.occurrences &&
-            answers == other.answers
+            answers == other.answers &&
+            deferEvents == other.deferEvents
     }
 
     override fun hashCode(): Int {
@@ -21,11 +24,12 @@ class PraktikaBackupPayload(
         result = 31 * result + scheduleSlots.hashCode()
         result = 31 * result + occurrences.hashCode()
         result = 31 * result + answers.hashCode()
+        result = 31 * result + deferEvents.hashCode()
         return result
     }
 
     override fun toString(): String {
-        return "PraktikaBackupPayload(slots=${scheduleSlots.size}, occurrences=${occurrences.size}, answers=${answers.size})"
+        return "PraktikaBackupPayload(slots=${scheduleSlots.size}, occurrences=${occurrences.size}, answers=${answers.size}, deferEvents=${deferEvents.size})"
     }
 }
 // 11.08.2026 DATA VAULT Stage 1 cursor by Me4Hik END

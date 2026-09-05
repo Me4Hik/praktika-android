@@ -14,6 +14,7 @@ class RoomBackupSnapshotReader(
                 scheduleSlots = database.scheduleSlotDao().getAllOrderedByTime(),
                 occurrences = database.questionOccurrenceDao().getAllOrderedByPlannedAt(),
                 answers = database.answerDao().getAllOrderedByCreatedAt(),
+                deferEvents = database.deferEventDao().getAllOrdered(),
             )
         }
     }
