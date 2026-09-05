@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
 import com.me4hik.praktika.ui.components.MetadataText
@@ -38,7 +40,9 @@ import com.me4hik.praktika.ui.practice.QuestionUiModel
 import com.me4hik.praktika.ui.practice.QuestionUiState
 import com.me4hik.praktika.ui.question.QuestionAmbientBackground
 import com.me4hik.praktika.ui.question.QuestionHeroOrb
+import com.me4hik.praktika.ui.question.QuestionLayoutTokens
 import com.me4hik.praktika.ui.question.QuestionPrimaryButton
+import com.me4hik.praktika.ui.question.rememberQuestionLayoutTokens
 import com.me4hik.praktika.ui.theme.TextMuted
 import com.me4hik.praktika.ui.theme.TextPrimary
 import com.me4hik.praktika.ui.theme.TextSecondary
@@ -100,53 +104,160 @@ private fun QuestionInteractiveContent(
     onDefer: () -> Unit,
     onSkip: () -> Unit,
 ) {
+    val tokens = rememberQuestionLayoutTokens()
     val actionsEnabled = !commandState.isBusy
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .statusBarsPadding()
-                .padding(horizontal = 24.dp),
-        ) {
-            Column(
+        if (tokens.useCenteredCluster) {
+            QuestionCenteredCluster(
+                question = question,
+                tokens = tokens,
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                Spacer(modifier = Modifier.height(28.dp))
-                MetadataText(
-                    text = stringResource(
-                        R.string.practice_question_position,
-                        question.cyclePosition,
-                    ),
-                )
-                Spacer(modifier = Modifier.height(18.dp))
-                QuestionDisplayText(
-                    text = question.questionTextSnapshot,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag(PracticeTestTags.QUESTION_TEXT),
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Box(
+                    .statusBarsPadding(),
+            )
+        } else {
+            QuestionPhoneCluster(
+                question = question,
+                tokens = tokens,
                 modifier = Modifier
-                    .weight(1f, fill = true)
+                    .weight(1f)
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 200.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                QuestionHeroOrb()
-            }
+                    .statusBarsPadding()
+                    .padding(horizontal = tokens.horizontalPadding),
+            )
         }
 
+        QuestionActionsColumn(
+            commandState = commandState,
+            actionsEnabled = actionsEnabled,
+            tokens = tokens,
+            onAnswer = onAnswer,
+            onDefer = onDefer,
+            onSkip = onSkip,
+        )
+    }
+}
+
+@Composable
+private fun QuestionPhoneCluster(
+    question: QuestionUiModel,
+    tokens: QuestionLayoutTokens,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Spacer(modifier = Modifier.height(tokens.clusterTopPadding))
+            MetadataText(
+                text = stringResource(
+                    R.string.practice_question_position,
+                    question.cyclePosition,
+                ),
+            )
+            Spacer(modifier = Modifier.height(tokens.metaToQuestionGap))
+            QuestionDisplayText(
+                text = question.questionTextSnapshot,
+                style = tokens.questionTextStyle,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(PracticeTestTags.QUESTION_TEXT),
+            )
+        }
+        Spacer(modifier = Modifier.height(tokens.questionToDropGap))
+        Box(
+            modifier = Modifier
+                .weight(1f, fill = true)
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = tokens.orbMinHeight),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            QuestionHeroOrb(
+                minHeight = tokens.orbMinHeight,
+                maxHeight = tokens.orbMaxHeight,
+                widthFraction = tokens.orbWidthFraction,
+                maxWidth = tokens.orbMaxWidth,
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuestionCenteredCluster(
+    question: QuestionUiModel,
+    tokens: QuestionLayoutTokens,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(modifier = Modifier.weight(1f))
+        Column(
+            modifier = Modifier
+                .then(contentMaxWidthModifier(tokens.contentMaxWidth))
+                .fillMaxWidth()
+                .padding(horizontal = tokens.horizontalPadding)
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Spacer(modifier = Modifier.height(tokens.clusterTopPadding))
+            MetadataText(
+                text = stringResource(
+                    R.string.practice_question_position,
+                    question.cyclePosition,
+                ),
+            )
+            Spacer(modifier = Modifier.height(tokens.metaToQuestionGap))
+            QuestionDisplayText(
+                text = question.questionTextSnapshot,
+                style = tokens.questionTextStyle,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(PracticeTestTags.QUESTION_TEXT),
+            )
+            Spacer(modifier = Modifier.height(tokens.questionToDropGap))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                QuestionHeroOrb(
+                    minHeight = tokens.orbMinHeight,
+                    maxHeight = tokens.orbMaxHeight,
+                    widthFraction = tokens.orbWidthFraction,
+                    maxWidth = tokens.orbMaxWidth,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun QuestionActionsColumn(
+    commandState: QuestionCommandState,
+    actionsEnabled: Boolean,
+    tokens: QuestionLayoutTokens,
+    onAnswer: () -> Unit,
+    onDefer: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            modifier = Modifier
+                .then(contentMaxWidthModifier(tokens.contentMaxWidth))
+                .fillMaxWidth()
+                .padding(horizontal = tokens.horizontalPadding)
                 .padding(bottom = 24.dp, top = 8.dp),
         ) {
             QuestionPrimaryButton(
@@ -202,6 +313,14 @@ private fun QuestionInteractiveContent(
                 }
             }
         }
+    }
+}
+
+private fun contentMaxWidthModifier(maxWidth: Dp): Modifier {
+    return if (maxWidth == Dp.Infinity) {
+        Modifier
+    } else {
+        Modifier.widthIn(max = maxWidth)
     }
 }
 

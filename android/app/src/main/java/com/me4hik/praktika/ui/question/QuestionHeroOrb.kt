@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
 import com.me4hik.praktika.ui.theme.AccentDeepBlue
@@ -35,6 +37,10 @@ import com.me4hik.praktika.ui.theme.GlowViolet
 @Composable
 fun QuestionHeroOrb(
     modifier: Modifier = Modifier,
+    minHeight: Dp = 200.dp,
+    maxHeight: Dp = 260.dp,
+    widthFraction: Float = 0.62f,
+    maxWidth: Dp = Dp.Infinity,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "heroBreath")
     val scale by infiniteTransition.animateFloat(
@@ -49,8 +55,15 @@ fun QuestionHeroOrb(
 
     Box(
         modifier = modifier
+            .then(
+                if (maxWidth != Dp.Infinity) {
+                    Modifier.widthIn(max = maxWidth)
+                } else {
+                    Modifier
+                },
+            )
             .fillMaxWidth()
-            .heightIn(min = 200.dp, max = 260.dp)
+            .heightIn(min = minHeight, max = maxHeight)
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
@@ -122,7 +135,7 @@ fun QuestionHeroOrb(
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .fillMaxWidth(0.62f)
+                .fillMaxWidth(widthFraction)
                 .offset(y = (-4).dp)
                 .graphicsLayer {
                     scaleX = scale
