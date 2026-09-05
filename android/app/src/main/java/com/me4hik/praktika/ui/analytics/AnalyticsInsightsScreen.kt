@@ -1,33 +1,45 @@
 // PROMPT 137 — Analytics Insights Compose screen (Archive-style, no charts)
+// PROMPT 157 — weekday accordion + missed drill-down clicks
 package com.me4hik.praktika.ui.analytics
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
 import com.me4hik.praktika.ui.components.MetadataText
@@ -37,6 +49,7 @@ import com.me4hik.praktika.ui.components.PracticeHeroAccent
 import com.me4hik.praktika.ui.components.PracticeSectionHeader
 import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.components.PracticeTopBar
+import com.me4hik.praktika.ui.theme.AccentViolet
 import com.me4hik.praktika.ui.theme.TextPrimary
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
 import com.me4hik.praktika.ui.theme.TitleSerifStyle
@@ -50,6 +63,7 @@ object AnalyticsInsightsTestTags {
     const val ERROR = "analytics_insights_error"
     const val RETRY = "analytics_insights_retry"
     const val BACK = "analytics_insights_back"
+    const val WEEKDAYS_HEADER = "analytics_weekdays_header"
     const val WEEKDAY_ROW_PREFIX = "analytics_weekday_row_"
     const val TOP_MISSED_PREFIX = "analytics_top_missed_"
     const val TOP_DEFERRED_PREFIX = "analytics_top_deferred_"
@@ -61,6 +75,8 @@ fun AnalyticsInsightsScreen(
     uiState: AnalyticsInsightsUiState,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    onWeekdayMissedClick: (DayOfWeek) -> Unit = {},
+    onTopMissedQuestionClick: (Int) -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -148,6 +164,8 @@ fun AnalyticsInsightsScreen(
                 is AnalyticsInsightsUiState.Content -> {
                     InsightsContent(
                         content = uiState,
+                        onWeekdayMissedClick = onWeekdayMissedClick,
+                        onTopMissedQuestionClick = onTopMissedQuestionClick,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
@@ -161,9 +179,12 @@ fun AnalyticsInsightsScreen(
 @Composable
 private fun InsightsContent(
     content: AnalyticsInsightsUiState.Content,
+    onWeekdayMissedClick: (DayOfWeek) -> Unit,
+    onTopMissedQuestionClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val weekdays = content.weekdays.sortedBy { it.dayOfWeek.value }
+    var weekdaysExpanded by rememberSaveable { mutableStateOf(true) }
     LazyColumn(
         modifier = modifier.testTag(AnalyticsInsightsTestTags.LIST),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
@@ -183,18 +204,62 @@ private fun InsightsContent(
         }
         if (weekdays.isNotEmpty()) {
             item(key = "weekdays_header") {
-                PracticeSectionHeader(
-                    title = stringResource(R.string.analytics_section_weekdays),
-                    icon = Icons.Outlined.CalendarMonth,
-                )
+                val expandCd = if (weekdaysExpanded) {
+                    stringResource(R.string.analytics_weekdays_collapse_cd)
+                } else {
+                    stringResource(R.string.analytics_weekdays_expand_cd)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER)
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = expandCd,
+                        ) {
+                            weekdaysExpanded = !weekdaysExpanded
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PracticeSectionHeader(
+                        title = stringResource(R.string.analytics_section_weekdays),
+                        icon = Icons.Outlined.CalendarMonth,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        imageVector = if (weekdaysExpanded) {
+                            Icons.Outlined.ExpandLess
+                        } else {
+                            Icons.Outlined.ExpandMore
+                        },
+                        contentDescription = expandCd,
+                        tint = AccentViolet.copy(alpha = 0.75f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
-            items(weekdays, key = { it.dayOfWeek }) { day ->
-                WeekdayInsightCard(
-                    row = day,
-                    modifier = Modifier.testTag(
-                        "${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}${day.dayOfWeek.name}",
-                    ),
-                )
+            if (weekdaysExpanded) {
+                items(weekdays, key = { it.dayOfWeek }) { day ->
+                    val canOpenMissed = day.missed.numerator > 0
+                    WeekdayInsightCard(
+                        row = day,
+                        modifier = Modifier
+                            .testTag(
+                                "${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}${day.dayOfWeek.name}",
+                            )
+                            .then(
+                                if (canOpenMissed) {
+                                    Modifier.clickable(
+                                        role = Role.Button,
+                                    ) {
+                                        onWeekdayMissedClick(day.dayOfWeek)
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    )
+                }
             }
         }
         if (content.topMissed.isNotEmpty()) {
@@ -212,9 +277,13 @@ private fun InsightsContent(
                         question.numerator,
                         question.denominator,
                     ),
-                    modifier = Modifier.testTag(
-                        "${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}${question.questionId}",
-                    ),
+                    modifier = Modifier
+                        .testTag(
+                            "${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}${question.questionId}",
+                        )
+                        .clickable(role = Role.Button) {
+                            onTopMissedQuestionClick(question.questionId)
+                        },
                 )
             }
         }

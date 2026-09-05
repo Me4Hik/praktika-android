@@ -74,6 +74,10 @@ import com.me4hik.praktika.ui.archive.ArchiveViewModelFactory
 import com.me4hik.praktika.ui.analytics.AnalyticsInsightsScreen
 import com.me4hik.praktika.ui.analytics.AnalyticsInsightsViewModel
 import com.me4hik.praktika.ui.analytics.AnalyticsInsightsViewModelFactory
+import com.me4hik.praktika.ui.analytics.MissedOccurrencesDetailScreen
+import com.me4hik.praktika.ui.analytics.MissedOccurrencesDetailViewModel
+import com.me4hik.praktika.ui.analytics.MissedOccurrencesDetailViewModelFactory
+import com.me4hik.praktika.data.read.analytics.MissedDetailFilter
 import com.me4hik.praktika.ui.AnswerScreen
 import com.me4hik.praktika.ui.HomeScreen
 import com.me4hik.praktika.ui.OnboardingScreen
@@ -728,6 +732,68 @@ fun AppNavigation(
                 AnalyticsInsightsScreen(
                     uiState = analyticsInsightsUiState,
                     onRetry = analyticsInsightsViewModel::refresh,
+                    onBack = { navController.popBackStack() },
+                    onWeekdayMissedClick = { dayOfWeek ->
+                        navController.navigate(Routes.insightsMissedWeekday(dayOfWeek)) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onTopMissedQuestionClick = { questionId ->
+                        navController.navigate(Routes.insightsMissedQuestion(questionId)) {
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable(
+                route = Routes.ARCHIVE_INSIGHTS_MISSED_WEEKDAY_PATTERN,
+                arguments = listOf(
+                    navArgument(Routes.ARCHIVE_INSIGHTS_MISSED_WEEKDAY_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                ),
+            ) { backStackEntry ->
+                val dayName = backStackEntry.arguments
+                    ?.getString(Routes.ARCHIVE_INSIGHTS_MISSED_WEEKDAY_ARGUMENT)
+                val dayOfWeek = dayName?.let(Routes::parseInsightsMissedWeekday)
+                if (dayOfWeek == null) {
+                    LaunchedEffect(dayName) {
+                        navController.popBackStack()
+                    }
+                } else {
+                    val filter = MissedDetailFilter.ByWeekday(dayOfWeek)
+                    val detailViewModel: MissedOccurrencesDetailViewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        factory = MissedOccurrencesDetailViewModelFactory(runtime, filter),
+                    )
+                    val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
+                    MissedOccurrencesDetailScreen(
+                        uiState = detailUiState,
+                        onRetry = detailViewModel::refresh,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(
+                route = Routes.ARCHIVE_INSIGHTS_MISSED_QUESTION_PATTERN,
+                arguments = listOf(
+                    navArgument(Routes.ARCHIVE_INSIGHTS_MISSED_QUESTION_ARGUMENT) {
+                        type = NavType.IntType
+                    },
+                ),
+            ) { backStackEntry ->
+                val questionId = backStackEntry.arguments
+                    ?.getInt(Routes.ARCHIVE_INSIGHTS_MISSED_QUESTION_ARGUMENT)
+                    ?: return@composable
+                val filter = MissedDetailFilter.ByQuestion(questionId)
+                val detailViewModel: MissedOccurrencesDetailViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = MissedOccurrencesDetailViewModelFactory(runtime, filter),
+                )
+                val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
+                MissedOccurrencesDetailScreen(
+                    uiState = detailUiState,
+                    onRetry = detailViewModel::refresh,
                     onBack = { navController.popBackStack() },
                 )
             }

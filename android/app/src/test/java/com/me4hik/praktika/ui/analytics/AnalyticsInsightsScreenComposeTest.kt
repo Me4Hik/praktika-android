@@ -15,6 +15,7 @@ import com.me4hik.praktika.ui.archive.ArchiveDatesUiState
 import com.me4hik.praktika.ui.archive.ArchiveTestTags
 import com.me4hik.praktika.ui.theme.PraktikaTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -25,6 +26,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.time.DayOfWeek
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp")
@@ -232,6 +234,102 @@ class AnalyticsInsightsScreenComposeTest {
         }
         composeRule.onNodeWithTag(AnalyticsInsightsTestTags.BACK).performClick()
         assertTrue(backed.get())
+    }
+
+    @Test
+    fun weekdaysAccordion_defaultExpanded_collapseHidesRowsOnly() {
+        composeRule.setContent {
+            PraktikaTheme {
+                AnalyticsInsightsScreen(
+                    uiState = sampleContent(
+                        hasAnyInsightEligible = true,
+                        weekdays = listOf(
+                            weekdayRow(DayOfWeek.MONDAY, missed = 1, deferred = 0, rejected = 0, terminals = 2),
+                            weekdayRow(DayOfWeek.FRIDAY, missed = 0, deferred = 1, rejected = 0, terminals = 2),
+                        ),
+                        topMissed = listOf(questionRow(1, "Missed Q", 2, 3)),
+                        topDeferred = listOf(questionRow(2, "Deferred Q", 2, 3)),
+                        duration = AnalyticsDurationInsight(
+                            totalDeferEvents = 5,
+                            modeDurationMinutes = 15,
+                            averageDurationMinutes = 15.0,
+                            histogram = mapOf(15 to 5),
+                            eligible = true,
+                        ),
+                    ),
+                    onRetry = {},
+                    onBack = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}1").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_DEFERRED_PREFIX}2").assertIsDisplayed()
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.DURATION).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertDoesNotExist()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertDoesNotExist()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}1").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_DEFERRED_PREFIX}2").assertIsDisplayed()
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.DURATION).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertIsDisplayed()
+    }
+
+    @Test
+    fun weekdayClick_onlyWhenMissedPositive() {
+        val clicked = AtomicReference<DayOfWeek?>(null)
+        composeRule.setContent {
+            PraktikaTheme {
+                AnalyticsInsightsScreen(
+                    uiState = sampleContent(
+                        hasAnyInsightEligible = true,
+                        weekdays = listOf(
+                            weekdayRow(DayOfWeek.MONDAY, missed = 2, deferred = 0, rejected = 0, terminals = 3),
+                            weekdayRow(DayOfWeek.FRIDAY, missed = 0, deferred = 1, rejected = 0, terminals = 3),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBack = {},
+                    onWeekdayMissedClick = { clicked.set(it) },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").performClick()
+        assertEquals(DayOfWeek.MONDAY, clicked.get())
+        clicked.set(null)
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").performClick()
+        assertNull(clicked.get())
+    }
+
+    @Test
+    fun topMissedClick_invokesCallback_topDeferredDoesNot() {
+        val missedId = AtomicInteger(-1)
+        val deferredClicked = AtomicBoolean(false)
+        composeRule.setContent {
+            PraktikaTheme {
+                AnalyticsInsightsScreen(
+                    uiState = sampleContent(
+                        hasAnyInsightEligible = true,
+                        topMissed = listOf(questionRow(11, "Missed Q", 3, 5)),
+                        topDeferred = listOf(questionRow(22, "Deferred Q", 3, 5)),
+                    ),
+                    onRetry = {},
+                    onBack = {},
+                    onTopMissedQuestionClick = { missedId.set(it) },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}11").performClick()
+        assertEquals(11, missedId.get())
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_DEFERRED_PREFIX}22").performClick()
+        assertEquals(11, missedId.get())
+        assertTrue(!deferredClicked.get())
     }
 
     private fun sampleContent(

@@ -305,6 +305,12 @@
     <string name="analytics_question_deferred_of">Откладывал %1$d из %2$d</string>
     <string name="analytics_duration_mode">Чаще всего — на %1$d мин</string>
     <string name="analytics_duration_low_sample">Пока %1$d записей об отложении</string>
+    <string name="analytics_missed_detail_weekday_title">Пропуски · %1$s</string>
+    <string name="analytics_missed_detail_question_title">Пропуски вопроса</string>
+    <string name="analytics_missed_detail_empty">Пропусков пока нет</string>
+    <string name="analytics_missed_detail_error">Не удалось загрузить пропуски</string>
+    <string name="analytics_weekdays_expand_cd">Развернуть дни недели</string>
+    <string name="analytics_weekdays_collapse_cd">Свернуть дни недели</string>
     <!-- PROMPT 137 END -->
     <!-- 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END -->
     <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 5.2 production restore overlay -->

@@ -24,8 +24,10 @@ object RootNavigationPolicy {
                 currentRoute?.startsWith("answer/") == true ||
                 currentRoute?.startsWith("archive/day/") == true ||
                 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - secondary route history
-                currentRoute?.startsWith("archive/question/") == true
+                currentRoute?.startsWith("archive/question/") == true ||
                 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
+                // PROMPT 157 — missed drill-down under insights
+                currentRoute?.startsWith("archive/insights/missed/") == true
         }
     }
 }

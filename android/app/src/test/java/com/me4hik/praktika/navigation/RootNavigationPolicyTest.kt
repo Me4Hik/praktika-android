@@ -1,6 +1,7 @@
 // 05.08.2026 Main Navigation Fix cursor by Me4Hik START - unit tests корневой навигации
 package com.me4hik.praktika.navigation
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -71,6 +72,18 @@ class RootNavigationPolicyTest {
             ),
         )
         assertTrue(RootNavigationPolicy.isSecondaryRoute(questionRoute))
+    }
+
+    @Test
+    fun insightsMissedRoutes_areSecondaryAndHelpersParse() {
+        val weekdayRoute = Routes.insightsMissedWeekday(java.time.DayOfWeek.MONDAY)
+        val questionRoute = Routes.insightsMissedQuestion(42)
+        assertEquals("archive/insights/missed/weekday/MONDAY", weekdayRoute)
+        assertEquals("archive/insights/missed/question/42", questionRoute)
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(weekdayRoute))
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(questionRoute))
+        assertEquals(java.time.DayOfWeek.FRIDAY, Routes.parseInsightsMissedWeekday("FRIDAY"))
+        assertEquals(null, Routes.parseInsightsMissedWeekday("NotADay"))
     }
 }
 // 05.08.2026 Main Navigation Fix cursor by Me4Hik END
