@@ -71,6 +71,9 @@ import com.me4hik.praktika.ui.archive.ArchiveQuestionsScreen
 import com.me4hik.praktika.ui.archive.ArchiveQuestionsViewModel
 import com.me4hik.praktika.ui.archive.ArchiveTestTags
 import com.me4hik.praktika.ui.archive.ArchiveViewModelFactory
+import com.me4hik.praktika.ui.analytics.AnalyticsInsightsScreen
+import com.me4hik.praktika.ui.analytics.AnalyticsInsightsViewModel
+import com.me4hik.praktika.ui.analytics.AnalyticsInsightsViewModelFactory
 import com.me4hik.praktika.ui.AnswerScreen
 import com.me4hik.praktika.ui.HomeScreen
 import com.me4hik.praktika.ui.OnboardingScreen
@@ -678,6 +681,11 @@ fun AppNavigation(
                             launchSingleTop = true
                         }
                     },
+                    onOpenInsights = {
+                        navController.navigate(Routes.ARCHIVE_INSIGHTS) {
+                            launchSingleTop = true
+                        }
+                    },
                     onExportAll = {
                         requestArchiveExport(ExportSelection.All)
                     },
@@ -707,6 +715,19 @@ fun AppNavigation(
                             launchSingleTop = true
                         }
                     },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(Routes.ARCHIVE_INSIGHTS) { backStackEntry ->
+                val analyticsInsightsViewModel: AnalyticsInsightsViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = AnalyticsInsightsViewModelFactory(runtime),
+                )
+                val analyticsInsightsUiState by analyticsInsightsViewModel.uiState
+                    .collectAsStateWithLifecycle()
+                AnalyticsInsightsScreen(
+                    uiState = analyticsInsightsUiState,
+                    onRetry = analyticsInsightsViewModel::refresh,
                     onBack = { navController.popBackStack() },
                 )
             }

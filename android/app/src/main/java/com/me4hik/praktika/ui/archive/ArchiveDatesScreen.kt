@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +47,7 @@ fun ArchiveDatesScreen(
     uiState: ArchiveDatesUiState,
     onDateSelected: (epochDay: Long) -> Unit,
     onOpenQuestions: () -> Unit,
+    onOpenInsights: () -> Unit,
     onExportAll: () -> Unit,
     onExportPeriod: () -> Unit,
     onShareAll: () -> Unit,
@@ -176,6 +178,14 @@ fun ArchiveDatesScreen(
                         icon = Icons.Outlined.HelpOutline,
                         onClick = onOpenQuestions,
                         modifier = Modifier.testTag(ArchiveTestTags.OPEN_QUESTIONS),
+                    )
+                }
+                PracticeSurface(contentPadding = PaddingValues(4.dp)) {
+                    PracticeGlassActionRow(
+                        title = stringResource(R.string.archive_open_insights),
+                        icon = Icons.Outlined.Insights,
+                        onClick = onOpenInsights,
+                        modifier = Modifier.testTag(ArchiveTestTags.OPEN_INSIGHTS),
                     )
                 }
                 PracticeSurface(contentPadding = PaddingValues(4.dp)) {

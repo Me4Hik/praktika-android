@@ -17,6 +17,8 @@ object Routes {
     const val ARCHIVE_QUESTION_ARGUMENT = "questionId"
     const val ARCHIVE_QUESTION_PATTERN = "archive/question/{$ARCHIVE_QUESTION_ARGUMENT}"
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
+    // PROMPT 137 — analytics insights under Archive
+    const val ARCHIVE_INSIGHTS = "archive/insights"
     const val QUESTION_HISTORY = "question_history"
     const val SETTINGS = "settings"
     const val SOUND_LIBRARY = "settings/sound"

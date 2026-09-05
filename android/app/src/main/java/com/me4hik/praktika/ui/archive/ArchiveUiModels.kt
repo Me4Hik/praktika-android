@@ -49,6 +49,8 @@ object ArchiveTestTags {
     const val BACK = "archive_back_button"
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - test tags архива по вопросам
     const val OPEN_QUESTIONS = "archive_open_questions_button"
+    // PROMPT 137 — analytics insights entry from Archive root
+    const val OPEN_INSIGHTS = "archive_open_insights_button"
     const val QUESTIONS_SCREEN = "archive_questions_screen"
     const val QUESTIONS_EMPTY = "archive_questions_empty"
     const val QUESTIONS_LIST = "archive_questions_list"

@@ -226,6 +226,7 @@
     <string name="archive_answer_label">Ответ</string>
     <!-- 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - строки архива по вопросам -->
     <string name="archive_open_questions">Архив по вопросам</string>
+    <string name="archive_open_insights">Закономерности</string>
     <string name="archive_questions_title">Архив по вопросам</string>
     <string name="archive_question_history_title">История ответов</string>
     <string name="archive_question_answer_count">Ответов: %1$d</string>
@@ -283,6 +284,28 @@
     <string name="archive_entry_share_question_and_answer">Вопрос и ответ</string>
     <string name="archive_entry_share_cancel">Отмена</string>
     <!-- 07.08.2026 Stage 21 Share cursor by Me4Hik END -->
+    <!-- PROMPT 137 — Analytics Insights V1 strings -->
+    <string name="analytics_insights_title">Закономерности</string>
+    <string name="analytics_section_weekdays">По дням недели</string>
+    <string name="analytics_section_top_missed">Чаще пропускаю</string>
+    <string name="analytics_section_top_deferred">Чаще откладываю</string>
+    <string name="analytics_section_duration">Обычно откладываю на…</string>
+    <string name="analytics_empty">Пока нет данных для закономерностей</string>
+    <string name="analytics_low_sample_hint">Пока данных немного. Ниже — то, что уже записано.</string>
+    <string name="analytics_weekday_monday">Понедельник</string>
+    <string name="analytics_weekday_tuesday">Вторник</string>
+    <string name="analytics_weekday_wednesday">Среда</string>
+    <string name="analytics_weekday_thursday">Четверг</string>
+    <string name="analytics_weekday_friday">Пятница</string>
+    <string name="analytics_weekday_saturday">Суббота</string>
+    <string name="analytics_weekday_sunday">Воскресенье</string>
+    <string name="analytics_missed_of">Пропущено %1$d из %2$d</string>
+    <string name="analytics_deferred_of">Отложено %1$d из %2$d</string>
+    <string name="analytics_rejected_of">Отклонено %1$d из %2$d</string>
+    <string name="analytics_question_deferred_of">Откладывал %1$d из %2$d</string>
+    <string name="analytics_duration_mode">Чаще всего — на %1$d мин</string>
+    <string name="analytics_duration_low_sample">Пока %1$d записей об отложении</string>
+    <!-- PROMPT 137 END -->
     <!-- 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END -->
     <!-- 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 5.2 production restore overlay -->
     <string name="restore_close_content_description">Закрыть</string>

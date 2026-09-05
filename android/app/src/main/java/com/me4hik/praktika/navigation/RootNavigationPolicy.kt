@@ -15,6 +15,7 @@ object RootNavigationPolicy {
         return when (currentRoute) {
             Routes.ARCHIVE,
             Routes.ARCHIVE_QUESTIONS,
+            Routes.ARCHIVE_INSIGHTS,
             Routes.QUESTION_HISTORY,
             Routes.SETTINGS,
             Routes.SOUND_LIBRARY,

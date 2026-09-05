@@ -45,6 +45,8 @@ class RootNavigationPolicyTest {
             ),
         )
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE))
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE_QUESTIONS))
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.ARCHIVE_INSIGHTS))
     }
 
     @Test
