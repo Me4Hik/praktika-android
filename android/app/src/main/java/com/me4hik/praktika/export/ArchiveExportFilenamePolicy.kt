@@ -19,6 +19,7 @@ object ArchiveExportFilenamePolicy {
         val extension = when (format) {
             ExportFormat.MARKDOWN -> "md"
             ExportFormat.CSV -> "csv"
+            ExportFormat.PDF -> "pdf"
         }
         return "$baseName.$extension"
     }

@@ -4,6 +4,7 @@ package com.me4hik.praktika.export
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import com.me4hik.praktika.export.csv.CsvArchiveFormatter
 import com.me4hik.praktika.export.markdown.MarkdownArchiveFormatter
+import com.me4hik.praktika.export.pdf.PdfArchiveFormatter
 import com.me4hik.praktika.ui.archive.ArchiveDayRange
 import com.me4hik.praktika.ui.archive.ArchiveZoneIdProvider
 import kotlinx.coroutines.CoroutineDispatcher
@@ -16,6 +17,7 @@ class ArchiveExportUseCase(
     private val zoneIdProvider: ArchiveZoneIdProvider,
     private val markdownFormatter: MarkdownArchiveFormatter = MarkdownArchiveFormatter(),
     private val csvFormatter: CsvArchiveFormatter = CsvArchiveFormatter(),
+    private val pdfFormatter: PdfArchiveFormatter = PdfArchiveFormatter(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun prepare(
@@ -31,6 +33,7 @@ class ArchiveExportUseCase(
                 val document = when (format) {
                     ExportFormat.MARKDOWN -> markdownFormatter.format(selection, entries, zoneId)
                     ExportFormat.CSV -> csvFormatter.format(selection, entries, zoneId)
+                    ExportFormat.PDF -> pdfFormatter.format(selection, entries, zoneId)
                 }
                 ArchiveExportPrepareResult.Ready(document = document)
             }

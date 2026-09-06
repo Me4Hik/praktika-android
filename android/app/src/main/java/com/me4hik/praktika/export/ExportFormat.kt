@@ -4,5 +4,6 @@ package com.me4hik.praktika.export
 enum class ExportFormat {
     MARKDOWN,
     CSV,
+    PDF,
 }
 // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik END

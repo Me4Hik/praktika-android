@@ -19,6 +19,10 @@ class ArchiveExportFilenamePolicyTest {
             "praktika-all.csv",
             ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.All, ExportFormat.CSV),
         )
+        assertEquals(
+            "praktika-all.pdf",
+            ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.All, ExportFormat.PDF),
+        )
     }
 
     @Test
@@ -31,6 +35,10 @@ class ArchiveExportFilenamePolicyTest {
         assertEquals(
             "praktika-day-2026-08-07.csv",
             ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Day(day), ExportFormat.CSV),
+        )
+        assertEquals(
+            "praktika-day-2026-08-07.pdf",
+            ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Day(day), ExportFormat.PDF),
         )
     }
 
@@ -63,6 +71,10 @@ class ArchiveExportFilenamePolicyTest {
         assertEquals(
             "praktika-question-12.csv",
             ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Question(12), ExportFormat.CSV),
+        )
+        assertEquals(
+            "praktika-question-12.pdf",
+            ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Question(12), ExportFormat.PDF),
         )
     }
 
