@@ -63,6 +63,32 @@ class ArchiveExportCoordinatorTest {
     }
 
     @Test
+    fun csvPrepareViaUseCase_preservesBomMimeFilenameAndCyrillicBytes() = runBlocking {
+        val repository = FakeArchiveReadRepository()
+        repository.emit(
+            listOf(
+                sampleArchiveEntry(
+                    answerId = 3,
+                    epochMillis = 1_000L,
+                    questionText = "Кириллица, \"да\"",
+                    answerText = "строка1\nстрока2",
+                ),
+            ),
+        )
+        val useCase = ArchiveExportUseCase(repository, FixedArchiveZoneIdProvider(zone))
+        val prepared = useCase.prepare(ExportSelection.All, ExportFormat.CSV)
+            as com.me4hik.praktika.export.ArchiveExportPrepareResult.Ready
+        assertEquals(CsvArchiveFormatter.MIME_TYPE, prepared.document.mimeType)
+        assertEquals("praktika-all.csv", prepared.document.suggestedFileName)
+        assertArrayEquals(CsvArchiveFormatter.UTF8_BOM, prepared.document.bytes.copyOfRange(0, 3))
+        val payload = prepared.document.bytes.copyOfRange(3, prepared.document.bytes.size)
+        val text = String(payload, Charsets.UTF_8)
+        assertArrayEquals(payload, text.toByteArray(Charsets.UTF_8))
+        assertTrue(text.contains("Кириллица"))
+        assertTrue(text.contains("строка1"))
+    }
+
+    @Test
     fun cancelPickerReturnsIdleSilently() = runBlocking {
         val repository = FakeArchiveReadRepository()
         repository.emit(listOf(sampleArchiveEntry(1, 1_000L)))

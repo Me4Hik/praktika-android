@@ -4,6 +4,8 @@ package com.me4hik.praktika.export.csv
 import com.me4hik.praktika.data.read.ArchiveEntry
 import com.me4hik.praktika.export.ExportFormat
 import com.me4hik.praktika.export.ExportSelection
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertArrayEquals
@@ -62,6 +64,46 @@ class CsvArchiveFormatterTest {
             listOf("15", "3", "Historical snapshot question", "", "Тёплый красный", "2026-07-03", "14:03", "1"),
             parsed,
         )
+    }
+
+    @Test
+    fun cyrillicQuotesCommaMultiline_utf8BomRoundTripIdentical() {
+        val question = "Он сказал \"да\", правда?"
+        val answer = "Первая строка, с запятой\nВторая строка: «кириллица»"
+        val entry = sampleEntry(
+            answerId = 42,
+            questionId = 7,
+            questionText = question,
+            answerText = answer,
+            at = epochMillis(2026, 9, 6, 15, 30),
+            cycleNumber = 2,
+        )
+        val document = formatter.format(ExportSelection.All, listOf(entry), zone)
+
+        assertEquals("praktika-all.csv", document.suggestedFileName)
+        assertEquals(CsvArchiveFormatter.MIME_TYPE, document.mimeType)
+        assertTrue(document.bytes.size >= 3)
+        assertArrayEquals(CsvArchiveFormatter.UTF8_BOM, document.bytes.copyOfRange(0, 3))
+
+        val payload = document.bytes.copyOfRange(3, document.bytes.size)
+        assertValidUtf8(payload)
+        val decoded = String(payload, Charsets.UTF_8)
+        assertArrayEquals(payload, decoded.toByteArray(Charsets.UTF_8))
+
+        val parsed = CsvTestParser.parse(decoded)
+        assertEquals(question, parsed.dataRows.single()[2])
+        assertEquals(answer, parsed.dataRows.single()[4])
+        assertEquals("42", parsed.dataRows.single()[0])
+        assertEquals("7", parsed.dataRows.single()[1])
+        assertEquals("", parsed.dataRows.single()[3])
+        assertEquals("2026-09-06", parsed.dataRows.single()[5])
+        assertEquals("15:30", parsed.dataRows.single()[6])
+        assertEquals("2", parsed.dataRows.single()[7])
+
+        // Explicit mojibake guard: Latin-1 mis-decode must not equal source Cyrillic.
+        val latin1Misread = String(payload, Charsets.ISO_8859_1)
+        assertTrue(!latin1Misread.contains(question))
+        assertTrue(!latin1Misread.contains("кириллица"))
     }
 
     @Test
@@ -185,6 +227,13 @@ class CsvArchiveFormatterTest {
 
     private fun epochMillis(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long {
         return ZonedDateTime.of(year, month, day, hour, minute, 0, 0, zone).toInstant().toEpochMilli()
+    }
+
+    private fun assertValidUtf8(payload: ByteArray) {
+        val decoder = Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        decoder.decode(ByteBuffer.wrap(payload))
     }
 
     private fun com.me4hik.praktika.export.ExportDocument.textWithoutBom(): String {

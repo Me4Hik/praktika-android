@@ -1,7 +1,9 @@
 // 07.08.2026 Stage 21 Share cursor by Me4Hik START - unit tests ShareTempFileStore
 package com.me4hik.praktika.share
 
+import com.me4hik.praktika.data.read.ArchiveEntry
 import com.me4hik.praktika.export.ExportDocument
+import com.me4hik.praktika.export.ExportSelection
 import com.me4hik.praktika.export.csv.CsvArchiveFormatter
 import java.io.File
 import org.junit.Assert.assertArrayEquals
@@ -65,6 +67,41 @@ class ShareTempFileStoreTest {
             ),
         )
         assertArrayEquals(bytes, file.readBytes())
+    }
+
+    @Test
+    fun csvFormatterDocument_cyrillicBomAndBytesPreservedExactly() {
+        val document = CsvArchiveFormatter().format(
+            selection = ExportSelection.All,
+            entries = listOf(
+                ArchiveEntry(
+                    answerId = 1,
+                    occurrenceId = 1,
+                    questionId = 1,
+                    questionText = "Вопрос: \"как дела\", брат?",
+                    answerText = "Ответ с запятой, и\nпереносом",
+                    answeredAtEpochMillis = 1_725_000_000_000L,
+                    plannedAtEpochMillis = 1_725_000_000_000L - 1_000,
+                    cycleNumber = 1,
+                    cyclePosition = 1,
+                ),
+            ),
+            zoneId = java.time.ZoneId.of("Europe/Moscow"),
+        )
+        assertEquals("praktika-all.csv", document.suggestedFileName)
+        assertEquals(CsvArchiveFormatter.MIME_TYPE, document.mimeType)
+        assertArrayEquals(CsvArchiveFormatter.UTF8_BOM, document.bytes.copyOfRange(0, 3))
+
+        val file = store.write(document)
+        assertEquals("praktika-all.csv", file.name)
+        assertArrayEquals(document.bytes, file.readBytes())
+        assertArrayEquals(CsvArchiveFormatter.UTF8_BOM, file.readBytes().copyOfRange(0, 3))
+
+        val payload = file.readBytes().copyOfRange(3, file.readBytes().size)
+        val decoded = String(payload, Charsets.UTF_8)
+        val parsed = com.me4hik.praktika.export.csv.CsvTestParser.parse(decoded)
+        assertEquals("Вопрос: \"как дела\", брат?", parsed.dataRows.single()[2])
+        assertEquals("Ответ с запятой, и\nпереносом", parsed.dataRows.single()[4])
     }
 
     @Test

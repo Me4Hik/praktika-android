@@ -57,6 +57,33 @@ class ArchiveExportUseCaseTest {
     }
 
     @Test
+    fun csvPrepare_cyrillicRoundTripPreservesUtf8BomAndText() = runTest {
+        val question = "Вопрос с \"кавычками\", и запятой"
+        val answer = "Ответ\nвторая строка"
+        repository.emit(
+            listOf(
+                sampleArchiveEntry(
+                    answerId = 9,
+                    epochMillis = millis(2026, 9, 6, 12, 0),
+                    questionText = question,
+                    answerText = answer,
+                ),
+            ),
+        )
+        val result = useCase.prepare(ExportSelection.All, ExportFormat.CSV)
+            as ArchiveExportPrepareResult.Ready
+        assertEquals(CsvArchiveFormatter.MIME_TYPE, result.document.mimeType)
+        assertEquals("praktika-all.csv", result.document.suggestedFileName)
+        assertArrayEquals(CsvArchiveFormatter.UTF8_BOM, result.document.bytes.copyOfRange(0, 3))
+        val payload = result.document.bytes.copyOfRange(3, result.document.bytes.size)
+        val text = String(payload, Charsets.UTF_8)
+        assertArrayEquals(payload, text.toByteArray(Charsets.UTF_8))
+        val parsed = com.me4hik.praktika.export.csv.CsvTestParser.parse(text)
+        assertEquals(question, parsed.dataRows.single()[2])
+        assertEquals(answer, parsed.dataRows.single()[4])
+    }
+
+    @Test
     fun daySelectionFiltersByLocalDate() = runTest {
         val day = LocalDate.of(2026, 8, 7).toEpochDay()
         repository.emit(
