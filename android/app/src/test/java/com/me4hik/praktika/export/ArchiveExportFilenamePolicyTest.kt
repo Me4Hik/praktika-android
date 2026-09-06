@@ -23,6 +23,12 @@ class ArchiveExportFilenamePolicyTest {
             "praktika-all.pdf",
             ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.All, ExportFormat.PDF),
         )
+        // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+        assertEquals(
+            "praktika-all.xlsx",
+            ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.All, ExportFormat.XLSX),
+        )
+        // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
     }
 
     @Test
@@ -40,6 +46,12 @@ class ArchiveExportFilenamePolicyTest {
             "praktika-day-2026-08-07.pdf",
             ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Day(day), ExportFormat.PDF),
         )
+        // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+        assertEquals(
+            "praktika-day-2026-08-07.xlsx",
+            ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Day(day), ExportFormat.XLSX),
+        )
+        // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
     }
 
     @Test
@@ -76,6 +88,12 @@ class ArchiveExportFilenamePolicyTest {
             "praktika-question-12.pdf",
             ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Question(12), ExportFormat.PDF),
         )
+        // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+        assertEquals(
+            "praktika-question-12.xlsx",
+            ArchiveExportFilenamePolicy.suggestedFileName(ExportSelection.Question(12), ExportFormat.XLSX),
+        )
+        // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
     }
 
     @Test

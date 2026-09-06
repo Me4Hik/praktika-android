@@ -156,6 +156,31 @@ class ArchiveExportUseCaseTest {
         )
     }
 
+    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+    @Test
+    fun allSelectionReturnsXlsxWithMimeAndZipMagic() = runTest {
+        repository.emit(listOf(sampleArchiveEntry(1, millis(2026, 8, 7, 10, 0))))
+        val result = useCase.prepare(ExportSelection.All, ExportFormat.XLSX)
+            as ArchiveExportPrepareResult.Ready
+        assertEquals("praktika-all.xlsx", result.document.suggestedFileName)
+        assertEquals(
+            com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter.MIME_TYPE,
+            result.document.mimeType,
+        )
+        assertEquals('P'.code.toByte(), result.document.bytes[0])
+        assertEquals('K'.code.toByte(), result.document.bytes[1])
+    }
+
+    @Test
+    fun emptySelectionReturnsNoAnswersForXlsx() = runTest {
+        repository.emit(emptyList())
+        assertEquals(
+            ArchiveExportPrepareResult.NoAnswers,
+            useCase.prepare(ExportSelection.All, ExportFormat.XLSX),
+        )
+    }
+    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
+
     private fun millis(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long {
         return ZonedDateTime.of(year, month, day, hour, minute, 0, 0, zone).toInstant().toEpochMilli()
     }

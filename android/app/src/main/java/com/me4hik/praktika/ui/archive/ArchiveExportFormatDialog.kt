@@ -56,6 +56,19 @@ fun ArchiveExportFormatDialog(
                         text = stringResource(R.string.archive_export_format_csv),
                     )
                 }
+                // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+                TextButton(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(ArchiveTestTags.EXPORT_FORMAT_XLSX),
+                    onClick = { onFormatSelected(ExportFormat.XLSX) },
+                ) {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(R.string.archive_export_format_xlsx),
+                    )
+                }
+                // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
                 TextButton(
                     modifier = Modifier
                         .fillMaxWidth()

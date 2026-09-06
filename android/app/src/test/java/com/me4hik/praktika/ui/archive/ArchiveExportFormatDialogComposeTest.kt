@@ -1,4 +1,5 @@
 // PROMPT 180 — format dialog shows Markdown / CSV / PDF
+// 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START - XLSX option in format dialog
 package com.me4hik.praktika.ui.archive
 
 import androidx.activity.ComponentActivity
@@ -26,7 +27,7 @@ class ArchiveExportFormatDialogComposeTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun formatDialog_showsMarkdownCsvAndPdfOptions() {
+    fun formatDialog_showsMarkdownCsvXlsxAndPdfOptions() {
         composeRule.setContent {
             PraktikaTheme {
                 ArchiveExportFormatDialog(
@@ -38,6 +39,7 @@ class ArchiveExportFormatDialogComposeTest {
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_DIALOG).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_MARKDOWN).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_CSV).assertIsDisplayed()
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_XLSX).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_PDF).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_CANCEL).assertIsDisplayed()
     }
@@ -57,4 +59,21 @@ class ArchiveExportFormatDialogComposeTest {
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_PDF).performClick()
         assertEquals(ExportFormat.PDF, selected.get())
     }
+
+    @Test
+    fun formatDialog_xlsxOptionSelectsXlsxFormat() {
+        val selected = AtomicReference<ExportFormat?>(null)
+        composeRule.setContent {
+            PraktikaTheme {
+                ArchiveExportFormatDialog(
+                    onDismiss = {},
+                    onFormatSelected = { selected.set(it) },
+                )
+            }
+        }
+        assertNull(selected.get())
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_XLSX).performClick()
+        assertEquals(ExportFormat.XLSX, selected.get())
+    }
 }
+// 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END

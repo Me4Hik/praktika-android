@@ -69,6 +69,45 @@ class ArchiveExportCoordinatorTest {
         assertEquals("application/pdf", com.me4hik.praktika.export.pdf.PdfArchiveFormatter.MIME_TYPE)
     }
 
+    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+    @Test
+    fun xlsxRequestPreparesXlsxDocument() = runBlocking {
+        val repository = FakeArchiveReadRepository()
+        repository.emit(listOf(sampleArchiveEntry(1, 1_000L)))
+        val coordinator = createCoordinator(
+            useCase = ArchiveExportUseCase(repository, FixedArchiveZoneIdProvider(zone)),
+        )
+        val eventDeferred = async { coordinator.events.first() }
+        coordinator.requestExport(ExportSelection.All, ExportFormat.XLSX)
+        val event = eventDeferred.await() as ArchiveExportUiEvent.RequestCreateDocument
+        assertEquals("praktika-all.xlsx", event.suggestedFileName)
+        assertEquals(
+            com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter.MIME_TYPE,
+            event.mimeType,
+        )
+    }
+
+    @Test
+    fun xlsxMimeRemainsDistinctFromMarkdownCsvPdf() {
+        assertEquals(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter.MIME_TYPE,
+        )
+        assertTrue(
+            com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter.MIME_TYPE
+                != MarkdownArchiveFormatter.MIME_TYPE,
+        )
+        assertTrue(
+            com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter.MIME_TYPE
+                != CsvArchiveFormatter.MIME_TYPE,
+        )
+        assertTrue(
+            com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter.MIME_TYPE
+                != com.me4hik.praktika.export.pdf.PdfArchiveFormatter.MIME_TYPE,
+        )
+    }
+    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
+
     @Test
     fun csvPrepareViaUseCase_preservesBomMimeFilenameAndCyrillicBytes() = runBlocking {
         val repository = FakeArchiveReadRepository()

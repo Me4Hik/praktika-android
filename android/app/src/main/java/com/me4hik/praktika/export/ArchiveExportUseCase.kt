@@ -5,6 +5,7 @@ import com.me4hik.praktika.data.read.ArchiveReadRepository
 import com.me4hik.praktika.export.csv.CsvArchiveFormatter
 import com.me4hik.praktika.export.markdown.MarkdownArchiveFormatter
 import com.me4hik.praktika.export.pdf.PdfArchiveFormatter
+import com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter
 import com.me4hik.praktika.ui.archive.ArchiveDayRange
 import com.me4hik.praktika.ui.archive.ArchiveZoneIdProvider
 import kotlinx.coroutines.CoroutineDispatcher
@@ -18,6 +19,9 @@ class ArchiveExportUseCase(
     private val markdownFormatter: MarkdownArchiveFormatter = MarkdownArchiveFormatter(),
     private val csvFormatter: CsvArchiveFormatter = CsvArchiveFormatter(),
     private val pdfFormatter: PdfArchiveFormatter = PdfArchiveFormatter(),
+    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+    private val xlsxFormatter: XlsxArchiveFormatter = XlsxArchiveFormatter(),
+    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun prepare(
@@ -34,6 +38,9 @@ class ArchiveExportUseCase(
                     ExportFormat.MARKDOWN -> markdownFormatter.format(selection, entries, zoneId)
                     ExportFormat.CSV -> csvFormatter.format(selection, entries, zoneId)
                     ExportFormat.PDF -> pdfFormatter.format(selection, entries, zoneId)
+                    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+                    ExportFormat.XLSX -> xlsxFormatter.format(selection, entries, zoneId)
+                    // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
                 }
                 ArchiveExportPrepareResult.Ready(document = document)
             }

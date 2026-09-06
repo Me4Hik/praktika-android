@@ -1,6 +1,7 @@
 // 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik START - Compose launcher и snackbar export
 // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik START - MIME-aware CreateDocument launchers
 // PROMPT 180 — explicit PDF CreateDocument launcher (no else→markdown trap)
+// 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START - XLSX CreateDocument launcher
 package com.me4hik.praktika.ui.archive
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.me4hik.praktika.export.csv.CsvArchiveFormatter
 import com.me4hik.praktika.export.markdown.MarkdownArchiveFormatter
 import com.me4hik.praktika.export.pdf.PdfArchiveFormatter
+import com.me4hik.praktika.export.xlsx.XlsxArchiveFormatter
 import com.me4hik.praktika.ui.components.showPracticeInfoSnackbar
 
 @Composable
@@ -36,6 +38,11 @@ fun ArchiveExportEffects(
     ) { uri ->
         coordinator.onCreateDocumentResult(uri)
     }
+    val xlsxCreateDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(XlsxArchiveFormatter.MIME_TYPE),
+    ) { uri ->
+        coordinator.onCreateDocumentResult(uri)
+    }
 
     LaunchedEffect(coordinator, snackbarHostState) {
         coordinator.events.collect { event ->
@@ -50,6 +57,9 @@ fun ArchiveExportEffects(
                         }
                         PdfArchiveFormatter.MIME_TYPE -> {
                             pdfCreateDocumentLauncher.launch(event.suggestedFileName)
+                        }
+                        XlsxArchiveFormatter.MIME_TYPE -> {
+                            xlsxCreateDocumentLauncher.launch(event.suggestedFileName)
                         }
                     }
                 }
@@ -66,5 +76,6 @@ fun ArchiveExportEffects(
         }
     }
 }
+// 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
 // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik END
 // 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik END

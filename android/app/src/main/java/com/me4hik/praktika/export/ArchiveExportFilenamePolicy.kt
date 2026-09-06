@@ -20,6 +20,9 @@ object ArchiveExportFilenamePolicy {
             ExportFormat.MARKDOWN -> "md"
             ExportFormat.CSV -> "csv"
             ExportFormat.PDF -> "pdf"
+            // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
+            ExportFormat.XLSX -> "xlsx"
+            // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
         }
         return "$baseName.$extension"
     }
