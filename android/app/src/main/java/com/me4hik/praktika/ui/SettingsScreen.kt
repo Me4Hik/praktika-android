@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.BuildConfig
 import com.me4hik.praktika.R
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
 import com.me4hik.praktika.ui.components.PracticeGlassActionRow
@@ -89,6 +91,7 @@ fun SettingsScreen(
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onDeferDurationMinutesChanged: (Int) -> Unit,
+    onQuestionWordingModeChanged: (QuestionWordingMode) -> Unit = {},
     onOpenNotificationSettings: () -> Unit,
     onOpenSoundLibrary: () -> Unit = {},
     onTogglePauseState: () -> Unit,
@@ -159,6 +162,7 @@ fun SettingsScreen(
                 onSlotTimeChange = onSlotTimeChange,
                 onSoundEnabledChanged = onSoundEnabledChanged,
                 onDeferDurationMinutesChanged = onDeferDurationMinutesChanged,
+                onQuestionWordingModeChanged = onQuestionWordingModeChanged,
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onOpenSoundLibrary = onOpenSoundLibrary,
                 onTogglePauseState = onTogglePauseState,
@@ -228,6 +232,7 @@ private fun SettingsContentScreen(
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onDeferDurationMinutesChanged: (Int) -> Unit,
+    onQuestionWordingModeChanged: (QuestionWordingMode) -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onOpenSoundLibrary: () -> Unit,
     onTogglePauseState: () -> Unit,
@@ -421,6 +426,75 @@ private fun SettingsContentScreen(
                 content.deferError?.let {
                     Text(
                         text = stringResource(R.string.settings_defer_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_WORDING_SECTION),
+            ) {
+                PracticeSectionHeader(
+                    title = stringResource(R.string.settings_wording_section),
+                    icon = Icons.Outlined.Translate,
+                )
+                PracticeSurface {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf(
+                            Triple(
+                                QuestionWordingMode.MASCULINE,
+                                R.string.settings_wording_masculine,
+                                SettingsTestTags.SETTINGS_WORDING_MASCULINE,
+                            ),
+                            Triple(
+                                QuestionWordingMode.FEMININE,
+                                R.string.settings_wording_feminine,
+                                SettingsTestTags.SETTINGS_WORDING_FEMININE,
+                            ),
+                            Triple(
+                                QuestionWordingMode.NEUTRAL,
+                                R.string.settings_wording_neutral,
+                                SettingsTestTags.SETTINGS_WORDING_NEUTRAL,
+                            ),
+                        ).forEach { (mode, labelRes, tag) ->
+                            val selected = content.questionWordingMode == mode
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = selected,
+                                        enabled = !content.isChangingQuestionWording,
+                                        role = Role.RadioButton,
+                                        onClick = { onQuestionWordingModeChanged(mode) },
+                                    )
+                                    .padding(vertical = 4.dp)
+                                    .testTag(tag),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = selected,
+                                    onClick = null,
+                                    enabled = !content.isChangingQuestionWording,
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = AccentViolet,
+                                        unselectedColor = TextMuted,
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(labelRes),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = TextPrimary,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                content.wordingError?.let {
+                    Text(
+                        text = stringResource(R.string.settings_wording_error),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )

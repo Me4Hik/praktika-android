@@ -7,6 +7,9 @@ import com.me4hik.praktika.data.cycle.TimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+import com.me4hik.praktika.data.preferences.QuestionWordingModeSource
+import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
 import com.me4hik.praktika.data.read.RoomAnalyticsReadRepository
@@ -40,6 +43,8 @@ object TestPraktikaRuntimeBuilder {
         soundPreferenceRepository: SoundPreferenceRepository,
         deferDurationPreferenceRepository: DeferDurationPreferenceRepository =
             FakeDeferDurationPreferenceRepository(),
+        questionWordingPreferenceRepository: QuestionWordingPreferenceRepository =
+            FakeQuestionWordingPreferenceRepository(),
         alarmScheduler: PlatformAlarmScheduler = NoOpPlatformAlarmScheduler(),
         notificationPresenter: PracticeNotificationPresenter = NoOpPracticeNotificationPresenter(),
         permissionRepository: NotificationPermissionPolicy? = null,
@@ -75,7 +80,14 @@ object TestPraktikaRuntimeBuilder {
             sharedIoGate = backupIoSessionGate,
             backupScope = backupCoroutineScope,
         )
-        val cycleRepository = CycleRepository(database, timeProvider, backupMutationRequestSink)
+        val cycleRepository = CycleRepository(
+            database,
+            timeProvider,
+            backupMutationRequestSink,
+            wordingModeSource = QuestionWordingModeSource {
+                questionWordingPreferenceRepository.wordingMode.first()
+            },
+        )
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
         val archiveReadRepository = RoomArchiveReadRepository(database)
@@ -116,6 +128,7 @@ object TestPraktikaRuntimeBuilder {
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
+            questionWordingPreferenceRepository = questionWordingPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
             analyticsReadRepository = analyticsReadRepository,
@@ -144,6 +157,16 @@ class FakeDeferDurationPreferenceRepository(
     override val deferDurationMinutes: Flow<Int> = state
     override suspend fun setDeferDurationMinutes(minutes: Int) {
         state.value = DeferDurationOptions.sanitize(minutes)
+    }
+}
+
+class FakeQuestionWordingPreferenceRepository(
+    initialMode: QuestionWordingMode = QuestionWordingMode.DEFAULT,
+) : QuestionWordingPreferenceRepository {
+    private val state = MutableStateFlow(initialMode)
+    override val wordingMode: Flow<QuestionWordingMode> = state
+    override suspend fun setWordingMode(mode: QuestionWordingMode) {
+        state.value = mode
     }
 }
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

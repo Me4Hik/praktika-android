@@ -398,6 +398,7 @@ fun AppNavigation(
     val settingsScheduleSaveFailedMessage = stringResource(R.string.settings_schedule_save_error)
     val settingsSoundChangeFailedMessage = stringResource(R.string.settings_sound_error)
     val settingsDeferChangeFailedMessage = stringResource(R.string.settings_defer_error)
+    val settingsWordingChangeFailedMessage = stringResource(R.string.settings_wording_error)
     val settingsPauseChangeFailedMessage = stringResource(R.string.settings_pause_error)
 
     LaunchedEffect(pendingSaveConfirmation) {
@@ -968,6 +969,7 @@ fun AppNavigation(
                             SettingsSnackbarEvent.ScheduleSaveFailed -> settingsScheduleSaveFailedMessage
                             SettingsSnackbarEvent.SoundChangeFailed -> settingsSoundChangeFailedMessage
                             SettingsSnackbarEvent.DeferDurationChangeFailed -> settingsDeferChangeFailedMessage
+                            SettingsSnackbarEvent.QuestionWordingChangeFailed -> settingsWordingChangeFailedMessage
                             SettingsSnackbarEvent.PauseStateChangeFailed -> settingsPauseChangeFailedMessage
                             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
                             is SettingsSnackbarEvent.BackupMessage ->
@@ -1003,6 +1005,7 @@ fun AppNavigation(
                     onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
                     onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
                     onDeferDurationMinutesChanged = settingsViewModel::onDeferDurationMinutesChanged,
+                    onQuestionWordingModeChanged = settingsViewModel::onQuestionWordingModeChanged,
                     onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
                     onOpenSoundLibrary = { navController.navigate(Routes.SOUND_LIBRARY) },
                     onTogglePauseState = settingsViewModel::togglePauseState,

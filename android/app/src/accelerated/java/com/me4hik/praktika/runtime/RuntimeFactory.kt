@@ -10,7 +10,9 @@ import com.me4hik.praktika.accelerated.AndroidMonotonicTimeSource
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.preferences.DataStoreDeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.DataStoreQuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.DataStoreSoundPreferenceRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingModeSource
 import com.me4hik.praktika.data.delete.RoomAnswerDeleteRepository
 import com.me4hik.praktika.data.read.RoomAnalyticsReadRepository
 import com.me4hik.praktika.data.read.RoomArchiveReadRepository
@@ -91,7 +93,17 @@ object RuntimeFactory {
         }
 
         val timeProvider = AcceleratedTimeProvider(adjustedState, storage, monotonic)
-        val cycleRepository = CycleRepository(database, timeProvider, backupMutationRequestSink)
+        val soundPreferenceRepository = DataStoreSoundPreferenceRepository(appContext)
+        val deferDurationPreferenceRepository = DataStoreDeferDurationPreferenceRepository(appContext)
+        val questionWordingPreferenceRepository = DataStoreQuestionWordingPreferenceRepository(appContext)
+        val cycleRepository = CycleRepository(
+            database,
+            timeProvider,
+            backupMutationRequestSink,
+            wordingModeSource = QuestionWordingModeSource {
+                questionWordingPreferenceRepository.wordingMode.first()
+            },
+        )
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
         val archiveReadRepository = RoomArchiveReadRepository(database)
@@ -99,8 +111,6 @@ object RuntimeFactory {
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - accelerated delete repository
         val answerDeleteRepository = RoomAnswerDeleteRepository(database, backupMutationRequestSink)
         // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END
-        val soundPreferenceRepository = DataStoreSoundPreferenceRepository(appContext)
-        val deferDurationPreferenceRepository = DataStoreDeferDurationPreferenceRepository(appContext)
         val openRequestStore = NotificationOpenRequestStore()
         val alarmScheduler = AndroidAlarmScheduler(appContext)
         val notificationPresenter = AndroidPracticeNotificationPresenter(appContext)
@@ -143,6 +153,7 @@ object RuntimeFactory {
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
+            questionWordingPreferenceRepository = questionWordingPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
             analyticsReadRepository = analyticsReadRepository,

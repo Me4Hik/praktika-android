@@ -17,6 +17,8 @@ import com.me4hik.praktika.data.cycle.ScheduleUpdateResult
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import kotlinx.coroutines.flow.flowOf
 import com.me4hik.praktika.data.read.PracticeReadRepository
@@ -120,6 +122,11 @@ class SettingsBackupViewModelTest {
                 override val deferDurationMinutes: Flow<Int> = flowOf(DeferDurationOptions.DEFAULT_MINUTES)
                 override suspend fun setDeferDurationMinutes(minutes: Int) = Unit
             },
+            questionWordingPreferenceRepository = object : QuestionWordingPreferenceRepository {
+                override val wordingMode: Flow<QuestionWordingMode> = flowOf(QuestionWordingMode.DEFAULT)
+                override suspend fun setWordingMode(mode: QuestionWordingMode) = Unit
+            },
+            applyQuestionWordingMode = { false },
             notificationPermissionRepository = object : NotificationPermissionPolicy {
                 private val revision = MutableStateFlow(0L)
                 override val permissionStateRevision: StateFlow<Long> = revision.asStateFlow()

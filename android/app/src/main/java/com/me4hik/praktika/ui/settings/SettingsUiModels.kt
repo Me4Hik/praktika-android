@@ -1,6 +1,8 @@
 // 06.08.2026 Settings Schedule cursor by Me4Hik START - UI models Settings
 package com.me4hik.praktika.ui.settings
 
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+
 data class SettingsSlotUiModel(
     val slotIndex: Int,
     val timeOfDayMinutes: Int,
@@ -20,11 +22,14 @@ sealed interface SettingsUiState {
         val isChangingSound: Boolean,
         val deferDurationMinutes: Int,
         val isChangingDeferDuration: Boolean,
+        val questionWordingMode: QuestionWordingMode = QuestionWordingMode.DEFAULT,
+        val isChangingQuestionWording: Boolean = false,
         val isPracticePaused: Boolean,
         val isChangingPauseState: Boolean,
         val scheduleError: SettingsScheduleError?,
         val soundError: SettingsSoundError?,
         val deferError: SettingsDeferError?,
+        val wordingError: SettingsWordingError? = null,
         val pauseError: SettingsPauseError?,
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
         val backup: BackupSettingsUiState = BackupSettingsUiState(),
@@ -50,6 +55,10 @@ enum class SettingsDeferError {
     SAVE_FAILED,
 }
 
+enum class SettingsWordingError {
+    SAVE_FAILED,
+}
+
 enum class SettingsPauseError {
     PAUSE_FAILED,
     RESUME_FAILED,
@@ -66,6 +75,7 @@ sealed interface SettingsSnackbarEvent {
     data object ScheduleSaveFailed : SettingsSnackbarEvent
     data object SoundChangeFailed : SettingsSnackbarEvent
     data object DeferDurationChangeFailed : SettingsSnackbarEvent
+    data object QuestionWordingChangeFailed : SettingsSnackbarEvent
     data object PauseStateChangeFailed : SettingsSnackbarEvent
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
     data class BackupMessage(val messageResId: Int) : SettingsSnackbarEvent
@@ -102,6 +112,10 @@ object SettingsTestTags {
     const val SETTINGS_DEFER_10 = "settings_defer_10"
     const val SETTINGS_DEFER_15 = "settings_defer_15"
     const val SETTINGS_DEFER_30 = "settings_defer_30"
+    const val SETTINGS_WORDING_SECTION = "settings_wording_section"
+    const val SETTINGS_WORDING_MASCULINE = "settings_wording_masculine"
+    const val SETTINGS_WORDING_FEMININE = "settings_wording_feminine"
+    const val SETTINGS_WORDING_NEUTRAL = "settings_wording_neutral"
     const val SETTINGS_NOTIFICATION_SETTINGS = "settings_notification_settings"
     const val SETTINGS_PAUSE_RESUME = "settings_pause_resume"
     const val SETTINGS_PAUSE_PROGRESS = "settings_pause_progress"

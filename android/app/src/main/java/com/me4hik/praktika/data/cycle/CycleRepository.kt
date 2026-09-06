@@ -13,6 +13,9 @@ import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.preferences.QuestionDisplayTextResolver
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+import com.me4hik.praktika.data.preferences.QuestionWordingModeSource
 import com.me4hik.praktika.data.seed.SeedDataValidator
 import java.util.concurrent.Callable
 import kotlin.coroutines.cancellation.CancellationException
@@ -27,10 +30,44 @@ class CycleRepository(
     private val backupMutationRequestSink: BackupMutationRequestSink,
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
     private val scheduleCalculator: ScheduleCalculator = ScheduleCalculator(),
+    private val wordingModeSource: QuestionWordingModeSource = QuestionWordingModeSource {
+        QuestionWordingMode.DEFAULT
+    },
 ) {
     private val mutex = Mutex()
+    private var lockedWordingMode: QuestionWordingMode = QuestionWordingMode.DEFAULT
 
-    suspend fun startPractice(): CycleResult = mutex.withLock {
+    /**
+     * Applies [mode] to the single incomplete occurrence when its questionId is wording-dependent.
+     * Terminal history rows are never rewritten. Returns true when snapshot text changed.
+     */
+    suspend fun applyQuestionWordingMode(mode: QuestionWordingMode): Boolean = mutex.withLock {
+        runCycleTransaction {
+            val incomplete = database.questionOccurrenceDao().getIncompleteOrdered().singleOrNull()
+                ?: return@runCycleTransaction false
+            if (!QuestionDisplayTextResolver.isWordingDependent(incomplete.questionId)) {
+                return@runCycleTransaction false
+            }
+            val question = database.questionDao().getById(incomplete.questionId)
+                ?: throw CycleCorruptionException(
+                    "Incomplete occurrence ${incomplete.id} references missing questionId=${incomplete.questionId}",
+                )
+            val resolved = QuestionDisplayTextResolver.resolve(
+                questionId = question.id,
+                canonicalText = question.text,
+                mode = mode,
+            )
+            if (resolved == incomplete.questionTextSnapshot) {
+                return@runCycleTransaction false
+            }
+            database.questionOccurrenceDao().update(
+                incomplete.copy(questionTextSnapshot = resolved),
+            )
+            true
+        }
+    }
+
+    suspend fun startPractice(): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             val now = timeProvider.nowEpochMillis()
             val zoneId = timeProvider.currentZoneId()
@@ -64,7 +101,11 @@ class CycleRepository(
             database.questionOccurrenceDao().insert(
                 QuestionOccurrenceEntity(
                     questionId = question.id,
-                    questionTextSnapshot = question.text,
+                    questionTextSnapshot = QuestionDisplayTextResolver.resolve(
+                        questionId = question.id,
+                        canonicalText = question.text,
+                        mode = lockedWordingMode,
+                    ),
                     cycleNumber = 1,
                     cyclePosition = CycleCursor.MIN_POSITION,
                     scheduleSlotIndex = startSlot.slotIndex,
@@ -101,7 +142,7 @@ class CycleRepository(
         result
     }
 
-    suspend fun reconcile(): CycleResult = mutex.withLock {
+    suspend fun reconcile(): CycleResult = withCycleMutex {
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C reconcile change signal
         lateinit var outcome: InternalReconcileOutcome
         val result = runCycleTransaction {
@@ -116,7 +157,7 @@ class CycleRepository(
     }
 
     // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - timezone sync + reconcile
-    suspend fun syncEnvironmentAndReconcile(): CycleResult = mutex.withLock {
+    suspend fun syncEnvironmentAndReconcile(): CycleResult = withCycleMutex {
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C timezone + reconcile backup
         lateinit var outcome: InternalReconcileOutcome
         val result = runCycleTransaction {
@@ -130,7 +171,7 @@ class CycleRepository(
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
 
-    suspend fun markOccurrenceOpened(expectedOccurrenceId: Long): Boolean = mutex.withLock {
+    suspend fun markOccurrenceOpened(expectedOccurrenceId: Long): Boolean = withCycleMutex {
         val changed = runCycleTransaction {
             val now = timeProvider.nowEpochMillis()
             database.questionOccurrenceDao().markOpenedIfNull(expectedOccurrenceId, now) == 1
@@ -258,7 +299,7 @@ class CycleRepository(
         return InternalReconcileOutcome(publicResult, changed)
     }
 
-    suspend fun skipAvailableByUser(): CycleResult = mutex.withLock {
+    suspend fun skipAvailableByUser(): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             skipAvailableByUserInternal(expectedOccurrenceId = null)
         }
@@ -270,7 +311,7 @@ class CycleRepository(
         result
     }
 
-    suspend fun skipAvailableByUser(expectedOccurrenceId: Long): CycleResult = mutex.withLock {
+    suspend fun skipAvailableByUser(expectedOccurrenceId: Long): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             skipAvailableByUserInternal(expectedOccurrenceId = expectedOccurrenceId)
         }
@@ -285,7 +326,7 @@ class CycleRepository(
     suspend fun deferAvailableOccurrence(
         expectedOccurrenceId: Long,
         durationMinutes: Int,
-    ): CycleResult = mutex.withLock {
+    ): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             deferAvailableOccurrenceInternal(
                 expectedOccurrenceId = expectedOccurrenceId,
@@ -302,7 +343,7 @@ class CycleRepository(
     suspend fun saveAnswer(
         expectedOccurrenceId: Long,
         answerText: String,
-    ): CycleResult = mutex.withLock {
+    ): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             saveAnswerInternal(
                 expectedOccurrenceId = expectedOccurrenceId,
@@ -320,7 +361,7 @@ class CycleRepository(
     // 06.08.2026 Settings Schedule cursor by Me4Hik START - атомарное обновление расписания
     suspend fun updateSchedule(
         updates: List<ScheduleSlotUpdate>,
-    ): ScheduleUpdateResult = mutex.withLock {
+    ): ScheduleUpdateResult = withCycleMutex {
         val validatedUpdates = validateScheduleUpdates(updates)
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C schedule overall change oracle
         var backupReason: BackupRequestReason? = null
@@ -767,7 +808,7 @@ class CycleRepository(
         )
     }
 
-    suspend fun pausePractice(): CycleResult = mutex.withLock {
+    suspend fun pausePractice(): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             val state = loadPracticeState()
             ensurePracticeActive(state)
@@ -810,7 +851,7 @@ class CycleRepository(
         result
     }
 
-    suspend fun resumePractice(): CycleResult = mutex.withLock {
+    suspend fun resumePractice(): CycleResult = withCycleMutex {
         val result = runCycleTransaction {
             val state = loadPracticeState()
             if (!state.isPracticeStarted) {
@@ -1179,7 +1220,11 @@ class CycleRepository(
         database.questionOccurrenceDao().insert(
             QuestionOccurrenceEntity(
                 questionId = question.id,
-                questionTextSnapshot = question.text,
+                questionTextSnapshot = QuestionDisplayTextResolver.resolve(
+                        questionId = question.id,
+                        canonicalText = question.text,
+                        mode = lockedWordingMode,
+                    ),
                 cycleNumber = cycleNumber,
                 cyclePosition = cyclePosition,
                 scheduleSlotIndex = plannedMoment.slotIndex,
@@ -1325,6 +1370,13 @@ class CycleRepository(
             Math.addExact(value, delta)
         } catch (exception: ArithmeticException) {
             throw CycleClockException("availableUntil overflow while extending pause deadline")
+        }
+    }
+
+    private suspend fun <T> withCycleMutex(block: suspend () -> T): T {
+        return mutex.withLock {
+            lockedWordingMode = wordingModeSource.currentMode()
+            block()
         }
     }
 

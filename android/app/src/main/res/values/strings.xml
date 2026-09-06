@@ -95,6 +95,11 @@
     <string name="settings_defer_15">15 минут</string>
     <string name="settings_defer_30">30 минут</string>
     <string name="settings_defer_error">Не удалось изменить время отложения.</string>
+    <string name="settings_wording_section">Формулировка вопросов</string>
+    <string name="settings_wording_masculine">В мужском роде</string>
+    <string name="settings_wording_feminine">В женском роде</string>
+    <string name="settings_wording_neutral">Без указания рода</string>
+    <string name="settings_wording_error">Не удалось изменить формулировку вопросов.</string>
     <string name="settings_practice_section">Практика</string>
     <string name="settings_pause_practice">Приостановить практику</string>
     <string name="settings_resume_practice">Продолжить практику</string>

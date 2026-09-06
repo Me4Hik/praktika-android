@@ -14,6 +14,8 @@ import com.me4hik.praktika.data.cycle.ScheduleValidationException
 import com.me4hik.praktika.data.cycle.ScheduleValidationReason
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadRepository
@@ -52,6 +54,8 @@ class SettingsViewModel(
     private val resumePracticeCommand: ResumePracticeCommand,
     private val soundPreferenceRepository: SoundPreferenceRepository,
     private val deferDurationPreferenceRepository: DeferDurationPreferenceRepository,
+    private val questionWordingPreferenceRepository: QuestionWordingPreferenceRepository,
+    private val applyQuestionWordingMode: suspend (QuestionWordingMode) -> Boolean,
     private val notificationPermissionRepository: NotificationPermissionPolicy,
     private val notificationSyncRequester: NotificationSyncRequester,
     private val diagnosticReportSubmitter: DiagnosticReportSubmitter,
@@ -85,6 +89,7 @@ class SettingsViewModel(
     private var pendingAutosaveAfterCurrent = false
     private var isChangingSound = false
     private var isChangingDeferDuration = false
+    private var isChangingQuestionWording = false
     private var isChangingPauseState = false
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -108,18 +113,30 @@ class SettingsViewModel(
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         viewModelScope.launch {
             combine(
-                scheduleReadRepository.observeSchedule(),
-                practiceReadRepository.observeSnapshot(),
-                soundPreferenceRepository.soundEnabled,
-                soundPreferenceRepository.selectedSoundId,
-                deferDurationPreferenceRepository.deferDurationMinutes,
-            ) { scheduleSnapshot, practiceSnapshot, soundEnabled, selectedSoundId, deferDurationMinutes ->
+                combine(
+                    scheduleReadRepository.observeSchedule(),
+                    practiceReadRepository.observeSnapshot(),
+                    soundPreferenceRepository.soundEnabled,
+                    soundPreferenceRepository.selectedSoundId,
+                    deferDurationPreferenceRepository.deferDurationMinutes,
+                ) { scheduleSnapshot, practiceSnapshot, soundEnabled, selectedSoundId, deferDurationMinutes ->
+                    SettingsSourcePartial(
+                        slots = scheduleSnapshot.slots,
+                        isPracticePaused = practiceSnapshot.practiceState.isPaused,
+                        soundEnabled = soundEnabled,
+                        selectedSoundId = selectedSoundId,
+                        deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
+                    )
+                },
+                questionWordingPreferenceRepository.wordingMode,
+            ) { partial, wordingMode ->
                 SettingsSourceSnapshot(
-                    slots = scheduleSnapshot.slots,
-                    isPracticePaused = practiceSnapshot.practiceState.isPaused,
-                    soundEnabled = soundEnabled,
-                    selectedSoundId = selectedSoundId,
-                    deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
+                    slots = partial.slots,
+                    isPracticePaused = partial.isPracticePaused,
+                    soundEnabled = partial.soundEnabled,
+                    selectedSoundId = partial.selectedSoundId,
+                    deferDurationMinutes = partial.deferDurationMinutes,
+                    questionWordingMode = wordingMode,
                 )
             }.collect { source ->
                 onSourcesUpdated(
@@ -128,10 +145,19 @@ class SettingsViewModel(
                     soundEnabled = source.soundEnabled,
                     selectedSoundId = source.selectedSoundId,
                     deferDurationMinutes = source.deferDurationMinutes,
+                    questionWordingMode = source.questionWordingMode,
                 )
             }
         }
     }
+
+    private data class SettingsSourcePartial(
+        val slots: List<ScheduleSlotReadModel>,
+        val isPracticePaused: Boolean,
+        val soundEnabled: Boolean,
+        val selectedSoundId: String,
+        val deferDurationMinutes: Int,
+    )
 
     private data class SettingsSourceSnapshot(
         val slots: List<ScheduleSlotReadModel>,
@@ -139,6 +165,7 @@ class SettingsViewModel(
         val soundEnabled: Boolean,
         val selectedSoundId: String,
         val deferDurationMinutes: Int,
+        val questionWordingMode: QuestionWordingMode,
     )
 
     fun draftMinutesBySlotIndex(): Map<Int, Int> {
@@ -248,6 +275,57 @@ class SettingsViewModel(
                     isPracticePaused = currentPauseState(),
                     soundEnabled = currentSoundEnabled(),
                     deferDurationMinutes = currentDeferDurationMinutes(),
+                )
+            }
+        }
+    }
+
+    fun onQuestionWordingModeChanged(mode: QuestionWordingMode) {
+        if (isChangingQuestionWording) {
+            return
+        }
+        val content = _uiState.value as? SettingsUiState.Content ?: return
+        if (mode == content.questionWordingMode) {
+            return
+        }
+        isChangingQuestionWording = true
+        publishContentFromDraft(
+            isPracticePaused = content.isPracticePaused,
+            soundEnabled = content.soundEnabled,
+            deferDurationMinutes = content.deferDurationMinutes,
+            questionWordingMode = mode,
+            isChangingQuestionWording = true,
+            wordingError = null,
+        )
+
+        viewModelScope.launch {
+            try {
+                withContext(commandDispatcher) {
+                    questionWordingPreferenceRepository.setWordingMode(mode)
+                    applyQuestionWordingMode(mode)
+                    notificationSyncRequester.requestSync(NotificationSyncReason.MUTATION)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Question wording preference save failed", exception)
+                publishContentFromDraft(
+                    isPracticePaused = content.isPracticePaused,
+                    soundEnabled = content.soundEnabled,
+                    deferDurationMinutes = content.deferDurationMinutes,
+                    questionWordingMode = content.questionWordingMode,
+                    wordingError = SettingsWordingError.SAVE_FAILED,
+                )
+                viewModelScope.launch {
+                    snackbarEvents.emit(SettingsSnackbarEvent.QuestionWordingChangeFailed)
+                }
+            } finally {
+                isChangingQuestionWording = false
+                publishContentFromDraft(
+                    isPracticePaused = currentPauseState(),
+                    soundEnabled = currentSoundEnabled(),
+                    deferDurationMinutes = currentDeferDurationMinutes(),
+                    questionWordingMode = currentQuestionWordingMode(),
                 )
             }
         }
@@ -536,6 +614,7 @@ class SettingsViewModel(
         soundEnabled: Boolean,
         selectedSoundId: String,
         deferDurationMinutes: Int,
+        questionWordingMode: QuestionWordingMode,
     ) {
         try {
             latestSelectedSoundId = selectedSoundId
@@ -559,6 +638,7 @@ class SettingsViewModel(
                 isPracticePaused = isPracticePaused,
                 soundEnabled = soundEnabled,
                 deferDurationMinutes = deferDurationMinutes,
+                questionWordingMode = questionWordingMode,
             )
         } catch (_: CycleCorruptionException) {
             _uiState.value = SettingsUiState.FatalError(SettingsFatalError.SCHEDULE_CORRUPTION)
@@ -569,13 +649,16 @@ class SettingsViewModel(
         isPracticePaused: Boolean,
         soundEnabled: Boolean,
         deferDurationMinutes: Int = currentDeferDurationMinutes(),
+        questionWordingMode: QuestionWordingMode = currentQuestionWordingMode(),
         isSavingSchedule: Boolean = this.isSavingSchedule,
         isChangingSound: Boolean = this.isChangingSound,
         isChangingDeferDuration: Boolean = this.isChangingDeferDuration,
+        isChangingQuestionWording: Boolean = this.isChangingQuestionWording,
         isChangingPauseState: Boolean = this.isChangingPauseState,
         scheduleError: SettingsScheduleError? = null,
         soundError: SettingsSoundError? = null,
         deferError: SettingsDeferError? = null,
+        wordingError: SettingsWordingError? = null,
         pauseError: SettingsPauseError? = null,
     ) {
         val draft = readDraftSnapshot()
@@ -604,11 +687,14 @@ class SettingsViewModel(
             isChangingSound = isChangingSound,
             deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
             isChangingDeferDuration = isChangingDeferDuration,
+            questionWordingMode = questionWordingMode,
+            isChangingQuestionWording = isChangingQuestionWording,
             isPracticePaused = isPracticePaused,
             isChangingPauseState = isChangingPauseState,
             scheduleError = resolvedScheduleError,
             soundError = soundError,
             deferError = deferError,
+            wordingError = wordingError,
             pauseError = pauseError,
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
             backup = backupSession.uiState,
@@ -681,6 +767,11 @@ class SettingsViewModel(
     private fun currentDeferDurationMinutes(): Int {
         return (_uiState.value as? SettingsUiState.Content)?.deferDurationMinutes
             ?: DeferDurationOptions.DEFAULT_MINUTES
+    }
+
+    private fun currentQuestionWordingMode(): QuestionWordingMode {
+        return (_uiState.value as? SettingsUiState.Content)?.questionWordingMode
+            ?: QuestionWordingMode.DEFAULT
     }
 
     private companion object {

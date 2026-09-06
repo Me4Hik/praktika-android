@@ -16,6 +16,8 @@ import com.me4hik.praktika.data.read.ScheduleReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleSlotReadModel
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
 import com.me4hik.praktika.notification.NotificationPermissionUiState
@@ -57,6 +59,8 @@ class SettingsViewModelTest {
     private lateinit var resumePracticeCommand: RecordingResumePracticeCommand
     private lateinit var soundRepository: MutableFakeSoundPreferenceRepository
     private lateinit var deferDurationRepository: MutableFakeDeferDurationPreferenceRepository
+    private lateinit var wordingRepository: MutableFakeQuestionWordingPreferenceRepository
+    private lateinit var applyWordingCalls: MutableList<QuestionWordingMode>
     private lateinit var notificationPermissionRepository: FakeNotificationPermissionPolicy
     private lateinit var notificationSyncRequester: RecordingNotificationSyncRequester
     private lateinit var diagnosticReportSubmitter: FakeDiagnosticReportSubmitter
@@ -73,6 +77,8 @@ class SettingsViewModelTest {
         resumePracticeCommand = RecordingResumePracticeCommand()
         soundRepository = MutableFakeSoundPreferenceRepository()
         deferDurationRepository = MutableFakeDeferDurationPreferenceRepository()
+        wordingRepository = MutableFakeQuestionWordingPreferenceRepository()
+        applyWordingCalls = mutableListOf()
         notificationPermissionRepository = FakeNotificationPermissionPolicy()
         notificationSyncRequester = RecordingNotificationSyncRequester()
         diagnosticReportSubmitter = FakeDiagnosticReportSubmitter()
@@ -93,6 +99,11 @@ class SettingsViewModelTest {
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
             deferDurationPreferenceRepository = deferDurationRepository,
+            questionWordingPreferenceRepository = wordingRepository,
+            applyQuestionWordingMode = { mode ->
+                applyWordingCalls.add(mode)
+                true
+            },
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
             diagnosticReportSubmitter = diagnosticReportSubmitter,
@@ -100,6 +111,33 @@ class SettingsViewModelTest {
             backupSettingsActions = RecordingBackupSettingsActions(),
             commandDispatcher = testDispatcher,
         )
+    }
+
+
+    @Test
+    fun wordingModeDefaultsToMasculineAndSavesFeminine() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        val content = viewModel.uiState.value as SettingsUiState.Content
+        assertEquals(QuestionWordingMode.MASCULINE, content.questionWordingMode)
+
+        viewModel.onQuestionWordingModeChanged(QuestionWordingMode.FEMININE)
+        advanceUntilIdle()
+        val updated = viewModel.uiState.value as SettingsUiState.Content
+        assertEquals(QuestionWordingMode.FEMININE, updated.questionWordingMode)
+        assertEquals(listOf(QuestionWordingMode.FEMININE), applyWordingCalls)
+        assertTrue(notificationSyncRequester.reasons.contains(NotificationSyncReason.MUTATION))
+        assertEquals(QuestionWordingMode.FEMININE, wordingRepository.current)
+    }
+
+    @Test
+    fun wordingModeSameValue_noWrite() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onQuestionWordingModeChanged(QuestionWordingMode.MASCULINE)
+        advanceUntilIdle()
+        assertTrue(applyWordingCalls.isEmpty())
+        assertTrue(notificationSyncRequester.reasons.isEmpty())
     }
 
     @Test
@@ -165,6 +203,11 @@ class SettingsViewModelTest {
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
             deferDurationPreferenceRepository = deferDurationRepository,
+            questionWordingPreferenceRepository = wordingRepository,
+            applyQuestionWordingMode = { mode ->
+                applyWordingCalls.add(mode)
+                true
+            },
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
             diagnosticReportSubmitter = diagnosticReportSubmitter,
@@ -257,6 +300,11 @@ class SettingsViewModelTest {
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
             deferDurationPreferenceRepository = deferDurationRepository,
+            questionWordingPreferenceRepository = wordingRepository,
+            applyQuestionWordingMode = { mode ->
+                applyWordingCalls.add(mode)
+                true
+            },
             notificationPermissionRepository = notificationPermissionRepository,
             notificationSyncRequester = notificationSyncRequester,
             diagnosticReportSubmitter = diagnosticReportSubmitter,
@@ -607,6 +655,15 @@ class SettingsViewModelTest {
         override suspend fun hideBuiltin(id: String) = Unit
         override suspend fun restoreBuiltin(id: String) = Unit
         override suspend fun restoreAllHidden() = Unit
+    }
+
+    private class MutableFakeQuestionWordingPreferenceRepository : QuestionWordingPreferenceRepository {
+        private val state = MutableStateFlow(QuestionWordingMode.DEFAULT)
+        override val wordingMode = state
+        val current: QuestionWordingMode get() = state.value
+        override suspend fun setWordingMode(mode: QuestionWordingMode) {
+            state.value = mode
+        }
     }
 
     private class MutableFakeDeferDurationPreferenceRepository : DeferDurationPreferenceRepository {

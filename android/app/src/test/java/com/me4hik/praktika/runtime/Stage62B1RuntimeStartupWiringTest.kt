@@ -517,6 +517,16 @@ class Stage62B1RuntimeStartupWiringTest {
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
+            questionWordingPreferenceRepository = object :
+                com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository {
+                override val wordingMode =
+                    kotlinx.coroutines.flow.MutableStateFlow(
+                        com.me4hik.praktika.data.preferences.QuestionWordingMode.DEFAULT,
+                    )
+                override suspend fun setWordingMode(
+                    mode: com.me4hik.praktika.data.preferences.QuestionWordingMode,
+                ) = Unit
+            },
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
             analyticsReadRepository = analyticsReadRepository,
