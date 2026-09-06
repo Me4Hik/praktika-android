@@ -85,6 +85,7 @@ object ArchiveTestTags {
     const val EXPORT_FORMAT_DIALOG = "archive_export_format_dialog"
     const val EXPORT_FORMAT_MARKDOWN = "archive_export_format_markdown"
     const val EXPORT_FORMAT_CSV = "archive_export_format_csv"
+    const val EXPORT_FORMAT_PDF = "archive_export_format_pdf"
     const val EXPORT_FORMAT_CANCEL = "archive_export_format_cancel"
     // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik END
     // 07.08.2026 Stage 21 Share cursor by Me4Hik START - test tags share

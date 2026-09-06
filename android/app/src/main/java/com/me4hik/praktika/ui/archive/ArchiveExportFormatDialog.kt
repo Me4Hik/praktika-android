@@ -56,6 +56,17 @@ fun ArchiveExportFormatDialog(
                         text = stringResource(R.string.archive_export_format_csv),
                     )
                 }
+                TextButton(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(ArchiveTestTags.EXPORT_FORMAT_PDF),
+                    onClick = { onFormatSelected(ExportFormat.PDF) },
+                ) {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(R.string.archive_export_format_pdf),
+                    )
+                }
             }
         },
         confirmButton = {},

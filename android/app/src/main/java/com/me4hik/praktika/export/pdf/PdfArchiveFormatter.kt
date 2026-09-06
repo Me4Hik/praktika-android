@@ -14,10 +14,10 @@ import com.me4hik.praktika.ui.archive.ArchiveDisplayFormatter
 import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 
-class PdfArchiveFormatter(
+open class PdfArchiveFormatter(
     private val displayFormatter: ArchiveDisplayFormatter = ArchiveDisplayFormatter(),
 ) {
-    fun format(
+    open fun format(
         selection: ExportSelection,
         entries: List<ArchiveEntry>,
         zoneId: ZoneId,

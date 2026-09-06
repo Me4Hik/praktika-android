@@ -265,6 +265,7 @@
     <string name="archive_export_format_dialog_title">Формат файла</string>
     <string name="archive_export_format_markdown">Markdown</string>
     <string name="archive_export_format_csv">CSV</string>
+    <string name="archive_export_format_pdf">PDF</string>
     <string name="archive_export_format_cancel">Отмена</string>
     <!-- 07.08.2026 Stage 20 CSV Export cursor by Me4Hik END -->
     <!-- 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik END -->

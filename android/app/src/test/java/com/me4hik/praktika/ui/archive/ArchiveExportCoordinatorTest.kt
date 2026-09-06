@@ -63,6 +63,13 @@ class ArchiveExportCoordinatorTest {
     }
 
     @Test
+    fun markdownAndCsvMimeRemainDistinctFromPdf() {
+        assertEquals("text/markdown", MarkdownArchiveFormatter.MIME_TYPE)
+        assertEquals("text/csv", CsvArchiveFormatter.MIME_TYPE)
+        assertEquals("application/pdf", com.me4hik.praktika.export.pdf.PdfArchiveFormatter.MIME_TYPE)
+    }
+
+    @Test
     fun csvPrepareViaUseCase_preservesBomMimeFilenameAndCyrillicBytes() = runBlocking {
         val repository = FakeArchiveReadRepository()
         repository.emit(
