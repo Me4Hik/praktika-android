@@ -42,6 +42,8 @@ object ArchiveTestTags {
     // PROMPT 167 — archive hub root
     const val HUB_SCREEN = "archive_hub_screen"
     const val OPEN_DAYS = "archive_open_days_button"
+    // PROMPT 170 — export/share accordion on hub
+    const val EXPORT_SHARE_ACCORDION = "archive_export_share_accordion"
     const val DATES_SCREEN = "archive_dates_screen"
     const val DATES_EMPTY = "archive_dates_empty"
     const val DATES_LIST = "archive_dates_list"

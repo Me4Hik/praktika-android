@@ -125,6 +125,7 @@ class Stage19ArchiveExportComposeAcceleratedInstrumentedTest {
     private fun openArchive() {
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
+        ArchiveComposeTestSupport.expandArchiveExportShare(composeRule)
     }
 
     private fun setContent(

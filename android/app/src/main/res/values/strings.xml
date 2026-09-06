@@ -250,6 +250,7 @@
     <string name="archive_delete_error">Не удалось удалить ответ</string>
     <!-- 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik END -->
     <!-- 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik START - строки export -->
+    <string name="archive_export_and_share">Экспорт и поделиться</string>
     <string name="archive_export_all">Экспорт всего</string>
     <string name="archive_export_period">Экспорт периода</string>
     <string name="archive_export_day">Экспорт дня</string>

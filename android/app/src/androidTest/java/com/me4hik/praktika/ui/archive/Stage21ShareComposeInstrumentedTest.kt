@@ -239,6 +239,7 @@ class Stage21ShareComposeInstrumentedTest {
                 )
             }
         }
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION).performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.SHARE_ALL).performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.SHARE_FORMAT_DIALOG).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_MARKDOWN).performClick()
@@ -294,6 +295,7 @@ class Stage21ShareComposeInstrumentedTest {
                 )
             }
         }
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION).performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.SHARE_ALL).performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_CSV).performClick()
         composeRule.waitUntil(timeoutMillis = 10_000) {

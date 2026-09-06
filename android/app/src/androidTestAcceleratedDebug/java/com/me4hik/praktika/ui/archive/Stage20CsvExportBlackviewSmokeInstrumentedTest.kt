@@ -92,6 +92,7 @@ class Stage20CsvExportBlackviewSmokeInstrumentedTest {
         }
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
+        ArchiveComposeTestSupport.expandArchiveExportShare(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_ALL).assertIsDisplayed().performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_CSV).performClick()
         composeRule.waitForIdle()

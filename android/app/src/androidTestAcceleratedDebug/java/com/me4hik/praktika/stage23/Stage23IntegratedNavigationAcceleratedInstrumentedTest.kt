@@ -102,6 +102,7 @@ class Stage23IntegratedNavigationAcceleratedInstrumentedTest {
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
 
+        ArchiveComposeTestSupport.expandArchiveExportShare(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_ALL).performClick()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_DIALOG).assertIsDisplayed()
         composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_FORMAT_CANCEL).performClick()

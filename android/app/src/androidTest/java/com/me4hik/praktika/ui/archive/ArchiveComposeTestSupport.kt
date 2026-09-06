@@ -34,6 +34,19 @@ object ArchiveComposeTestSupport {
             .performClick()
     }
 
+    // PROMPT 170 — expand export/share accordion before clicking nested actions
+    fun expandArchiveExportShare(composeRule: ComposeContentTestRule) {
+        if (PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.EXPORT_ALL)) {
+            return
+        }
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION)
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.EXPORT_ALL)
+        }
+    }
+
     fun ensureArchiveHubScreen(composeRule: ComposeContentTestRule) {
         composeRule.waitUntil(timeoutMillis = 15_000) {
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, ArchiveTestTags.HUB_SCREEN) ||

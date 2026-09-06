@@ -1,4 +1,5 @@
 // PROMPT 167 — Archive root hub (no date list)
+// PROMPT 170 — export/share accordion on hub
 package com.me4hik.praktika.ui.archive
 
 import androidx.compose.foundation.layout.Arrangement
@@ -14,12 +15,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -46,6 +53,8 @@ fun ArchiveHubScreen(
     onSharePeriod: () -> Unit,
     onBack: () -> Unit,
 ) {
+    var exportShareExpanded by rememberSaveable { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -119,33 +128,46 @@ fun ArchiveHubScreen(
                 PracticeSurface(contentPadding = PaddingValues(4.dp)) {
                     Column {
                         PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_export_all),
-                            icon = Icons.Outlined.FileDownload,
+                            title = stringResource(R.string.archive_export_and_share),
+                            icon = if (exportShareExpanded) {
+                                Icons.Outlined.ExpandLess
+                            } else {
+                                Icons.Outlined.ExpandMore
+                            },
                             showChevron = false,
-                            onClick = onExportAll,
-                            modifier = Modifier.testTag(ArchiveTestTags.EXPORT_ALL),
+                            onClick = { exportShareExpanded = !exportShareExpanded },
+                            modifier = Modifier.testTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION),
                         )
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_export_period),
-                            icon = Icons.Outlined.FileDownload,
-                            showChevron = false,
-                            onClick = onExportPeriod,
-                            modifier = Modifier.testTag(ArchiveTestTags.EXPORT_PERIOD),
-                        )
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_share_all),
-                            icon = Icons.Outlined.Share,
-                            showChevron = false,
-                            onClick = onShareAll,
-                            modifier = Modifier.testTag(ArchiveTestTags.SHARE_ALL),
-                        )
-                        PracticeGlassActionRow(
-                            title = stringResource(R.string.archive_share_period),
-                            icon = Icons.Outlined.Share,
-                            showChevron = false,
-                            onClick = onSharePeriod,
-                            modifier = Modifier.testTag(ArchiveTestTags.SHARE_PERIOD),
-                        )
+                        if (exportShareExpanded) {
+                            PracticeGlassActionRow(
+                                title = stringResource(R.string.archive_export_all),
+                                icon = Icons.Outlined.FileDownload,
+                                showChevron = false,
+                                onClick = onExportAll,
+                                modifier = Modifier.testTag(ArchiveTestTags.EXPORT_ALL),
+                            )
+                            PracticeGlassActionRow(
+                                title = stringResource(R.string.archive_export_period),
+                                icon = Icons.Outlined.FileDownload,
+                                showChevron = false,
+                                onClick = onExportPeriod,
+                                modifier = Modifier.testTag(ArchiveTestTags.EXPORT_PERIOD),
+                            )
+                            PracticeGlassActionRow(
+                                title = stringResource(R.string.archive_share_all),
+                                icon = Icons.Outlined.Share,
+                                showChevron = false,
+                                onClick = onShareAll,
+                                modifier = Modifier.testTag(ArchiveTestTags.SHARE_ALL),
+                            )
+                            PracticeGlassActionRow(
+                                title = stringResource(R.string.archive_share_period),
+                                icon = Icons.Outlined.Share,
+                                showChevron = false,
+                                onClick = onSharePeriod,
+                                modifier = Modifier.testTag(ArchiveTestTags.SHARE_PERIOD),
+                            )
+                        }
                     }
                 }
             }
