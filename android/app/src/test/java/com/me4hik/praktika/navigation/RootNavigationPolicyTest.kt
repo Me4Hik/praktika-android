@@ -61,7 +61,9 @@ class RootNavigationPolicyTest {
             ),
         )
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.SETTINGS))
+        assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.SETTINGS_NOTIFICATIONS))
         assertTrue(RootNavigationPolicy.isSecondaryRoute(Routes.SOUND_LIBRARY))
+        assertEquals("settings/notifications", Routes.SETTINGS_NOTIFICATIONS)
     }
 
     @Test

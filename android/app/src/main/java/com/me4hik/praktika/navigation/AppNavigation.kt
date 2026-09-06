@@ -86,12 +86,13 @@ import com.me4hik.praktika.ui.OnboardingScreen
 import com.me4hik.praktika.ui.QuestionHistoryScreen
 import com.me4hik.praktika.ui.QuestionScreen
 import com.me4hik.praktika.ui.SettingsScreen
+import com.me4hik.praktika.ui.settings.NotificationsSettingsScreen
 import com.me4hik.praktika.ui.settings.SettingsBackupEffects
-import com.me4hik.praktika.ui.settings.SettingsNavigationEvent
 import com.me4hik.praktika.ui.settings.SettingsSnackbarEvent
 import com.me4hik.praktika.ui.settings.SettingsTestTags
 import com.me4hik.praktika.ui.settings.BugReportUiState
 import com.me4hik.praktika.ui.settings.SettingsViewModel
+import com.me4hik.praktika.ui.settings.SettingsViewModelEventEffects
 import com.me4hik.praktika.ui.settings.SettingsViewModelFactory
 import com.me4hik.praktika.ui.settings.SoundLibraryScreen
 import com.me4hik.praktika.ui.settings.SoundLibraryViewModel
@@ -961,40 +962,31 @@ fun AppNavigation(
                 var showDirtyDialog by remember { mutableStateOf(false) }
                 var showBugReportDialog by remember { mutableStateOf(false) }
 
-                LaunchedEffect(settingsViewModel) {
-                    settingsViewModel.snackbar.collect { event ->
-                        pendingSettingsSnackbarMessage = when (event) {
-                            SettingsSnackbarEvent.PracticePaused -> settingsPracticePausedMessage
-                            SettingsSnackbarEvent.PracticeResumed -> settingsPracticeResumedMessage
-                            SettingsSnackbarEvent.ScheduleSaveFailed -> settingsScheduleSaveFailedMessage
-                            SettingsSnackbarEvent.SoundChangeFailed -> settingsSoundChangeFailedMessage
-                            SettingsSnackbarEvent.DeferDurationChangeFailed -> settingsDeferChangeFailedMessage
-                            SettingsSnackbarEvent.QuestionWordingChangeFailed -> settingsWordingChangeFailedMessage
-                            SettingsSnackbarEvent.PauseStateChangeFailed -> settingsPauseChangeFailedMessage
-                            // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
-                            is SettingsSnackbarEvent.BackupMessage ->
-                                context.getString(event.messageResId)
-                            // 10.08.2026 Post-release fixes cursor by Me4Hik END
-                        }
-                    }
-                }
-
-                LaunchedEffect(settingsViewModel) {
-                    settingsViewModel.navigation.collect { event ->
-                        when (event) {
-                            SettingsNavigationEvent.ConfirmDiscardChanges -> {
-                                showDirtyDialog = true
-                            }
-                            SettingsNavigationEvent.NavigateBackClean -> {
-                                showDirtyDialog = false
-                                navController.popBackStack(Routes.HOME, inclusive = false)
-                            }
-                            is SettingsNavigationEvent.OpenNotificationSettings -> {
-                                context.startActivity(event.intent)
-                            }
-                        }
-                    }
-                }
+                SettingsViewModelEventEffects(
+                    viewModel = settingsViewModel,
+                    handleBackNavigation = true,
+                    onSnackbarMessage = { event ->
+                        pendingSettingsSnackbarMessage = settingsSnackbarMessage(
+                            event = event,
+                            context = context,
+                            practicePaused = settingsPracticePausedMessage,
+                            practiceResumed = settingsPracticeResumedMessage,
+                            scheduleSaveFailed = settingsScheduleSaveFailedMessage,
+                            soundChangeFailed = settingsSoundChangeFailedMessage,
+                            deferChangeFailed = settingsDeferChangeFailedMessage,
+                            wordingChangeFailed = settingsWordingChangeFailedMessage,
+                            pauseChangeFailed = settingsPauseChangeFailedMessage,
+                        )
+                    },
+                    onConfirmDiscardChanges = { showDirtyDialog = true },
+                    onNavigateBackClean = {
+                        showDirtyDialog = false
+                        navController.popBackStack(Routes.HOME, inclusive = false)
+                    },
+                    onOpenNotificationSettings = { intent ->
+                        context.startActivity(intent)
+                    },
+                )
 
                 // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
                 SettingsBackupEffects(viewModel = settingsViewModel)
@@ -1003,11 +995,10 @@ fun AppNavigation(
                 SettingsScreen(
                     uiState = settingsUiState,
                     onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
-                    onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
-                    onDeferDurationMinutesChanged = settingsViewModel::onDeferDurationMinutesChanged,
                     onQuestionWordingModeChanged = settingsViewModel::onQuestionWordingModeChanged,
-                    onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
-                    onOpenSoundLibrary = { navController.navigate(Routes.SOUND_LIBRARY) },
+                    onOpenNotifications = {
+                        navController.navigate(Routes.SETTINGS_NOTIFICATIONS)
+                    },
                     onTogglePauseState = settingsViewModel::togglePauseState,
                     onBack = settingsViewModel::onBackRequested,
                     onStayOnDirtyBack = { showDirtyDialog = false },
@@ -1041,6 +1032,51 @@ fun AppNavigation(
                     onBackupReconnectDifferentUseAsNew = settingsViewModel::onBackupReconnectDifferentUseAsNew,
                     onBackupReconnectDifferentCancel = settingsViewModel::onBackupReconnectDifferentCancelled,
                     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+                )
+            }
+            composable(Routes.SETTINGS_NOTIFICATIONS) { backStackEntry ->
+                val context = LocalContext.current
+                val settingsEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Routes.SETTINGS)
+                }
+                val settingsViewModel: SettingsViewModel = viewModel(
+                    viewModelStoreOwner = settingsEntry,
+                    factory = SettingsViewModelFactory(
+                        owner = settingsEntry,
+                        runtime = runtime,
+                        diagnosticReportSubmitter = diagnosticReportSubmitter,
+                    ),
+                )
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+
+                SettingsViewModelEventEffects(
+                    viewModel = settingsViewModel,
+                    handleBackNavigation = false,
+                    onSnackbarMessage = { event ->
+                        pendingSettingsSnackbarMessage = settingsSnackbarMessage(
+                            event = event,
+                            context = context,
+                            practicePaused = settingsPracticePausedMessage,
+                            practiceResumed = settingsPracticeResumedMessage,
+                            scheduleSaveFailed = settingsScheduleSaveFailedMessage,
+                            soundChangeFailed = settingsSoundChangeFailedMessage,
+                            deferChangeFailed = settingsDeferChangeFailedMessage,
+                            wordingChangeFailed = settingsWordingChangeFailedMessage,
+                            pauseChangeFailed = settingsPauseChangeFailedMessage,
+                        )
+                    },
+                    onOpenNotificationSettings = { intent ->
+                        context.startActivity(intent)
+                    },
+                )
+
+                NotificationsSettingsScreen(
+                    uiState = settingsUiState,
+                    onSoundEnabledChanged = settingsViewModel::onSoundEnabledChanged,
+                    onDeferDurationMinutesChanged = settingsViewModel::onDeferDurationMinutesChanged,
+                    onOpenNotificationSettings = settingsViewModel::onNotificationSettingsClicked,
+                    onOpenSoundLibrary = { navController.navigate(Routes.SOUND_LIBRARY) },
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.SOUND_LIBRARY) { backStackEntry ->
@@ -1087,6 +1123,29 @@ fun AppNavigation(
         )
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
+    }
+}
+
+private fun settingsSnackbarMessage(
+    event: SettingsSnackbarEvent,
+    context: android.content.Context,
+    practicePaused: String,
+    practiceResumed: String,
+    scheduleSaveFailed: String,
+    soundChangeFailed: String,
+    deferChangeFailed: String,
+    wordingChangeFailed: String,
+    pauseChangeFailed: String,
+): String {
+    return when (event) {
+        SettingsSnackbarEvent.PracticePaused -> practicePaused
+        SettingsSnackbarEvent.PracticeResumed -> practiceResumed
+        SettingsSnackbarEvent.ScheduleSaveFailed -> scheduleSaveFailed
+        SettingsSnackbarEvent.SoundChangeFailed -> soundChangeFailed
+        SettingsSnackbarEvent.DeferDurationChangeFailed -> deferChangeFailed
+        SettingsSnackbarEvent.QuestionWordingChangeFailed -> wordingChangeFailed
+        SettingsSnackbarEvent.PauseStateChangeFailed -> pauseChangeFailed
+        is SettingsSnackbarEvent.BackupMessage -> context.getString(event.messageResId)
     }
 }
 // 05.08.2026 Answer Save cursor by Me4Hik END

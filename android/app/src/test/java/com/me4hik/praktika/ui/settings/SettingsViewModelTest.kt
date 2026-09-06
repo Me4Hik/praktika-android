@@ -356,6 +356,19 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun notificationSettingsClick_emitsOpenNotificationSettings() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        val events = mutableListOf<SettingsNavigationEvent>()
+        val collector = launch { viewModel.navigation.collect { events.add(it) } }
+        advanceUntilIdle()
+        viewModel.onNotificationSettingsClicked()
+        advanceUntilIdle()
+        collector.cancel()
+        assertTrue(events.single() is SettingsNavigationEvent.OpenNotificationSettings)
+    }
+
+    @Test
     fun draftRestoredFromSavedStateHandle() = runTest {
         savedStateHandle[SettingsSavedStateKeys.DRAFT_SLOT_1] = 630
         savedStateHandle[SettingsSavedStateKeys.DRAFT_SLOT_2] = 900

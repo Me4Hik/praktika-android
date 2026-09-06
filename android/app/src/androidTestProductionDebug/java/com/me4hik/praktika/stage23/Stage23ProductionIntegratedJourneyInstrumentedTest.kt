@@ -16,6 +16,7 @@ import com.me4hik.praktika.ui.archive.ArchiveComposeTestSupport
 import com.me4hik.praktika.ui.archive.ArchiveTestTags
 import com.me4hik.praktika.ui.practice.PracticeComposeTestSupport
 import com.me4hik.praktika.ui.practice.PracticeTestTags
+import com.me4hik.praktika.ui.settings.SettingsComposeTestSupport
 import com.me4hik.praktika.ui.settings.SettingsTestTags
 import java.time.Instant
 import java.time.ZoneId
@@ -120,7 +121,13 @@ class Stage23ProductionIntegratedJourneyInstrumentedTest {
         composeRule.onNodeWithText("10:30").assertIsDisplayed()
         composeRule.onNodeWithText("14:20").assertIsDisplayed()
         composeRule.onNodeWithText("20:10").assertIsDisplayed()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SOUND_SWITCH).assertDoesNotExist()
+        SettingsComposeTestSupport.openNotificationsSettings(composeRule)
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SOUND_SWITCH).assertIsOff()
+        composeRule.onNodeWithTag(SettingsTestTags.NOTIFICATIONS_SETTINGS_BACK)
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCREEN).assertIsDisplayed()
         PracticeComposeTestSupport.clickSettingsBackToHome(composeRule)
 
         android.util.Log.i(TAG, "STAGE23_PRODUCTION_JOURNEY_GREEN")

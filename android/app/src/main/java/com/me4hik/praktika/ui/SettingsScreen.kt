@@ -26,9 +26,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Translate
-import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,8 +36,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -58,7 +54,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.BuildConfig
 import com.me4hik.praktika.R
-import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
@@ -89,11 +84,8 @@ import com.me4hik.praktika.ui.theme.TitleSerifStyle
 fun SettingsScreen(
     uiState: SettingsUiState,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
-    onSoundEnabledChanged: (Boolean) -> Unit,
-    onDeferDurationMinutesChanged: (Int) -> Unit,
     onQuestionWordingModeChanged: (QuestionWordingMode) -> Unit = {},
-    onOpenNotificationSettings: () -> Unit,
-    onOpenSoundLibrary: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     onTogglePauseState: () -> Unit,
     onBack: () -> Unit,
     onStayOnDirtyBack: () -> Unit,
@@ -160,11 +152,8 @@ fun SettingsScreen(
             SettingsContentScreen(
                 content = uiState,
                 onSlotTimeChange = onSlotTimeChange,
-                onSoundEnabledChanged = onSoundEnabledChanged,
-                onDeferDurationMinutesChanged = onDeferDurationMinutesChanged,
                 onQuestionWordingModeChanged = onQuestionWordingModeChanged,
-                onOpenNotificationSettings = onOpenNotificationSettings,
-                onOpenSoundLibrary = onOpenSoundLibrary,
+                onOpenNotifications = onOpenNotifications,
                 onTogglePauseState = onTogglePauseState,
                 onOpenBugReport = onOpenBugReport,
                 onBack = onBack,
@@ -230,11 +219,8 @@ fun SettingsScreen(
 private fun SettingsContentScreen(
     content: SettingsUiState.Content,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
-    onSoundEnabledChanged: (Boolean) -> Unit,
-    onDeferDurationMinutesChanged: (Int) -> Unit,
     onQuestionWordingModeChanged: (QuestionWordingMode) -> Unit,
-    onOpenNotificationSettings: () -> Unit,
-    onOpenSoundLibrary: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onTogglePauseState: () -> Unit,
     onOpenBugReport: () -> Unit,
     onBack: () -> Unit,
@@ -324,114 +310,6 @@ private fun SettingsContentScreen(
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PracticeSectionHeader(
-                    title = stringResource(R.string.settings_sound_section),
-                    icon = Icons.Outlined.VolumeUp,
-                )
-                PracticeSurface {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.settings_sound_label),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextPrimary,
-                        )
-                        Switch(
-                            checked = content.soundEnabled,
-                            onCheckedChange = onSoundEnabledChanged,
-                            enabled = !content.isChangingSound,
-                            modifier = Modifier.testTag(SettingsTestTags.SETTINGS_SOUND_SWITCH),
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = TextPrimary,
-                                checkedTrackColor = AccentViolet.copy(alpha = 0.55f),
-                                uncheckedThumbColor = TextMuted,
-                                uncheckedTrackColor = TextMuted.copy(alpha = 0.35f),
-                            ),
-                        )
-                    }
-                    val selectedAsset = com.me4hik.praktika.sound.BuiltinSoundCatalog
-                        .resolveOrDefault(content.selectedSoundId)
-                    val selectedDisplayName = com.me4hik.praktika.sound.SoundDisplayNames
-                        .forAsset(LocalContext.current, selectedAsset)
-                    PracticeGlassActionRow(
-                        title = stringResource(R.string.sound_library_entry_title),
-                        supportingText = selectedDisplayName,
-                        onClick = onOpenSoundLibrary,
-                        modifier = Modifier.testTag(SettingsTestTags.SOUND_LIBRARY_ENTRY),
-                    )
-                }
-                content.soundError?.let {
-                    Text(
-                        text = stringResource(R.string.settings_sound_error),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_DEFER_SECTION),
-            ) {
-                PracticeSectionHeader(
-                    title = stringResource(R.string.settings_defer_section),
-                    icon = Icons.Outlined.Timer,
-                )
-                PracticeSurface {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf(
-                            Triple(5, R.string.settings_defer_5, SettingsTestTags.SETTINGS_DEFER_5),
-                            Triple(10, R.string.settings_defer_10, SettingsTestTags.SETTINGS_DEFER_10),
-                            Triple(15, R.string.settings_defer_15, SettingsTestTags.SETTINGS_DEFER_15),
-                            Triple(30, R.string.settings_defer_30, SettingsTestTags.SETTINGS_DEFER_30),
-                        ).forEach { (minutes, labelRes, tag) ->
-                            val selected = content.deferDurationMinutes == minutes
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .selectable(
-                                        selected = selected,
-                                        enabled = !content.isChangingDeferDuration &&
-                                            minutes in DeferDurationOptions.ALLOWED_MINUTES,
-                                        role = Role.RadioButton,
-                                        onClick = { onDeferDurationMinutesChanged(minutes) },
-                                    )
-                                    .padding(vertical = 4.dp)
-                                    .testTag(tag),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(
-                                    selected = selected,
-                                    onClick = null,
-                                    enabled = !content.isChangingDeferDuration,
-                                    colors = RadioButtonDefaults.colors(
-                                        selectedColor = AccentViolet,
-                                        unselectedColor = TextMuted,
-                                    ),
-                                )
-                                Text(
-                                    text = stringResource(labelRes),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = TextPrimary,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-                content.deferError?.let {
-                    Text(
-                        text = stringResource(R.string.settings_defer_error),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.testTag(SettingsTestTags.SETTINGS_WORDING_SECTION),
@@ -503,10 +381,10 @@ private fun SettingsContentScreen(
 
             PracticeSurface {
                 PracticeGlassActionRow(
-                    title = stringResource(R.string.settings_notification_settings),
+                    title = stringResource(R.string.settings_notifications_entry),
                     icon = Icons.Outlined.Notifications,
-                    onClick = onOpenNotificationSettings,
-                    modifier = Modifier.testTag(SettingsTestTags.SETTINGS_NOTIFICATION_SETTINGS),
+                    onClick = onOpenNotifications,
+                    modifier = Modifier.testTag(SettingsTestTags.SETTINGS_NOTIFICATIONS_ENTRY),
                 )
             }
 

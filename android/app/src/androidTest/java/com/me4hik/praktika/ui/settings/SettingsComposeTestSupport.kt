@@ -109,6 +109,12 @@ object SettingsComposeTestSupport {
             .performClick()
     }
 
+    fun openNotificationsSettings(composeRule: ComposeContentTestRule) {
+        clickTaggedControl(composeRule, SettingsTestTags.SETTINGS_NOTIFICATIONS_ENTRY)
+        composeRule.onNodeWithTag(SettingsTestTags.NOTIFICATIONS_SETTINGS_SCREEN)
+            .assertIsDisplayed()
+    }
+
     fun waitUntilPauseProgressIdle(composeRule: ComposeContentTestRule) {
         composeRule.waitUntil(timeoutMillis = 10_000) {
             !hasPauseProgress(composeRule)

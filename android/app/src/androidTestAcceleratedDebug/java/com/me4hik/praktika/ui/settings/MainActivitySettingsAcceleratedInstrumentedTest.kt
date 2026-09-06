@@ -149,11 +149,18 @@ class MainActivitySettingsAcceleratedInstrumentedTest {
         assertTrue(second.plannedAtEpochMillis > resumed.plannedAtEpochMillis)
         runBlocking { assertSlotMinutes(runtime, 505, 995, 1365) }
 
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SOUND_SWITCH).assertDoesNotExist()
+        SettingsComposeTestSupport.openNotificationsSettings(composeRule)
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SOUND_SWITCH)
             .performScrollTo()
             .performClick()
         composeRule.waitForIdle()
         assertFalse(runBlocking { DataStoreSoundPreferenceRepository(context).soundEnabled.first() })
+
+        composeRule.onNodeWithTag(SettingsTestTags.NOTIFICATIONS_SETTINGS_BACK)
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCREEN).assertIsDisplayed()
 
         PracticeComposeTestSupport.navigateBackFromSettings(composeRule)
         composeRule.waitUntil(timeoutMillis = 10_000) {

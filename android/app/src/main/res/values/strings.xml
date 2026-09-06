@@ -200,7 +200,9 @@
     <string name="home_notification_enable_action">Включить</string>
     <string name="home_exact_alarm_message">Чтобы напоминания приходили точно по расписанию, разрешите точные будильники и напоминания.</string>
     <string name="home_exact_alarm_action">Разрешить точные напоминания</string>
-    <string name="settings_notification_settings">Настройки уведомлений</string>
+    <string name="settings_notifications_entry">Уведомления</string>
+    <string name="settings_notifications_title">Уведомления</string>
+    <string name="settings_notification_settings">Системные настройки уведомлений</string>
     <string name="notification_channel_sound_name">Вопросы со звуком</string>
     <string name="notification_channel_sound_description">Уведомления о доступных вопросах со стандартным звуком.</string>
     <string name="notification_channel_silent_name">Вопросы без звука</string>

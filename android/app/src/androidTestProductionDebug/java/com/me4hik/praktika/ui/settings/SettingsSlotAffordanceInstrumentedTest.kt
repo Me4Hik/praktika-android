@@ -132,9 +132,6 @@ class SettingsSlotAffordanceInstrumentedTest {
                 SettingsScreen(
                     uiState = sampleContent(isSavingSchedule = true),
                     onSlotTimeChange = { _, _ -> },
-                    onSoundEnabledChanged = {},
-                    onDeferDurationMinutesChanged = {},
-                    onOpenNotificationSettings = {},
                     onTogglePauseState = {},
                     onBack = {},
                     onStayOnDirtyBack = {},

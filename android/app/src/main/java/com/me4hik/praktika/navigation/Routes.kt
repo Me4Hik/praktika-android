@@ -30,6 +30,7 @@ object Routes {
         "archive/insights/missed/question/{$ARCHIVE_INSIGHTS_MISSED_QUESTION_ARGUMENT}"
     const val QUESTION_HISTORY = "question_history"
     const val SETTINGS = "settings"
+    const val SETTINGS_NOTIFICATIONS = "settings/notifications"
     const val SOUND_LIBRARY = "settings/sound"
 
     fun question(occurrenceId: Long): String = "question/$occurrenceId"

@@ -202,9 +202,15 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
             assertEquals(3, runtime.database.practiceStateDao().get()!!.nextCyclePosition)
 
             openSettings()
+            SettingsComposeTestSupport.openNotificationsSettings(composeRule)
             composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SOUND_SWITCH).performClick()
             composeRule.waitForIdle()
             assertFalse(DataStoreSoundPreferenceRepository(context).soundEnabled.first())
+
+            composeRule.onNodeWithTag(SettingsTestTags.NOTIFICATIONS_SETTINGS_BACK)
+                .performScrollTo()
+                .performClick()
+            composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCREEN).assertIsDisplayed()
 
             SettingsComposeTestSupport.changeSlotTime(composeRule, 1, 510)
             SettingsComposeTestSupport.waitUntilTimeDisplayed(composeRule, formatTimeOfDayMinutes(510))
