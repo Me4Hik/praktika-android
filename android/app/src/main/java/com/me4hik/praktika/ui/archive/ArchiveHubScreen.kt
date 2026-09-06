@@ -52,6 +52,9 @@ fun ArchiveHubScreen(
     onShareAll: () -> Unit,
     onSharePeriod: () -> Unit,
     onBack: () -> Unit,
+    // 06.09.2026 Archive period bounds cursor by Me4Hik START - disable period when no answers
+    periodSelectionEnabled: Boolean = true,
+    // 06.09.2026 Archive period bounds cursor by Me4Hik END
 ) {
     var exportShareExpanded by rememberSaveable { mutableStateOf(false) }
 
@@ -150,6 +153,9 @@ fun ArchiveHubScreen(
                                 title = stringResource(R.string.archive_export_period),
                                 icon = Icons.Outlined.FileDownload,
                                 showChevron = false,
+                                // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                                enabled = periodSelectionEnabled,
+                                // 06.09.2026 Archive period bounds cursor by Me4Hik END
                                 onClick = onExportPeriod,
                                 modifier = Modifier.testTag(ArchiveTestTags.EXPORT_PERIOD),
                             )
@@ -164,6 +170,9 @@ fun ArchiveHubScreen(
                                 title = stringResource(R.string.archive_share_period),
                                 icon = Icons.Outlined.Share,
                                 showChevron = false,
+                                // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                                enabled = periodSelectionEnabled,
+                                // 06.09.2026 Archive period bounds cursor by Me4Hik END
                                 onClick = onSharePeriod,
                                 modifier = Modifier.testTag(ArchiveTestTags.SHARE_PERIOD),
                             )

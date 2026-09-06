@@ -58,6 +58,7 @@ import com.me4hik.praktika.ui.archive.ArchiveExportCoordinator
 import com.me4hik.praktika.ui.archive.ArchiveExportEffects
 import com.me4hik.praktika.ui.archive.ArchiveExportFormatDialog
 import com.me4hik.praktika.ui.archive.ArchiveEntryShareDialog
+import com.me4hik.praktika.ui.archive.ArchiveAnswerDateBounds
 import com.me4hik.praktika.ui.archive.ArchiveHubScreen
 import com.me4hik.praktika.ui.archive.ArchivePeriodExportDialog
 import com.me4hik.praktika.ui.archive.ArchiveShareCoordinator
@@ -203,6 +204,16 @@ fun AppNavigation(
     val archiveZoneIdProvider = remember(runtime) {
         com.me4hik.praktika.ui.archive.TimeProviderArchiveZoneIdProvider(runtime.timeProvider)
     }
+    // 06.09.2026 Archive period bounds cursor by Me4Hik START - hub/dialog bounds from answers
+    val archiveEntries by runtime.archiveReadRepository.observeEntries()
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val archiveAnswerDateBounds = remember(archiveEntries, archiveZoneIdProvider) {
+        ArchiveAnswerDateBounds.fromEntries(
+            entries = archiveEntries,
+            zoneId = archiveZoneIdProvider.currentZoneId(),
+        )
+    }
+    // 06.09.2026 Archive period bounds cursor by Me4Hik END
     val diagnosticReportSubmitter = remember(runtime) {
         DiagnosticReportCoordinator(
             context = context.applicationContext,
@@ -263,6 +274,9 @@ fun AppNavigation(
                     endEpochDayInclusive = endEpochDayInclusive,
                 )
             },
+            // 06.09.2026 Archive period bounds cursor by Me4Hik START
+            answerDateBounds = archiveAnswerDateBounds,
+            // 06.09.2026 Archive period bounds cursor by Me4Hik END
             initialDisplayedMonthMillis = runtime.timeProvider.nowEpochMillis(),
             initialSelectedStartEpochDay = testPeriodExportStartEpochDay,
             initialSelectedEndEpochDay = testPeriodExportEndEpochDay,
@@ -321,6 +335,9 @@ fun AppNavigation(
                     endEpochDayInclusive = endEpochDayInclusive,
                 )
             },
+            // 06.09.2026 Archive period bounds cursor by Me4Hik START
+            answerDateBounds = archiveAnswerDateBounds,
+            // 06.09.2026 Archive period bounds cursor by Me4Hik END
             initialDisplayedMonthMillis = runtime.timeProvider.nowEpochMillis(),
             initialSelectedStartEpochDay = testPeriodExportStartEpochDay,
             initialSelectedEndEpochDay = testPeriodExportEndEpochDay,
@@ -689,15 +706,26 @@ fun AppNavigation(
                         requestArchiveExport(ExportSelection.All)
                     },
                     onExportPeriod = {
-                        showPeriodExportDialog = true
+                        // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                        if (archiveAnswerDateBounds != null) {
+                            showPeriodExportDialog = true
+                        }
+                        // 06.09.2026 Archive period bounds cursor by Me4Hik END
                     },
                     onShareAll = {
                         requestArchiveShare(ExportSelection.All)
                     },
                     onSharePeriod = {
-                        showPeriodShareDialog = true
+                        // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                        if (archiveAnswerDateBounds != null) {
+                            showPeriodShareDialog = true
+                        }
+                        // 06.09.2026 Archive period bounds cursor by Me4Hik END
                     },
                     onBack = { navController.popBackStack(Routes.HOME, inclusive = false) },
+                    // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                    periodSelectionEnabled = archiveAnswerDateBounds != null,
+                    // 06.09.2026 Archive period bounds cursor by Me4Hik END
                 )
             }
             // PROMPT 167 — archive by days list

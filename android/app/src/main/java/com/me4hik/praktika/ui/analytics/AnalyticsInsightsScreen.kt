@@ -184,7 +184,9 @@ private fun InsightsContent(
     modifier: Modifier = Modifier,
 ) {
     val weekdays = content.weekdays.sortedBy { it.dayOfWeek.value }
-    var weekdaysExpanded by rememberSaveable { mutableStateOf(true) }
+    // 06.09.2026 Archive UX polish cursor by Me4Hik START - weekday accordion collapsed by default
+    var weekdaysExpanded by rememberSaveable { mutableStateOf(false) }
+    // 06.09.2026 Archive UX polish cursor by Me4Hik END
     LazyColumn(
         modifier = modifier.testTag(AnalyticsInsightsTestTags.LIST),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),

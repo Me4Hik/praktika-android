@@ -4,6 +4,8 @@ package com.me4hik.praktika.ui.archive
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -109,6 +111,38 @@ class ArchiveHubScreenComposeTest {
         composeRule.onNodeWithTag(ArchiveTestTags.OPEN_DAYS).assertIsDisplayed()
     }
 
+    // 06.09.2026 Archive period bounds cursor by Me4Hik START - empty archive disables period
+    @Test
+    fun hub_periodActionsDisabled_whenPeriodSelectionDisabled() {
+        val exportPeriod = AtomicInteger(0)
+        val sharePeriod = AtomicInteger(0)
+        composeRule.setContent {
+            PraktikaTheme {
+                ArchiveHubScreen(
+                    onOpenDays = {},
+                    onOpenQuestions = {},
+                    onOpenInsights = {},
+                    onExportAll = {},
+                    onExportPeriod = { exportPeriod.incrementAndGet() },
+                    onShareAll = {},
+                    onSharePeriod = { sharePeriod.incrementAndGet() },
+                    onBack = {},
+                    periodSelectionEnabled = false,
+                )
+            }
+        }
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION).performClick()
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_PERIOD).assertIsDisplayed().assertIsNotEnabled()
+        composeRule.onNodeWithTag(ArchiveTestTags.SHARE_PERIOD).assertIsDisplayed().assertIsNotEnabled()
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_ALL).assertIsEnabled()
+        composeRule.onNodeWithTag(ArchiveTestTags.SHARE_ALL).assertIsEnabled()
+        composeRule.onNodeWithTag(ArchiveTestTags.EXPORT_PERIOD).performClick()
+        composeRule.onNodeWithTag(ArchiveTestTags.SHARE_PERIOD).performClick()
+        assertEquals(0, exportPeriod.get())
+        assertEquals(0, sharePeriod.get())
+    }
+    // 06.09.2026 Archive period bounds cursor by Me4Hik END
+
     @Test
     fun hub_openDays_invokesCallback() {
         val opened = AtomicBoolean(false)
@@ -181,6 +215,32 @@ class ArchiveHubScreenComposeTest {
             .performClick()
         assertEquals(epochDay, selected.get())
     }
+
+    // 06.09.2026 Archive UX polish cursor by Me4Hik START - Ответов: 1 visible on by-days list
+    @Test
+    fun daysScreen_answerCountOne_showsSupportingLabel() {
+        val epochDay = 20_001L
+        composeRule.setContent {
+            PraktikaTheme {
+                ArchiveDatesScreen(
+                    uiState = ArchiveDatesUiState.Content(
+                        dates = listOf(
+                            ArchiveDateListItem(
+                                epochDay = epochDay,
+                                dateText = "5 сентября 2026",
+                                answerCount = 1,
+                            ),
+                        ),
+                    ),
+                    onDateSelected = {},
+                    onBack = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("${ArchiveTestTags.DATE_ITEM_PREFIX}$epochDay").assertIsDisplayed()
+        composeRule.onNodeWithText("Ответов: 1").assertIsDisplayed()
+    }
+    // 06.09.2026 Archive UX polish cursor by Me4Hik END
 
     @Test
     fun daysScreen_back_invokesCallback() {

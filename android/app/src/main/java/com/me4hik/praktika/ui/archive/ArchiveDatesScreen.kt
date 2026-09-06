@@ -130,7 +130,8 @@ fun ArchiveDatesScreen(
                             )
                         }
                         items(uiState.dates, key = { it.epochDay }) { dateItem ->
-                            val supporting = if (dateItem.answerCount > 1) {
+                            // 06.09.2026 Archive UX polish cursor by Me4Hik START - show Ответов: 1 (hide only for 0)
+                            val supporting = if (dateItem.answerCount > 0) {
                                 stringResource(
                                     R.string.archive_question_answer_count,
                                     dateItem.answerCount,
@@ -138,6 +139,7 @@ fun ArchiveDatesScreen(
                             } else {
                                 null
                             }
+                            // 06.09.2026 Archive UX polish cursor by Me4Hik END
                             ArchiveListRow(
                                 title = dateItem.dateText,
                                 supporting = supporting,

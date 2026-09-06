@@ -258,6 +258,12 @@
     <string name="archive_export_period_dialog_title">Выберите период</string>
     <string name="archive_export_period_confirm">Экспортировать</string>
     <string name="archive_export_period_cancel">Отмена</string>
+    <!-- 06.09.2026 Archive UX polish cursor by Me4Hik START - compact period dialog labels -->
+    <string name="archive_export_period_start_date">Начальная дата</string>
+    <string name="archive_export_period_end_date">Конечная дата</string>
+    <string name="archive_export_period_date_unset">Не выбрано</string>
+    <string name="archive_export_period_date_ok">Готово</string>
+    <!-- 06.09.2026 Archive UX polish cursor by Me4Hik END -->
     <string name="archive_export_no_answers">Нет ответов для экспорта</string>
     <string name="archive_export_saved">Файл сохранён</string>
     <string name="archive_export_write_error">Не удалось сохранить файл</string>

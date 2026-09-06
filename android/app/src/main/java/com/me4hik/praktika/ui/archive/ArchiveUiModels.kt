@@ -80,6 +80,12 @@ object ArchiveTestTags {
     const val EXPORT_PERIOD_PICKER = "archive_export_period_picker"
     const val EXPORT_PERIOD_CONFIRM = "archive_export_period_confirm"
     const val EXPORT_PERIOD_CANCEL = "archive_export_period_cancel"
+    // 06.09.2026 Archive UX polish cursor by Me4Hik START - compact period dialog tags
+    const val EXPORT_PERIOD_START = "archive_export_period_start"
+    const val EXPORT_PERIOD_END = "archive_export_period_end"
+    const val EXPORT_PERIOD_DATE_OK = "archive_export_period_date_ok"
+    const val EXPORT_PERIOD_DATE_CANCEL = "archive_export_period_date_cancel"
+    // 06.09.2026 Archive UX polish cursor by Me4Hik END
     // 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik END
     // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik START - test tags format dialog
     const val EXPORT_FORMAT_DIALOG = "archive_export_format_dialog"

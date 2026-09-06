@@ -105,6 +105,9 @@ class AnalyticsInsightsScreenComposeTest {
         }
         composeRule.onNodeWithTag(AnalyticsInsightsTestTags.LOW_SAMPLE_HINT).assertIsDisplayed()
         composeRule.onNodeWithText("Пока данных немного. Ниже — то, что уже записано.").assertIsDisplayed()
+        // 06.09.2026 Archive UX polish cursor by Me4Hik START - weekdays collapsed until header expand
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertDoesNotExist()
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertIsDisplayed()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertIsDisplayed()
         composeRule.onNodeWithText("Понедельник").assertIsDisplayed()
@@ -112,6 +115,7 @@ class AnalyticsInsightsScreenComposeTest {
         composeRule.onNodeWithText("Отложено 1 из 2").assertIsDisplayed()
         composeRule.onNodeWithText("Пропущено 1 из 2").assertIsDisplayed()
         composeRule.onAllNodesWithText("Отклонено 0 из 2").assertCountEquals(2)
+        // 06.09.2026 Archive UX polish cursor by Me4Hik END
     }
 
     @Test
@@ -234,8 +238,9 @@ class AnalyticsInsightsScreenComposeTest {
         assertTrue(backed.get())
     }
 
+    // 06.09.2026 Archive UX polish cursor by Me4Hik START - accordion starts collapsed
     @Test
-    fun weekdaysAccordion_defaultExpanded_collapseHidesRowsOnly() {
+    fun weekdaysAccordion_defaultCollapsed_expandShowsRowsOnly() {
         composeRule.setContent {
             PraktikaTheme {
                 AnalyticsInsightsScreen(
@@ -261,13 +266,6 @@ class AnalyticsInsightsScreenComposeTest {
             }
         }
         composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).assertIsDisplayed()
-        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertIsDisplayed()
-        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertIsDisplayed()
-        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}1").assertIsDisplayed()
-        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_DEFERRED_PREFIX}2").assertIsDisplayed()
-        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.DURATION).assertIsDisplayed()
-
-        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertDoesNotExist()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertDoesNotExist()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}1").assertIsDisplayed()
@@ -277,7 +275,15 @@ class AnalyticsInsightsScreenComposeTest {
         composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertIsDisplayed()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_MISSED_PREFIX}1").assertIsDisplayed()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.TOP_DEFERRED_PREFIX}2").assertIsDisplayed()
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.DURATION).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").assertDoesNotExist()
+        composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").assertDoesNotExist()
     }
+    // 06.09.2026 Archive UX polish cursor by Me4Hik END
 
     @Test
     fun weekdayClick_onlyWhenMissedPositive() {
@@ -298,11 +304,14 @@ class AnalyticsInsightsScreenComposeTest {
                 )
             }
         }
+        // 06.09.2026 Archive UX polish cursor by Me4Hik START - expand weekdays before row clicks
+        composeRule.onNodeWithTag(AnalyticsInsightsTestTags.WEEKDAYS_HEADER).performClick()
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}MONDAY").performClick()
         assertEquals(DayOfWeek.MONDAY, clicked.get())
         clicked.set(null)
         composeRule.onNodeWithTag("${AnalyticsInsightsTestTags.WEEKDAY_ROW_PREFIX}FRIDAY").performClick()
         assertNull(clicked.get())
+        // 06.09.2026 Archive UX polish cursor by Me4Hik END
     }
 
     @Test
