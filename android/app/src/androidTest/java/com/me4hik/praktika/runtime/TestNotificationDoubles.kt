@@ -64,6 +64,7 @@ class GrantedNotificationPermissionPolicy : NotificationPermissionPolicy {
     override fun evaluateUiState(
         permissionRequested: Boolean,
         soundEnabled: Boolean,
+        selectedSoundId: String,
     ): NotificationPermissionUiState = NotificationPermissionUiState.ENABLED
 
     override fun toDeliveryCapability(
@@ -72,7 +73,10 @@ class GrantedNotificationPermissionPolicy : NotificationPermissionPolicy {
 
     override fun createAppNotificationSettingsIntent(): Intent = Intent()
 
-    override fun createChannelSettingsIntent(soundEnabled: Boolean): Intent = Intent()
+    override fun createChannelSettingsIntent(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): Intent = Intent()
 
     override fun shouldRequestRuntimePermission(): Boolean = true
 
@@ -82,7 +86,10 @@ class GrantedNotificationPermissionPolicy : NotificationPermissionPolicy {
 
     override fun shouldShowRequestPermissionRationale(): Boolean = false
 
-    override fun isSelectedChannelEnabled(soundEnabled: Boolean): Boolean = true
+    override fun isSelectedChannelEnabled(
+        soundEnabled: Boolean,
+        selectedSoundId: String,
+    ): Boolean = true
 }
 // 06.08.2026 Stage 12 Production Defect Fix cursor by Me4Hik END
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END
