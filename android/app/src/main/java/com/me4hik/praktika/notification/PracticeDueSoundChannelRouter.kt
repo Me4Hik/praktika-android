@@ -15,16 +15,20 @@ import com.me4hik.praktika.sound.SoundUriResolver
 
 /**
  * Due-question channel routing for the V1 sound library.
- * Custom builtin channels are created lazily; [ensureBaseChannels] never creates all 25.
+ * Custom builtin channels are created lazily; base channel ensure never creates all builtins.
+ * Orphan custom channels are pruned via [pruneOrphanCustomDueSoundChannels].
  */
 object PracticeDueSoundChannelRouter {
-    private const val CUSTOM_DUE_PREFIX = "practice_due_custom_v1_"
+    const val CUSTOM_DUE_PREFIX = "practice_due_custom_v1_"
 
     fun customDueSoundChannelId(soundAssetId: String): String {
         val number = SoundAssetIds.builtinNumberOrNull(soundAssetId)
             ?: error("Not a builtin sound id: $soundAssetId")
         return CUSTOM_DUE_PREFIX + "%02d".format(number)
     }
+
+    fun isCustomDueSoundChannelId(channelId: String): Boolean =
+        channelId.startsWith(CUSTOM_DUE_PREFIX)
 
     fun dueChannelId(
         soundEnabled: Boolean,
@@ -80,5 +84,42 @@ object PracticeDueSoundChannelRouter {
     ) {
         val asset = BuiltinSoundCatalog.resolveOrDefault(selectedSoundId)
         ensureCustomDueSoundChannel(context, notificationManager, asset)
+    }
+
+    /**
+     * Deletes app-owned orphan custom due-sound channels for the current scheme.
+     *
+     * Keeps the custom channel for the effective selected builtin (if any) plus any
+     * [additionalKeepChannelIds] (e.g. APP_START hosting channel of an active QUESTION).
+     * Never touches base/legacy channels or non-prefixed ids. Idempotent.
+     */
+    fun pruneOrphanCustomDueSoundChannels(
+        notificationManager: NotificationManager,
+        selectedSoundId: String,
+        additionalKeepChannelIds: Set<String> = emptySet(),
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val resolved = BuiltinSoundCatalog.resolveOrDefault(selectedSoundId)
+        val selectedKeepChannelId = when (resolved.source) {
+            SoundAssetSource.BUILTIN -> customDueSoundChannelId(resolved.id)
+            SoundAssetSource.SYSTEM_DEFAULT,
+            SoundAssetSource.IMPORTED,
+            -> null
+        }
+        val keepIds = buildSet {
+            selectedKeepChannelId?.let { add(it) }
+            additionalKeepChannelIds
+                .asSequence()
+                .filter { isCustomDueSoundChannelId(it) }
+                .forEach { add(it) }
+        }
+        notificationManager.notificationChannels
+            .asSequence()
+            .map { it.id }
+            .filter { isCustomDueSoundChannelId(it) }
+            .filter { it !in keepIds }
+            .forEach { channelId ->
+                notificationManager.deleteNotificationChannel(channelId)
+            }
     }
 }

@@ -36,7 +36,7 @@ class NoOpPracticeNotificationPresenter : PracticeNotificationPresenter {
 
     override fun findActivePracticeNotificationKind(): com.me4hik.praktika.notification.PracticeNotificationKind? = null
 
-    override fun showNotification(plan: NotificationShowPlan) = Unit
+    override fun showNotification(plan: NotificationShowPlan): Boolean = true
 
     override fun cancelCurrentPracticeNotification() = Unit
 

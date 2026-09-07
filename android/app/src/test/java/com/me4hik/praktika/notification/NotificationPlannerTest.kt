@@ -125,6 +125,73 @@ class NotificationPlannerTest {
     }
 
     @Test
+    fun forceRefreshDueQuestion_activeQuestion_showsAgain() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.QUESTION,
+                forceRefreshDueQuestion = true,
+            ),
+            soundEnabled = true,
+            selectedSoundId = com.me4hik.praktika.sound.SoundAssetIds.builtin(8),
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertFalse(shown.suppressAlert)
+        assertTrue(shown.quietUpdateKeepRouting)
+        assertEquals(com.me4hik.praktika.sound.SoundAssetIds.builtin(8), shown.selectedSoundId)
+    }
+
+    @Test
+    fun forceRefreshDueQuestion_openedOccurrence_stillNoShow() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(
+                    status = QuestionOccurrenceStatus.AVAILABLE,
+                    openedAtEpochMillis = 1_400L,
+                ),
+                activeNotificationOccurrenceId = 10L,
+                activeNotificationKind = PracticeNotificationKind.QUESTION,
+                forceRefreshDueQuestion = true,
+            ),
+            soundEnabled = true,
+        )
+        assertNull(plan.showNotification)
+    }
+
+    @Test
+    fun forceRefreshDueQuestion_scheduled_stillNoShow() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.SCHEDULED),
+                forceRefreshDueQuestion = true,
+            ),
+            soundEnabled = true,
+        )
+        assertNull(plan.showNotification)
+        assertTrue(plan.cancelNotification)
+    }
+
+    @Test
+    fun quietCatchUp_stillUsesSuppressAlert_notQuietUpdateKeepRouting() {
+        val plan = NotificationPlanner.plan(
+            input = baseInput(
+                nowEpochMillis = 1_500L,
+                currentOccurrence = occurrence.copy(status = QuestionOccurrenceStatus.AVAILABLE),
+                quietCatchUp = true,
+            ),
+            soundEnabled = true,
+        )
+        val shown = checkNotNull(plan.showNotification)
+        assertTrue(shown.suppressAlert)
+        assertFalse(shown.quietUpdateKeepRouting)
+    }
+
+    @Test
     fun openedAtSet_doesNotShow() {
         val plan = NotificationPlanner.plan(
             input = baseInput(
@@ -475,6 +542,7 @@ class NotificationPlannerTest {
         activeNotificationOccurrenceId: Long? = null,
         activeNotificationKind: PracticeNotificationKind? = null,
         quietCatchUp: Boolean = false,
+        forceRefreshDueQuestion: Boolean = false,
     ): NotificationPlanningInput {
         return NotificationPlanningInput(
             isPracticeStarted = isPracticeStarted,
@@ -485,6 +553,7 @@ class NotificationPlannerTest {
             activeNotificationOccurrenceId = activeNotificationOccurrenceId,
             activeNotificationKind = activeNotificationKind,
             quietCatchUp = quietCatchUp,
+            forceRefreshDueQuestion = forceRefreshDueQuestion,
         )
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -24,6 +25,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -43,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
@@ -154,6 +157,8 @@ fun SoundLibraryScreen(
                         SoundLibraryRow(
                             item = item,
                             isPreviewing = uiState.currentlyPreviewingId == item.asset.id,
+                            previewPositionMs = uiState.previewPositionMs,
+                            previewDurationMs = uiState.previewDurationMs,
                             onSelect = { onSelect(item.asset.id) },
                             onTogglePreview = { onTogglePreview(item.asset.id) },
                             onHide = { onHide(item.asset.id) },
@@ -172,6 +177,8 @@ fun SoundLibraryScreen(
 private fun SoundLibraryRow(
     item: SoundLibraryItemUi,
     isPreviewing: Boolean,
+    previewPositionMs: Long,
+    previewDurationMs: Long?,
     onSelect: () -> Unit,
     onTogglePreview: () -> Unit,
     onHide: () -> Unit,
@@ -183,10 +190,9 @@ private fun SoundLibraryRow(
         null
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
             .selectable(
                 selected = item.selected,
                 onClick = onSelect,
@@ -196,72 +202,140 @@ private fun SoundLibraryRow(
                 selected = item.selected
                 selectedDescription?.let { contentDescription = it }
             }
-            .padding(horizontal = 4.dp)
+            .padding(horizontal = 4.dp, vertical = if (isPreviewing) 8.dp else 0.dp)
             .testTag(SoundLibraryTestTags.item(item.asset.id)),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        RadioButton(
-            selected = item.selected,
-            onClick = null,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = AccentViolet,
-                unselectedColor = TextMuted,
-            ),
-        )
-        Text(
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(
-            onClick = onTogglePreview,
-            enabled = item.previewAvailable,
-            modifier = Modifier.testTag(SoundLibraryTestTags.play(item.asset.id)),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(
-                imageVector = if (isPreviewing) Icons.Outlined.Stop else Icons.Outlined.VolumeUp,
-                contentDescription = stringResource(
-                    if (isPreviewing) {
-                        R.string.sound_library_cd_stop
-                    } else {
-                        R.string.sound_library_cd_play
-                    },
+            RadioButton(
+                selected = item.selected,
+                onClick = null,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = AccentViolet,
+                    unselectedColor = TextMuted,
                 ),
-                tint = if (item.previewAvailable) AccentViolet else TextMuted,
-                modifier = Modifier.size(22.dp),
             )
-        }
-        if (item.canHide) {
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.testTag(SoundLibraryTestTags.more(item.asset.id)),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.MoreVert,
-                        contentDescription = stringResource(R.string.sound_library_cd_more),
-                        tint = TextMuted,
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(text = stringResource(R.string.sound_library_hide_action))
+            Text(
+                text = item.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = TextPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(
+                onClick = onTogglePreview,
+                enabled = item.previewAvailable,
+                modifier = Modifier.testTag(SoundLibraryTestTags.play(item.asset.id)),
+            ) {
+                Icon(
+                    imageVector = if (isPreviewing) Icons.Outlined.Stop else Icons.Outlined.VolumeUp,
+                    contentDescription = stringResource(
+                        if (isPreviewing) {
+                            R.string.sound_library_cd_stop
+                        } else {
+                            R.string.sound_library_cd_play
                         },
-                        onClick = {
-                            menuExpanded = false
-                            onHide()
-                        },
-                    )
+                    ),
+                    tint = if (item.previewAvailable) AccentViolet else TextMuted,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            if (item.canHide) {
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.testTag(SoundLibraryTestTags.more(item.asset.id)),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = stringResource(R.string.sound_library_cd_more),
+                            tint = TextMuted,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(text = stringResource(R.string.sound_library_hide_action))
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onHide()
+                            },
+                        )
+                    }
                 }
             }
+        }
+        if (isPreviewing) {
+            PreviewProgressRow(
+                positionMs = previewPositionMs,
+                durationMs = previewDurationMs,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 48.dp, end = 8.dp, bottom = 4.dp)
+                    .testTag(SoundLibraryTestTags.previewProgress(item.asset.id)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreviewProgressRow(
+    positionMs: Long,
+    durationMs: Long?,
+    modifier: Modifier = Modifier,
+) {
+    val elapsed = formatPreviewTimeMs(positionMs)
+    val progress = if (durationMs != null && durationMs > 0L) {
+        (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+    } else {
+        null
+    }
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = elapsed,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.width(36.dp),
+        )
+        if (progress != null) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp),
+                color = AccentViolet,
+                trackColor = TextMuted.copy(alpha = 0.25f),
+            )
+            Text(
+                text = formatPreviewTimeMs(durationMs!!),
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(36.dp),
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp),
+                color = AccentViolet,
+                trackColor = TextMuted.copy(alpha = 0.25f),
+            )
         }
     }
 }

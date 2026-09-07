@@ -114,6 +114,7 @@ object NotificationPlanner {
                     kind = PracticeNotificationKind.QUESTION,
                     zoneId = occurrence.zoneId,
                     suppressAlert = input.quietCatchUp,
+                    quietUpdateKeepRouting = input.forceRefreshDueQuestion && !input.quietCatchUp,
                     selectedSoundId = selectedSoundId,
                 )
             } else {
@@ -123,13 +124,17 @@ object NotificationPlanner {
     }
 
     /**
-     * Force refresh when the shade still shows the same occurrence as SNOOZED
-     * (or a different occurrence). Do not re-post if QUESTION for this id is already active.
+     * Show when shade empty / different occurrence / SNOOZED maturity.
+     * Normally do not re-post if QUESTION for this id is already active —
+     * except [NotificationPlanningInput.forceRefreshDueQuestion] (SOUND_CHANGED).
      */
     private fun shouldShowDueQuestion(
         input: NotificationPlanningInput,
         occurrenceId: Long,
     ): Boolean {
+        if (input.forceRefreshDueQuestion) {
+            return true
+        }
         val activeId = input.activeNotificationOccurrenceId
         if (activeId == null) {
             return true

@@ -263,6 +263,85 @@ class AndroidPracticeNotificationPresenterTest {
     }
 
     @Test
+    fun dueQuestion_quietUpdateKeepRouting_staysOnCustomChannel_notDueSilent() {
+        presenter.ensureChannelsCreated()
+        val soundId = com.me4hik.praktika.sound.SoundAssetIds.builtin(8)
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 3L,
+                text = "sound-change",
+                soundEnabled = true,
+                selectedSoundId = soundId,
+                quietUpdateKeepRouting = true,
+            ),
+        )
+        val posted = practiceNotifications().single()
+        assertEquals("practice_due_custom_v1_08", posted.notification.channelId)
+        assertTrue(posted.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)
+        assertNotEquals(PracticeNotificationChannels.DUE_SILENT, posted.notification.channelId)
+    }
+
+    @Test
+    fun dueQuestion_soundChangeAtoB_notifiesOnB_thenPrunesA() {
+        presenter.ensureChannelsCreated()
+        val soundA = com.me4hik.praktika.sound.SoundAssetIds.builtin(3)
+        val soundB = com.me4hik.praktika.sound.SoundAssetIds.builtin(8)
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 7L,
+                text = "A",
+                soundEnabled = true,
+                selectedSoundId = soundA,
+            ),
+        )
+        assertEquals("practice_due_custom_v1_03", practiceNotifications().single().notification.channelId)
+        assertNotNull(notificationManager.getNotificationChannel("practice_due_custom_v1_03"))
+
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 7L,
+                text = "B",
+                soundEnabled = true,
+                selectedSoundId = soundB,
+                quietUpdateKeepRouting = true,
+            ),
+        )
+        val posted = practiceNotifications().single()
+        assertEquals(AndroidPracticeNotificationPresenter.PRACTICE_NOTIFICATION_ID, posted.id)
+        assertEquals("practice_due_custom_v1_08", posted.notification.channelId)
+        assertNotNull(notificationManager.getNotificationChannel("practice_due_custom_v1_08"))
+        assertNull(notificationManager.getNotificationChannel("practice_due_custom_v1_03"))
+    }
+
+    @Test
+    fun dueQuestion_customToSystem_routesDueSound_andPrunesCustom() {
+        presenter.ensureChannelsCreated()
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 7L,
+                text = "custom",
+                soundEnabled = true,
+                selectedSoundId = com.me4hik.praktika.sound.SoundAssetIds.builtin(10),
+            ),
+        )
+        assertNotNull(notificationManager.getNotificationChannel("practice_due_custom_v1_10"))
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 7L,
+                text = "system",
+                soundEnabled = true,
+                selectedSoundId = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
+                quietUpdateKeepRouting = true,
+            ),
+        )
+        assertEquals(
+            PracticeNotificationChannels.DUE_SOUND,
+            practiceNotifications().single().notification.channelId,
+        )
+        assertNull(notificationManager.getNotificationChannel("practice_due_custom_v1_10"))
+    }
+
+    @Test
     fun snoozedThenDue_refreshesSameIdToQuestion() {
         presenter.showNotification(
             showPlan(
@@ -289,6 +368,8 @@ class AndroidPracticeNotificationPresenterTest {
         deferredUntil: Long? = null,
         zoneId: String = "UTC",
         suppressAlert: Boolean = false,
+        quietUpdateKeepRouting: Boolean = false,
+        selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
     ): NotificationShowPlan {
         return NotificationShowPlan(
             occurrenceId = occurrenceId,
@@ -299,6 +380,8 @@ class AndroidPracticeNotificationPresenterTest {
             deferredUntilEpochMillis = deferredUntil,
             zoneId = zoneId,
             suppressAlert = suppressAlert,
+            quietUpdateKeepRouting = quietUpdateKeepRouting,
+            selectedSoundId = selectedSoundId,
         )
     }
 

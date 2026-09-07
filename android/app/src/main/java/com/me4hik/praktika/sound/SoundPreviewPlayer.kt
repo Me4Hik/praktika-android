@@ -24,6 +24,15 @@ interface SoundPreviewPlayer {
     fun release()
 
     val isPlaying: Boolean
+
+    /** Current playback position in ms; safe when idle/released. */
+    fun positionMs(): Long
+
+    /**
+     * Total duration in ms after a successful prepare/play.
+     * `null` when unknown or invalid (≤0 / MediaPlayer -1).
+     */
+    fun durationMs(): Long?
 }
 
 class MediaPlayerSoundPreviewPlayer : SoundPreviewPlayer {
@@ -70,6 +79,25 @@ class MediaPlayerSoundPreviewPlayer : SoundPreviewPlayer {
 
     override fun release() {
         stopInternal(notifyEnded = false)
+    }
+
+    override fun positionMs(): Long {
+        val player = mediaPlayer ?: return 0L
+        return try {
+            player.currentPosition.coerceAtLeast(0).toLong()
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    override fun durationMs(): Long? {
+        val player = mediaPlayer ?: return null
+        return try {
+            val duration = player.duration
+            if (duration <= 0) null else duration.toLong()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun stopInternal(notifyEnded: Boolean) {

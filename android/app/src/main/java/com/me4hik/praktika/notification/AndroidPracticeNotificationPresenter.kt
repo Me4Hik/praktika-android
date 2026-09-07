@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.me4hik.praktika.MainActivity
 import com.me4hik.praktika.R
@@ -94,6 +95,17 @@ class AndroidPracticeNotificationPresenter(
         notificationManager.createNotificationChannel(snoozedChannel)
     }
 
+    override fun pruneCustomDueSoundChannels(
+        selectedSoundId: String,
+        additionalKeepChannelIds: Set<String>,
+    ) {
+        PracticeDueSoundChannelRouter.pruneOrphanCustomDueSoundChannels(
+            notificationManager = notificationManager,
+            selectedSoundId = selectedSoundId,
+            additionalKeepChannelIds = additionalKeepChannelIds,
+        )
+    }
+
     override fun findActivePracticeNotificationOccurrenceId(): Long? {
         return loadPreferredPracticeNotification()?.let { occurrenceIdFrom(it) }
     }
@@ -102,16 +114,32 @@ class AndroidPracticeNotificationPresenter(
         return loadPreferredPracticeNotification()?.let { kindFrom(it) }
     }
 
-    override fun showNotification(plan: NotificationShowPlan) {
+    override fun findActivePracticeNotificationChannelId(): String? {
+        return loadPreferredPracticeNotification()?.notification?.channelId
+    }
+
+    override fun showNotification(plan: NotificationShowPlan): Boolean {
         ensureChannelsCreated()
-        when (plan.kind) {
-            PracticeNotificationKind.QUESTION -> showQuestionNotification(plan)
-            PracticeNotificationKind.SNOOZED -> showSnoozedNotification(plan)
+        return try {
+            when (plan.kind) {
+                PracticeNotificationKind.QUESTION -> {
+                    showQuestionNotification(plan)
+                    true
+                }
+                PracticeNotificationKind.SNOOZED -> showSnoozedNotification(plan)
+            }
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            Log.w(TAG, "showNotification failed kind=${plan.kind}", exception)
+            false
         }
     }
 
     private fun showQuestionNotification(plan: NotificationShowPlan) {
-        // Quiet catch-up uses existing DUE_SILENT (no new channel) + setSilent to avoid re-alert.
+        // FOREGROUND quiet catch-up: DUE_SILENT + setSilent (unchanged).
+        // SOUND_CHANGED quietUpdateKeepRouting: keep normal sound routing, silent update flags only.
         val channelId = when {
             plan.suppressAlert -> PracticeNotificationChannels.DUE_SILENT
             !plan.soundEnabled -> PracticeNotificationChannels.DUE_SILENT
@@ -174,15 +202,20 @@ class AndroidPracticeNotificationPresenter(
                 deferActionIntent,
             )
             .addExtras(identityExtras)
-        if (plan.suppressAlert) {
+        if (plan.suppressAlert || plan.quietUpdateKeepRouting) {
             builder.setSilent(true)
             builder.setOnlyAlertOnce(true)
         }
+        // Replace shade entry first; only then drop orphan custom channels that may host the old post.
         postPracticeNotification(plan.occurrenceId, channelId, builder.build())
+        PracticeDueSoundChannelRouter.pruneOrphanCustomDueSoundChannels(
+            notificationManager = notificationManager,
+            selectedSoundId = plan.selectedSoundId,
+        )
     }
 
-    private fun showSnoozedNotification(plan: NotificationShowPlan) {
-        val deferredUntil = plan.deferredUntilEpochMillis ?: return
+    private fun showSnoozedNotification(plan: NotificationShowPlan): Boolean {
+        val deferredUntil = plan.deferredUntilEpochMillis ?: return false
         val channelId = PracticeNotificationChannels.SNOOZED
         val repeatAt = SnoozedNotificationCopy.formatRepeatAt(deferredUntil, plan.zoneId)
         val body = context.getString(R.string.notification_snoozed_body, repeatAt)
@@ -225,6 +258,7 @@ class AndroidPracticeNotificationPresenter(
             .addExtras(identityExtras(plan))
             .build()
         postPracticeNotification(plan.occurrenceId, channelId, notification)
+        return true
     }
 
     private fun postPracticeNotification(
@@ -423,6 +457,7 @@ class AndroidPracticeNotificationPresenter(
     }
 
     companion object {
+        private const val TAG = "PracticeNotifPresenter"
         const val NOTIFICATION_TAG = "practice_question"
         const val PRACTICE_NOTIFICATION_ID = 1001
         const val EXTRA_NOTIFICATION_KIND = "practice_notification_kind"

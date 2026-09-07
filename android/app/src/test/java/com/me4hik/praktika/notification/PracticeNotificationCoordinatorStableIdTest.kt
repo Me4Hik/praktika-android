@@ -99,6 +99,269 @@ class PracticeNotificationCoordinatorStableIdTest {
     }
 
     @Test
+    fun soundChanged_activeQuestion_forceRefreshesQuietKeepRouting() = runBlocking {
+        startAvailableOccurrence()
+        val occurrenceId = currentOccurrenceId()
+        presenter.reset()
+        presenter.activeOccurrenceId = occurrenceId
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+
+        val coordinatorWithSound = PracticeNotificationCoordinator(
+            initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }.also {
+                it.completeActivityInit(true)
+            },
+            cycleRepository = cycleRepository,
+            practiceReadRepository = RoomPracticeReadRepository(database),
+            permissionRepository = EnabledNotificationPermissionPolicy(),
+            soundEnabledProvider = { true },
+            selectedSoundIdProvider = {
+                com.me4hik.praktika.sound.SoundAssetIds.builtin(8)
+            },
+            alarmScheduler = alarmScheduler,
+            notificationPresenter = presenter,
+            openRequestStore = NotificationOpenRequestStore(),
+            timeProvider = timeProvider,
+        )
+
+        coordinatorWithSound.sync(NotificationSyncReason.SOUND_CHANGED)
+
+        assertEquals(1, presenter.shown.size)
+        val shown = presenter.shown.single()
+        assertEquals(PracticeNotificationKind.QUESTION, shown.kind)
+        assertFalse(shown.suppressAlert)
+        assertTrue(shown.quietUpdateKeepRouting)
+        assertEquals(com.me4hik.praktika.sound.SoundAssetIds.builtin(8), shown.selectedSoundId)
+        assertEquals(1, presenter.pruneCalls.size)
+        assertEquals(emptySet<String>(), presenter.pruneCalls.single().additionalKeep)
+    }
+
+    @Test
+    fun appStart_activeQuestion_preservesHostingCustomChannelInPrune() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        presenter.activeOccurrenceId = currentOccurrenceId()
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.builtin(8))
+            .sync(NotificationSyncReason.APP_START)
+
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(1, presenter.pruneCalls.size)
+        assertEquals(
+            setOf("practice_due_custom_v1_03"),
+            presenter.pruneCalls.single().additionalKeep,
+        )
+    }
+
+    @Test
+    fun foreground_noRepost_preservesActiveCustomHostingChannel() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        presenter.activeOccurrenceId = currentOccurrenceId()
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.builtin(8))
+            .sync(NotificationSyncReason.FOREGROUND)
+
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(
+            setOf("practice_due_custom_v1_03"),
+            presenter.pruneCalls.single().additionalKeep,
+        )
+    }
+
+    @Test
+    fun mutation_noRepost_preservesActiveCustomHostingChannel() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        presenter.activeOccurrenceId = currentOccurrenceId()
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_01"
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+            .sync(NotificationSyncReason.MUTATION)
+
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(
+            setOf("practice_due_custom_v1_01"),
+            presenter.pruneCalls.single().additionalKeep,
+        )
+    }
+
+    @Test
+    fun upgradePath_appStartThenForeground_keepsStaleHostingUntilReplace() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        presenter.activeOccurrenceId = currentOccurrenceId()
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_01"
+        val c = coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+
+        c.sync(NotificationSyncReason.APP_START)
+        assertEquals(
+            setOf("practice_due_custom_v1_01"),
+            presenter.pruneCalls.last().additionalKeep,
+        )
+
+        c.sync(NotificationSyncReason.FOREGROUND)
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(
+            setOf("practice_due_custom_v1_01"),
+            presenter.pruneCalls.last().additionalKeep,
+        )
+    }
+
+    @Test
+    fun soundChanged_successfulReplace_clearsHostingKeep() = runBlocking {
+        startAvailableOccurrence()
+        val occurrenceId = currentOccurrenceId()
+        presenter.reset()
+        presenter.activeOccurrenceId = occurrenceId
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.builtin(8))
+            .sync(NotificationSyncReason.SOUND_CHANGED)
+
+        assertEquals(1, presenter.shown.size)
+        assertTrue(presenter.shown.single().quietUpdateKeepRouting)
+        assertEquals(emptySet<String>(), presenter.pruneCalls.single().additionalKeep)
+    }
+
+    @Test
+    fun cancelActiveQuestion_allowsPruneOfFormerHostingChannel() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        presenter.activeOccurrenceId = currentOccurrenceId()
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+        cycleRepository.pausePractice()
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+            .sync(NotificationSyncReason.MUTATION)
+
+        assertEquals(1, presenter.cancelAllCalls)
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(emptySet<String>(), presenter.pruneCalls.single().additionalKeep)
+    }
+
+    @Test
+    fun noActiveQuestion_orphanCleanupHasEmptyAdditionalKeep() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        assertNull(presenter.activeOccurrenceId)
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+            .sync(NotificationSyncReason.FOREGROUND)
+
+        assertEquals(1, presenter.shown.size)
+        assertEquals(emptySet<String>(), presenter.pruneCalls.single().additionalKeep)
+    }
+
+    @Test
+    fun presentationFailure_preservesHostingCustomChannel() = runBlocking {
+        startAvailableOccurrence()
+        val occurrenceId = currentOccurrenceId()
+        presenter.reset()
+        presenter.activeOccurrenceId = occurrenceId
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+        presenter.throwOnShow = true
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.builtin(8))
+            .sync(NotificationSyncReason.SOUND_CHANGED)
+
+        // Outer sync catch: prune may be skipped entirely on thrown show — either no prune
+        // or keep hosting. throwOnShow propagates from recording presenter unless caught.
+        // Coordinator calls showNotification which throws → syncLocked catch → no prune.
+        assertTrue(presenter.shown.isEmpty())
+        assertTrue(presenter.pruneCalls.isEmpty())
+    }
+
+    @Test
+    fun presentationReturnsFalse_preservesHostingCustomChannel() = runBlocking {
+        startAvailableOccurrence()
+        val occurrenceId = currentOccurrenceId()
+        presenter.reset()
+        presenter.activeOccurrenceId = occurrenceId
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+        presenter.showSucceeds = false
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.builtin(8))
+            .sync(NotificationSyncReason.SOUND_CHANGED)
+
+        assertTrue(presenter.shown.isEmpty())
+        assertEquals(
+            setOf("practice_due_custom_v1_03"),
+            presenter.pruneCalls.single().additionalKeep,
+        )
+    }
+
+    @Test
+    fun afterSuccessfulReplace_laterNoShowPruneDoesNotKeepOldA() = runBlocking {
+        startAvailableOccurrence()
+        val occurrenceId = currentOccurrenceId()
+        presenter.reset()
+        presenter.activeOccurrenceId = occurrenceId
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+        val c = coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.builtin(8))
+
+        c.sync(NotificationSyncReason.SOUND_CHANGED)
+        assertEquals("practice_due_custom_v1_08", presenter.activeChannelId)
+        assertEquals(emptySet<String>(), presenter.pruneCalls.last().additionalKeep)
+
+        // Now active is already on B; no-repost keeps B (selected), not old A.
+        c.sync(NotificationSyncReason.FOREGROUND)
+        assertTrue(presenter.shown.size == 1) // only first SOUND_CHANGED show
+        assertEquals(
+            setOf("practice_due_custom_v1_08"),
+            presenter.pruneCalls.last().additionalKeep,
+        )
+    }
+
+    @Test
+    fun cancelFailure_preservesHostingCustomChannel() = runBlocking {
+        startAvailableOccurrence()
+        presenter.reset()
+        presenter.activeOccurrenceId = currentOccurrenceId()
+        presenter.activeKind = PracticeNotificationKind.QUESTION
+        presenter.activeChannelId = "practice_due_custom_v1_03"
+        presenter.throwOnCancelAll = true
+        cycleRepository.pausePractice()
+
+        coordinatorWithSelected(com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT)
+            .sync(NotificationSyncReason.MUTATION)
+
+        assertEquals(1, presenter.cancelAllCalls)
+        assertEquals(
+            setOf("practice_due_custom_v1_03"),
+            presenter.pruneCalls.single().additionalKeep,
+        )
+    }
+
+    private fun coordinatorWithSelected(selectedSoundId: String): PracticeNotificationCoordinator {
+        return PracticeNotificationCoordinator(
+            initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }.also {
+                it.completeActivityInit(true)
+            },
+            cycleRepository = cycleRepository,
+            practiceReadRepository = RoomPracticeReadRepository(database),
+            permissionRepository = EnabledNotificationPermissionPolicy(),
+            soundEnabledProvider = { true },
+            selectedSoundIdProvider = { selectedSoundId },
+            alarmScheduler = alarmScheduler,
+            notificationPresenter = presenter,
+            openRequestStore = NotificationOpenRequestStore(),
+            timeProvider = timeProvider,
+        )
+    }
+
+    @Test
     fun appStartThenForeground_quietRestoreAfterDismiss() = runBlocking {
         startAvailableOccurrence()
         presenter.reset()
@@ -621,30 +884,61 @@ class PracticeNotificationCoordinatorStableIdTest {
 }
 
 private class RecordingPracticeNotificationPresenter : PracticeNotificationPresenter {
+    data class PruneCall(val selectedSoundId: String, val additionalKeep: Set<String>)
+
     val shown = mutableListOf<NotificationShowPlan>()
+    val pruneCalls = mutableListOf<PruneCall>()
     var cancelCurrentCalls = 0
     var cancelAllCalls = 0
     var legacyCancelCalls = 0
     var throwOnLegacyCancel = false
     var activeOccurrenceId: Long? = null
     var activeKind: PracticeNotificationKind? = null
+    var activeChannelId: String? = null
+
+    var throwOnShow = false
+    var showSucceeds = true
+    var throwOnCancelAll = false
 
     override fun ensureChannelsCreated() = Unit
+
+    override fun pruneCustomDueSoundChannels(
+        selectedSoundId: String,
+        additionalKeepChannelIds: Set<String>,
+    ) {
+        pruneCalls += PruneCall(selectedSoundId, additionalKeepChannelIds)
+    }
 
     override fun findActivePracticeNotificationOccurrenceId(): Long? = activeOccurrenceId
 
     override fun findActivePracticeNotificationKind(): PracticeNotificationKind? = activeKind
 
-    override fun showNotification(plan: NotificationShowPlan) {
+    override fun findActivePracticeNotificationChannelId(): String? = activeChannelId
+
+    override fun showNotification(plan: NotificationShowPlan): Boolean {
+        if (throwOnShow) {
+            throwOnShow = false
+            throw IllegalStateException("showNotification failed")
+        }
+        if (!showSucceeds) {
+            return false
+        }
         shown += plan
         activeOccurrenceId = plan.occurrenceId
         activeKind = plan.kind
+        activeChannelId = when {
+            plan.kind == PracticeNotificationKind.SNOOZED -> PracticeNotificationChannels.SNOOZED
+            plan.suppressAlert || !plan.soundEnabled -> PracticeNotificationChannels.DUE_SILENT
+            else -> PracticeDueSoundChannelRouter.dueChannelId(true, plan.selectedSoundId)
+        }
+        return true
     }
 
     override fun cancelCurrentPracticeNotification() {
         cancelCurrentCalls += 1
         activeOccurrenceId = null
         activeKind = null
+        activeChannelId = null
     }
 
     override fun cancelLegacyPracticeNotifications(
@@ -660,16 +954,28 @@ private class RecordingPracticeNotificationPresenter : PracticeNotificationPrese
 
     override fun cancelAllPracticeNotifications() {
         cancelAllCalls += 1
+        if (throwOnCancelAll) {
+            throwOnCancelAll = false
+            throw IllegalStateException("cancelAll failed")
+        }
         activeOccurrenceId = null
         activeKind = null
+        activeChannelId = null
     }
 
     fun reset() {
         shown.clear()
+        pruneCalls.clear()
         cancelCurrentCalls = 0
         cancelAllCalls = 0
         legacyCancelCalls = 0
         throwOnLegacyCancel = false
+        throwOnShow = false
+        showSucceeds = true
+        throwOnCancelAll = false
+        activeOccurrenceId = null
+        activeKind = null
+        activeChannelId = null
     }
 
     fun resetShowsOnly() {

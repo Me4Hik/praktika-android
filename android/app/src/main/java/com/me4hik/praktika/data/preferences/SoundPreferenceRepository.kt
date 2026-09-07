@@ -2,6 +2,7 @@
 package com.me4hik.praktika.data.preferences
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -11,6 +12,7 @@ import com.me4hik.praktika.sound.SoundAssetIds
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 interface SoundPreferenceRepository {
     val soundEnabled: Flow<Boolean>
@@ -41,6 +43,7 @@ class DataStoreSoundPreferenceRepository(
         }
 
     override val selectedSoundId: Flow<String> = dataStore.data
+        .onStart { normalizePersistedSoundPreferences() }
         .map { preferences ->
             BuiltinSoundCatalog.resolveOrDefault(preferences[SELECTED_SOUND_ID_KEY]).id
         }
@@ -49,6 +52,7 @@ class DataStoreSoundPreferenceRepository(
         }
 
     override val hiddenBuiltinIds: Flow<Set<String>> = dataStore.data
+        .onStart { normalizePersistedSoundPreferences() }
         .map { preferences ->
             sanitizeHidden(preferences[HIDDEN_BUILTIN_IDS_KEY].orEmpty())
         }
@@ -59,6 +63,7 @@ class DataStoreSoundPreferenceRepository(
     override suspend fun setSoundEnabled(enabled: Boolean) {
         try {
             dataStore.edit { preferences ->
+                normalizeInPlace(preferences)
                 preferences[SOUND_ENABLED_KEY] = enabled
             }
         } catch (exception: Exception) {
@@ -70,6 +75,7 @@ class DataStoreSoundPreferenceRepository(
         val resolved = BuiltinSoundCatalog.resolveOrDefault(id)
         try {
             dataStore.edit { preferences ->
+                normalizeInPlace(preferences)
                 val hidden = sanitizeHidden(preferences[HIDDEN_BUILTIN_IDS_KEY].orEmpty())
                 if (resolved.isBuiltin && resolved.id in hidden) {
                     // Selecting a hidden builtin restores it into the visible library.
@@ -87,6 +93,7 @@ class DataStoreSoundPreferenceRepository(
         if (!asset.isBuiltin) return
         try {
             dataStore.edit { preferences ->
+                normalizeInPlace(preferences)
                 val currentSelected = BuiltinSoundCatalog
                     .resolveOrDefault(preferences[SELECTED_SOUND_ID_KEY])
                     .id
@@ -105,6 +112,7 @@ class DataStoreSoundPreferenceRepository(
         if (!BuiltinSoundCatalog.containsBuiltinId(id)) return
         try {
             dataStore.edit { preferences ->
+                normalizeInPlace(preferences)
                 val hidden = sanitizeHidden(preferences[HIDDEN_BUILTIN_IDS_KEY].orEmpty())
                 preferences[HIDDEN_BUILTIN_IDS_KEY] = hidden - id
             }
@@ -116,10 +124,40 @@ class DataStoreSoundPreferenceRepository(
     override suspend fun restoreAllHidden() {
         try {
             dataStore.edit { preferences ->
+                normalizeInPlace(preferences)
                 preferences[HIDDEN_BUILTIN_IDS_KEY] = emptySet()
             }
         } catch (exception: Exception) {
             throw SoundPreferenceException("Failed to restore all hidden sounds", exception)
+        }
+    }
+
+    /**
+     * Rewrites stale selected ids (removed builtins / unknown) to [SoundAssetIds.SYSTEM_DEFAULT]
+     * and drops hidden ids that are no longer in the catalog.
+     */
+    private suspend fun normalizePersistedSoundPreferences() {
+        try {
+            dataStore.edit { preferences ->
+                normalizeInPlace(preferences)
+            }
+        } catch (exception: Exception) {
+            throw SoundPreferenceException("Failed to normalize sound preferences", exception)
+        }
+    }
+
+    private fun normalizeInPlace(preferences: MutablePreferences) {
+        val rawSelected = preferences[SELECTED_SOUND_ID_KEY]
+        val resolvedSelected = BuiltinSoundCatalog.resolveOrDefault(rawSelected).id
+        if (rawSelected != resolvedSelected) {
+            preferences[SELECTED_SOUND_ID_KEY] = resolvedSelected
+        }
+        val rawHidden = preferences[HIDDEN_BUILTIN_IDS_KEY]
+        if (rawHidden != null) {
+            val sanitized = sanitizeHidden(rawHidden)
+            if (sanitized != rawHidden) {
+                preferences[HIDDEN_BUILTIN_IDS_KEY] = sanitized
+            }
         }
     }
 

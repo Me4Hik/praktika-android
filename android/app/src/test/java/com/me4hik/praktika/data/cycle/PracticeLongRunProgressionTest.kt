@@ -568,7 +568,7 @@ private class NoOpPracticeNotificationPresenter : PracticeNotificationPresenter 
 
     override fun findActivePracticeNotificationKind(): PracticeNotificationKind? = null
 
-    override fun showNotification(plan: NotificationShowPlan) = Unit
+    override fun showNotification(plan: NotificationShowPlan): Boolean = true
 
     override fun cancelCurrentPracticeNotification() = Unit
 

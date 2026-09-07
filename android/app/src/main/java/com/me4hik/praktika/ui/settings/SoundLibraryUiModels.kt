@@ -17,8 +17,20 @@ data class SoundLibraryUiState(
     val items: List<SoundLibraryItemUi>,
     val hiddenCount: Int,
     val currentlyPreviewingId: String?,
+    /** Elapsed preview position; 0 when no active preview. */
+    val previewPositionMs: Long = 0L,
+    /** Total duration; null when no active preview or duration unknown. */
+    val previewDurationMs: Long? = null,
     val messageResId: Int? = null,
 )
+
+/** Formats milliseconds as `m:ss` (minutes may exceed 9). */
+fun formatPreviewTimeMs(ms: Long): String {
+    val totalSec = (ms.coerceAtLeast(0L) / 1000L).toInt()
+    val minutes = totalSec / 60
+    val seconds = totalSec % 60
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
 
 object SoundLibraryTestTags {
     const val SOUND_LIBRARY_ENTRY = "sound_library_entry"
@@ -31,4 +43,5 @@ object SoundLibraryTestTags {
     fun item(id: String) = "sound_item_$id"
     fun play(id: String) = "sound_play_$id"
     fun more(id: String) = "sound_more_$id"
+    fun previewProgress(id: String) = "sound_preview_progress_$id"
 }

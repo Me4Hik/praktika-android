@@ -97,6 +97,12 @@ class PracticeNotificationCoordinator(
             TargetedBugDiagnostics.NotificationTraceContext.deliveryCapability = capability.name
             val activeNotificationOccurrenceId = readActiveOccurrenceIdBestEffort()
             val activeNotificationKind = readActiveKindBestEffort()
+            val activeNotificationChannelId = readActiveChannelIdBestEffort()
+            val hostingCustomChannelId = activeNotificationChannelId?.takeIf { channelId ->
+                activeNotificationKind == PracticeNotificationKind.QUESTION &&
+                    PracticeDueSoundChannelRouter.isCustomDueSoundChannelId(channelId)
+            }
+            val forceRefreshDueQuestion = reason == NotificationSyncReason.SOUND_CHANGED
             val plan = NotificationPlanner.plan(
                 input = NotificationPlanningInput(
                     isPracticeStarted = snapshot.practiceState.isPracticeStarted,
@@ -107,6 +113,7 @@ class PracticeNotificationCoordinator(
                     activeNotificationOccurrenceId = activeNotificationOccurrenceId,
                     activeNotificationKind = activeNotificationKind,
                     quietCatchUp = reason.isQuietCatchUp(),
+                    forceRefreshDueQuestion = forceRefreshDueQuestion,
                 ),
                 soundEnabled = soundEnabled,
                 selectedSoundId = selectedSoundId,
@@ -114,9 +121,11 @@ class PracticeNotificationCoordinator(
             // APP_START: reconcile + arm alarms only. Never post/cancel via NotificationManager —
             // nested ensureInitialized must not steal alerting ownership from EXPIRY/PLANNED/DEFERRED.
             val applyNotificationPresentation = reason != NotificationSyncReason.APP_START
+            var cancelledActiveNotification = false
+            var postedOrReplacedNotification = false
             if (applyNotificationPresentation) {
                 if (plan.cancelNotification) {
-                    cancelPracticeNotificationsBestEffort()
+                    cancelledActiveNotification = cancelPracticeNotificationsBestEffort()
                 } else {
                     cancelLegacyPracticeNotificationsBestEffort(
                         currentOccurrenceId = snapshot.incompleteOccurrence?.id,
@@ -132,12 +141,27 @@ class PracticeNotificationCoordinator(
             )
             alarmScheduler.scheduleAlarms(plan, previousAlarms)
             val presented = if (applyNotificationPresentation) {
-                plan.showNotification?.also { showPlan ->
-                    notificationPresenter.showNotification(showPlan)
+                plan.showNotification?.let { showPlan ->
+                    postedOrReplacedNotification = notificationPresenter.showNotification(showPlan)
+                    if (postedOrReplacedNotification) showPlan else null
                 }
             } else {
                 null
             }
+            // Keep pre-sync QUESTION hosting custom channel unless this sync actually
+            // replaced/posted or cancelled that shade entry (any sync reason).
+            val preserveHostingChannel =
+                hostingCustomChannelId != null &&
+                    !postedOrReplacedNotification &&
+                    !cancelledActiveNotification
+            notificationPresenter.pruneCustomDueSoundChannels(
+                selectedSoundId = selectedSoundId,
+                additionalKeepChannelIds = if (preserveHostingChannel) {
+                    setOf(hostingCustomChannelId!!)
+                } else {
+                    emptySet()
+                },
+            )
             if (DiagnosticsRecorder.isInitialized()) {
                 val occurrence = snapshot.incompleteOccurrence
                 DiagnosticsRecorder.get().record(
@@ -331,9 +355,22 @@ class PracticeNotificationCoordinator(
         }
     }
 
-    private fun cancelPracticeNotificationsBestEffort() {
-        try {
+    private fun readActiveChannelIdBestEffort(): String? {
+        return try {
+            notificationPresenter.findActivePracticeNotificationChannelId()
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            Log.w(TAG, "Failed to read active Practice notification channel", exception)
+            null
+        }
+    }
+
+    private fun cancelPracticeNotificationsBestEffort(): Boolean {
+        return try {
             notificationPresenter.cancelAllPracticeNotifications()
+            true
         } catch (exception: Exception) {
             if (exception is CancellationException) {
                 throw exception
@@ -345,6 +382,7 @@ class PracticeNotificationCoordinator(
                     exception,
                 )
             }
+            false
         }
     }
 

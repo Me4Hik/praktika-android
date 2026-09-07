@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.me4hik.praktika.R
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
+import com.me4hik.praktika.notification.NotificationSyncReason
+import com.me4hik.praktika.notification.NotificationSyncRequester
 import com.me4hik.praktika.notification.PracticeDueSoundChannelRouter
 import com.me4hik.praktika.runtime.PraktikaRuntime
 import com.me4hik.praktika.sound.BuiltinSoundCatalog
@@ -21,11 +23,14 @@ import com.me4hik.praktika.sound.SoundPreviewPlayer
 import com.me4hik.praktika.sound.SoundPreviewUris
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -33,6 +38,7 @@ class SoundLibraryViewModel(
     application: Application,
     private val soundPreferenceRepository: SoundPreferenceRepository,
     private val previewPlayer: SoundPreviewPlayer,
+    private val notificationSyncRequester: NotificationSyncRequester,
     private val notificationManager: NotificationManager =
         application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager,
     private val commandDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -49,16 +55,19 @@ class SoundLibraryViewModel(
             items = emptyList(),
             hiddenCount = 0,
             currentlyPreviewingId = null,
+            previewPositionMs = 0L,
+            previewDurationMs = null,
         ),
     )
     val uiState: StateFlow<SoundLibraryUiState> = _uiState.asStateFlow()
 
     private var currentlyPreviewingId: String? = null
+    private var previewSessionId: Long = 0L
+    private var previewTickerJob: Job? = null
 
     init {
         previewPlayer.onPlaybackEnded = {
-            currentlyPreviewingId = null
-            _uiState.update { it.copy(currentlyPreviewingId = null) }
+            clearPreviewPlayback(stopPlayer = false)
         }
         viewModelScope.launch {
             combine(
@@ -86,6 +95,8 @@ class SoundLibraryViewModel(
                             asset = resolved,
                         )
                     }
+                    // Prune runs after notify inside SOUND_CHANGED sync / presenter — not before.
+                    notificationSyncRequester.requestSync(NotificationSyncReason.SOUND_CHANGED)
                 }
             } catch (exception: Exception) {
                 Log.e(TAG, "selectSound failed", exception)
@@ -106,22 +117,35 @@ class SoundLibraryViewModel(
             _uiState.update { it.copy(messageResId = R.string.sound_library_preview_unavailable) }
             return
         }
+        // A→B: stop ticker/session before starting B so stale A updates cannot land.
+        stopPreviewTicker()
         previewPlayer.stop()
         val started = previewPlayer.play(app, uri)
         if (!started) {
-            currentlyPreviewingId = null
+            clearPreviewPlayback(stopPlayer = false)
             _uiState.update {
                 it.copy(
                     currentlyPreviewingId = null,
+                    previewPositionMs = 0L,
+                    previewDurationMs = null,
                     messageResId = R.string.sound_library_preview_unavailable,
                 )
             }
             return
         }
         currentlyPreviewingId = asset.id
+        val sessionId = ++previewSessionId
+        val duration = previewPlayer.durationMs()
+        val position = previewPlayer.positionMs().coerceAtLeast(0L)
         _uiState.update {
-            it.copy(currentlyPreviewingId = asset.id, messageResId = null)
+            it.copy(
+                currentlyPreviewingId = asset.id,
+                previewPositionMs = position,
+                previewDurationMs = duration,
+                messageResId = null,
+            )
         }
+        startPreviewTicker(sessionId)
     }
 
     fun hide(id: String) {
@@ -154,9 +178,7 @@ class SoundLibraryViewModel(
     }
 
     fun stopPreview() {
-        previewPlayer.stop()
-        currentlyPreviewingId = null
-        _uiState.update { it.copy(currentlyPreviewingId = null) }
+        clearPreviewPlayback(stopPlayer = true)
     }
 
     fun consumeMessage() {
@@ -166,14 +188,65 @@ class SoundLibraryViewModel(
     /** Stops and releases the preview player; also invoked from [onCleared]. */
     fun releasePreviewResources() {
         previewPlayer.onPlaybackEnded = null
+        stopPreviewTicker()
+        previewSessionId += 1L
         previewPlayer.release()
         currentlyPreviewingId = null
-        _uiState.update { it.copy(currentlyPreviewingId = null) }
+        _uiState.update {
+            it.copy(
+                currentlyPreviewingId = null,
+                previewPositionMs = 0L,
+                previewDurationMs = null,
+            )
+        }
     }
 
     override fun onCleared() {
         releasePreviewResources()
         super.onCleared()
+    }
+
+    private fun clearPreviewPlayback(stopPlayer: Boolean) {
+        stopPreviewTicker()
+        previewSessionId += 1L
+        if (stopPlayer) {
+            previewPlayer.stop()
+        }
+        currentlyPreviewingId = null
+        _uiState.update {
+            it.copy(
+                currentlyPreviewingId = null,
+                previewPositionMs = 0L,
+                previewDurationMs = null,
+            )
+        }
+    }
+
+    private fun stopPreviewTicker() {
+        previewTickerJob?.cancel()
+        previewTickerJob = null
+    }
+
+    private fun startPreviewTicker(sessionId: Long) {
+        stopPreviewTicker()
+        previewTickerJob = viewModelScope.launch {
+            while (isActive && previewSessionId == sessionId) {
+                delay(PREVIEW_TICK_MS)
+                if (previewSessionId != sessionId) return@launch
+                val position = previewPlayer.positionMs().coerceAtLeast(0L)
+                val duration = previewPlayer.durationMs()
+                _uiState.update { state ->
+                    if (previewSessionId != sessionId || state.currentlyPreviewingId == null) {
+                        state
+                    } else {
+                        state.copy(
+                            previewPositionMs = position,
+                            previewDurationMs = duration,
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private fun publish(
@@ -185,6 +258,7 @@ class SoundLibraryViewModel(
         val context = getApplication<Application>()
         val resolvedSelected = BuiltinSoundCatalog.resolveOrDefault(selectedId)
         val visible = BuiltinSoundCatalog.visible(hidden)
+        val previous = _uiState.value
         _uiState.value = SoundLibraryUiState(
             selectedSoundId = resolvedSelected.id,
             selectedDisplayName = SoundDisplayNames.forAsset(context, resolvedSelected),
@@ -201,12 +275,15 @@ class SoundLibraryViewModel(
             },
             hiddenCount = hidden.count { BuiltinSoundCatalog.containsBuiltinId(it) },
             currentlyPreviewingId = previewingId,
-            messageResId = _uiState.value.messageResId,
+            previewPositionMs = if (previewingId != null) previous.previewPositionMs else 0L,
+            previewDurationMs = if (previewingId != null) previous.previewDurationMs else null,
+            messageResId = previous.messageResId,
         )
     }
 
     companion object {
         private const val TAG = "SoundLibraryViewModel"
+        internal const val PREVIEW_TICK_MS = 150L
     }
 }
 
@@ -222,6 +299,7 @@ class SoundLibraryViewModelFactory(
                 application = application,
                 soundPreferenceRepository = runtime.soundPreferenceRepository,
                 previewPlayer = previewPlayer,
+                notificationSyncRequester = runtime.notificationSyncRequester,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

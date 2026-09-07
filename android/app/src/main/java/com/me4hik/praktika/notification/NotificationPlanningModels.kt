@@ -40,6 +40,11 @@ data class NotificationPlanningInput(
     val activeNotificationKind: PracticeNotificationKind? = null,
     /** When true, due QUESTION re-posts without audible/heads-up alert (FOREGROUND catch-up). */
     val quietCatchUp: Boolean = false,
+    /**
+     * When true (SOUND_CHANGED), allow re-showing the current due QUESTION even if shade
+     * already has QUESTION for the same occurrence — so routing/channel can be refreshed.
+     */
+    val forceRefreshDueQuestion: Boolean = false,
 )
 
 data class BoundaryAlarmPlan(
@@ -57,9 +62,17 @@ data class NotificationShowPlan(
     val kind: PracticeNotificationKind = PracticeNotificationKind.QUESTION,
     val deferredUntilEpochMillis: Long? = null,
     val zoneId: String = "UTC",
-    /** Quiet re-materialize: same content/actions, no sound / heads-up interruption. */
+    /**
+     * FOREGROUND quiet catch-up: no interruption and route via [PracticeNotificationChannels.DUE_SILENT].
+     * Must not be used for SOUND_CHANGED channel refresh.
+     */
     val suppressAlert: Boolean = false,
-    /** Stable sound-library id; ignored when [soundEnabled] is false or [suppressAlert] is true. */
+    /**
+     * SOUND_CHANGED quiet refresh: no aggressive alert, but keep normal sound routing
+     * (custom / due_sound / due_silent from prefs) — do not force DUE_SILENT.
+     */
+    val quietUpdateKeepRouting: Boolean = false,
+    /** Stable sound-library id; ignored when [soundEnabled] is false. */
     val selectedSoundId: String = com.me4hik.praktika.sound.SoundAssetIds.SYSTEM_DEFAULT,
 )
 
