@@ -4,6 +4,7 @@
 package com.me4hik.praktika.ui
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.me4hik.praktika.BuildConfig
 import com.me4hik.praktika.R
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
@@ -73,12 +75,18 @@ import com.me4hik.praktika.ui.settings.SettingsScheduleError
 import com.me4hik.praktika.ui.settings.SettingsSlotUiModel
 import com.me4hik.praktika.ui.settings.SettingsTestTags
 import com.me4hik.praktika.ui.settings.SettingsUiState
+import com.me4hik.praktika.ui.tour.LocalTourController
+import com.me4hik.praktika.ui.tour.TourSessionState
+import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.notifyActivation
+import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.AccentViolet
 import com.me4hik.praktika.ui.theme.TextMuted
 import com.me4hik.praktika.ui.theme.TextPrimary
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
 import com.me4hik.praktika.ui.theme.TextSecondary
 import com.me4hik.praktika.ui.theme.TitleSerifStyle
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
 fun SettingsScreen(
@@ -113,6 +121,10 @@ fun SettingsScreen(
     onBackupReconnectDifferentUseAsNew: () -> Unit = {},
     onBackupReconnectDifferentCancel: () -> Unit = {},
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+    testerToolsUnlocked: Boolean = false,
+    tourResultSummary: String? = null,
+    onAboutVersionClick: () -> Unit = {},
+    onStartInteractiveTour: () -> Unit = {},
 ) {
     when (uiState) {
         SettingsUiState.Loading -> {
@@ -162,6 +174,10 @@ fun SettingsScreen(
                 onBackupChangeFolder = onBackupChangeFolder,
                 onBackupReconnect = onBackupReconnect,
                 onBackupDisable = onBackupDisable,
+                testerToolsUnlocked = testerToolsUnlocked,
+                tourResultSummary = tourResultSummary,
+                onAboutVersionClick = onAboutVersionClick,
+                onStartInteractiveTour = onStartInteractiveTour,
             )
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
             SettingsBackupDialogs(
@@ -231,8 +247,17 @@ private fun SettingsContentScreen(
     onBackupReconnect: () -> Unit,
     onBackupDisable: () -> Unit,
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+    testerToolsUnlocked: Boolean,
+    tourResultSummary: String?,
+    onAboutVersionClick: () -> Unit,
+    onStartInteractiveTour: () -> Unit,
 ) {
     var pickerSlotIndex by remember { mutableIntStateOf(-1) }
+    val tourController = LocalTourController.current
+    val tourSession by (
+        tourController?.session ?: remember { MutableStateFlow(TourSessionState()) }
+        ).collectAsStateWithLifecycle()
+    val tourActive = tourController != null && tourSession.isActive
 
     // 07.08.2026 Stage 24 Final Design cursor by Me4Hik START - settings glass layout
     Box(modifier = Modifier.fillMaxSize()) {
@@ -270,7 +295,10 @@ private fun SettingsContentScreen(
                 color = TextQuestionSoft,
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.tourTarget(TourTargetId.SETTINGS_SCHEDULE),
+            ) {
                 PracticeSectionHeader(
                     title = stringResource(R.string.settings_schedule_section),
                     icon = Icons.Outlined.Schedule,
@@ -285,8 +313,12 @@ private fun SettingsContentScreen(
                         }
                         SettingsScheduleSlotRow(
                             slot = slot,
-                            enabled = true,
-                            onClick = { pickerSlotIndex = slot.slotIndex },
+                            enabled = !tourActive,
+                            onClick = {
+                                if (!tourActive) {
+                                    pickerSlotIndex = slot.slotIndex
+                                }
+                            },
                         )
                     }
                     // 09.08.2026 Post-release fixes cursor by Me4Hik START - schedule autosave, no Save button
@@ -312,7 +344,9 @@ private fun SettingsContentScreen(
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_WORDING_SECTION),
+                modifier = Modifier
+                    .testTag(SettingsTestTags.SETTINGS_WORDING_SECTION)
+                    .tourTarget(TourTargetId.SETTINGS_WORDING),
             ) {
                 PracticeSectionHeader(
                     title = stringResource(R.string.settings_wording_section),
@@ -320,6 +354,7 @@ private fun SettingsContentScreen(
                 )
                 PracticeSurface {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val tourController = LocalTourController.current
                         listOf(
                             Triple(
                                 QuestionWordingMode.MASCULINE,
@@ -345,7 +380,10 @@ private fun SettingsContentScreen(
                                         selected = selected,
                                         enabled = !content.isChangingQuestionWording,
                                         role = Role.RadioButton,
-                                        onClick = { onQuestionWordingModeChanged(mode) },
+                                        onClick = {
+                                            onQuestionWordingModeChanged(mode)
+                                            tourController.notifyActivation(TourTargetId.SETTINGS_WORDING)
+                                        },
                                     )
                                     .padding(vertical = 4.dp)
                                     .testTag(tag),
@@ -384,11 +422,15 @@ private fun SettingsContentScreen(
                     title = stringResource(R.string.settings_notifications_entry),
                     icon = Icons.Outlined.Notifications,
                     onClick = onOpenNotifications,
-                    modifier = Modifier.testTag(SettingsTestTags.SETTINGS_NOTIFICATIONS_ENTRY),
+                    modifier = Modifier
+                        .testTag(SettingsTestTags.SETTINGS_NOTIFICATIONS_ENTRY)
+                        .tourTarget(TourTargetId.SETTINGS_NOTIFICATIONS),
                 )
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 PracticeSectionHeader(
                     title = stringResource(R.string.settings_practice_section),
                     icon = if (content.isPracticePaused) {
@@ -409,10 +451,16 @@ private fun SettingsContentScreen(
                         } else {
                             Icons.Outlined.PauseCircle
                         },
-                        onClick = onTogglePauseState,
-                        enabled = !content.isChangingPauseState,
+                        onClick = {
+                            if (!tourActive) {
+                                onTogglePauseState()
+                            }
+                        },
+                        enabled = !content.isChangingPauseState && !tourActive,
                         showChevron = false,
-                        modifier = Modifier.testTag(SettingsTestTags.SETTINGS_PAUSE_RESUME),
+                        modifier = Modifier
+                            .testTag(SettingsTestTags.SETTINGS_PAUSE_RESUME)
+                            .tourTarget(TourTargetId.SETTINGS_PAUSE),
                     )
                     if (content.isChangingPauseState) {
                         CircularProgressIndicator(
@@ -433,14 +481,16 @@ private fun SettingsContentScreen(
             }
 
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
-            SettingsBackupSection(
-                backup = content.backup,
-                onSetup = onBackupSetup,
-                onBackupNow = onBackupNow,
-                onChangeFolder = onBackupChangeFolder,
-                onReconnect = onBackupReconnect,
-                onDisable = onBackupDisable,
-            )
+            Box(modifier = Modifier.tourTarget(TourTargetId.SETTINGS_BACKUP)) {
+                SettingsBackupSection(
+                    backup = content.backup,
+                    onSetup = { if (!tourActive) onBackupSetup() },
+                    onBackupNow = { if (!tourActive) onBackupNow() },
+                    onChangeFolder = { if (!tourActive) onBackupChangeFolder() },
+                    onReconnect = { if (!tourActive) onBackupReconnect() },
+                    onDisable = { if (!tourActive) onBackupDisable() },
+                )
+            }
             // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
             PracticeSurface {
@@ -464,7 +514,9 @@ private fun SettingsContentScreen(
                 )
                 PracticeSurface {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onAboutVersionClick),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -495,6 +547,39 @@ private fun SettingsContentScreen(
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextSecondary,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (testerToolsUnlocked) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(SettingsTestTags.SETTINGS_TESTER_SECTION),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PracticeSectionHeader(
+                        title = stringResource(R.string.settings_tester_section),
+                        icon = Icons.Outlined.BugReport,
+                    )
+                    PracticeSurface {
+                        PracticeGlassActionRow(
+                            title = stringResource(R.string.settings_start_interactive_tour),
+                            icon = Icons.Outlined.Info,
+                            onClick = onStartInteractiveTour,
+                            showChevron = false,
+                            modifier = Modifier.testTag(SettingsTestTags.SETTINGS_START_TOUR),
+                        )
+                        tourResultSummary?.let { summary ->
+                            Text(
+                                text = summary,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary,
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .testTag(SettingsTestTags.SETTINGS_TOUR_RESULT),
                             )
                         }
                     }

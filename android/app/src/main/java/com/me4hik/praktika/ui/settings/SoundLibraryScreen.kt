@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -52,6 +52,12 @@ import com.me4hik.praktika.R
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
 import com.me4hik.praktika.ui.components.PracticeSurface
+import com.me4hik.praktika.ui.tour.LocalTourController
+import com.me4hik.praktika.ui.tour.SoundLibraryTourNoVisibleBuiltinEffect
+import com.me4hik.praktika.ui.tour.TourEndStopsPreviewEffect
+import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.notifyActivation
+import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.AccentViolet
 import com.me4hik.praktika.ui.theme.TextMuted
 import com.me4hik.praktika.ui.theme.TextPrimary
@@ -71,6 +77,16 @@ fun SoundLibraryScreen(
     DisposableEffect(Unit) {
         onDispose { onStopPreview() }
     }
+    TourEndStopsPreviewEffect(onStopPreview = onStopPreview)
+    SoundLibraryTourNoVisibleBuiltinEffect(
+        items = uiState.items,
+        hiddenCount = uiState.hiddenCount,
+        isListReady = uiState.isListReady,
+    )
+
+    val tourController = LocalTourController.current
+    val firstBuiltinIndex = firstVisibleBuiltinIndex(uiState.items)
+    val hideInfoOnRestore = useRestoreHiddenTourTarget(uiState.items, uiState.hiddenCount)
 
     Box(modifier = Modifier.fillMaxSize()) {
         PracticeBackground(style = PracticeBackgroundStyle.Subdued)
@@ -92,7 +108,9 @@ fun SoundLibraryScreen(
                         onStopPreview()
                         onBack()
                     },
-                    modifier = Modifier.testTag(SoundLibraryTestTags.SOUND_LIBRARY_BACK),
+                    modifier = Modifier
+                        .testTag(SoundLibraryTestTags.SOUND_LIBRARY_BACK)
+                        .tourTarget(TourTargetId.SOUND_LIBRARY_BACK),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -131,10 +149,21 @@ fun SoundLibraryScreen(
 
             if (uiState.hiddenCount > 0) {
                 TextButton(
-                    onClick = onRestoreAllHidden,
+                    onClick = {
+                        if (tourController?.session?.value?.isActive != true) {
+                            onRestoreAllHidden()
+                        }
+                    },
                     modifier = Modifier
                         .align(Alignment.Start)
-                        .testTag(SoundLibraryTestTags.SOUND_RESTORE_HIDDEN),
+                        .testTag(SoundLibraryTestTags.SOUND_RESTORE_HIDDEN)
+                        .then(
+                            if (hideInfoOnRestore) {
+                                Modifier.tourTarget(TourTargetId.SOUND_HIDE_RESTORE_INFO)
+                            } else {
+                                Modifier
+                            },
+                        ),
                 ) {
                     Text(text = stringResource(R.string.sound_library_restore_hidden))
                 }
@@ -150,12 +179,16 @@ fun SoundLibraryScreen(
                         .fillMaxSize()
                         .testTag(SoundLibraryTestTags.SOUND_LIBRARY_LIST),
                 ) {
-                    items(
+                    itemsIndexed(
                         items = uiState.items,
-                        key = { it.asset.id },
-                    ) { item ->
+                        key = { _, item -> item.asset.id },
+                    ) { index, item ->
+                        val isTrainingBuiltin =
+                            firstBuiltinIndex >= 0 && index == firstBuiltinIndex
                         SoundLibraryRow(
                             item = item,
+                            isTrainingBuiltin = isTrainingBuiltin,
+                            attachHideRestoreTourTarget = isTrainingBuiltin && !hideInfoOnRestore,
                             isPreviewing = uiState.currentlyPreviewingId == item.asset.id,
                             previewPositionMs = uiState.previewPositionMs,
                             previewDurationMs = uiState.previewDurationMs,
@@ -176,6 +209,8 @@ fun SoundLibraryScreen(
 @Composable
 private fun SoundLibraryRow(
     item: SoundLibraryItemUi,
+    isTrainingBuiltin: Boolean,
+    attachHideRestoreTourTarget: Boolean,
     isPreviewing: Boolean,
     previewPositionMs: Long,
     previewDurationMs: Long?,
@@ -189,13 +224,29 @@ private fun SoundLibraryRow(
     } else {
         null
     }
+    val tourController = LocalTourController.current
+    val tourActive = tourController?.session?.value?.isActive == true
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (isTrainingBuiltin) {
+                    Modifier.tourTarget(TourTargetId.SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_ITEM)
+                } else {
+                    Modifier
+                },
+            )
             .selectable(
                 selected = item.selected,
-                onClick = onSelect,
+                onClick = {
+                    onSelect()
+                    if (isTrainingBuiltin) {
+                        tourController.notifyActivation(
+                            TourTargetId.SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_ITEM,
+                        )
+                    }
+                },
                 role = Role.RadioButton,
             )
             .semantics {
@@ -229,9 +280,26 @@ private fun SoundLibraryRow(
                 modifier = Modifier.weight(1f),
             )
             IconButton(
-                onClick = onTogglePreview,
+                onClick = {
+                    onTogglePreview()
+                    if (isTrainingBuiltin) {
+                        tourController.notifyActivation(
+                            TourTargetId.SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_PLAY,
+                        )
+                    }
+                },
                 enabled = item.previewAvailable,
-                modifier = Modifier.testTag(SoundLibraryTestTags.play(item.asset.id)),
+                modifier = Modifier
+                    .testTag(SoundLibraryTestTags.play(item.asset.id))
+                    .then(
+                        if (isTrainingBuiltin) {
+                            Modifier.tourTarget(
+                                TourTargetId.SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_PLAY,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
                 Icon(
                     imageVector = if (isPreviewing) Icons.Outlined.Stop else Icons.Outlined.VolumeUp,
@@ -247,9 +315,19 @@ private fun SoundLibraryRow(
                 )
             }
             if (item.canHide) {
-                Box {
+                Box(
+                    modifier = if (attachHideRestoreTourTarget) {
+                        Modifier.tourTarget(TourTargetId.SOUND_HIDE_RESTORE_INFO)
+                    } else {
+                        Modifier
+                    },
+                ) {
                     IconButton(
-                        onClick = { menuExpanded = true },
+                        onClick = {
+                            if (!tourActive) {
+                                menuExpanded = true
+                            }
+                        },
                         modifier = Modifier.testTag(SoundLibraryTestTags.more(item.asset.id)),
                     ) {
                         Icon(
@@ -268,7 +346,9 @@ private fun SoundLibraryRow(
                             },
                             onClick = {
                                 menuExpanded = false
-                                onHide()
+                                if (!tourActive) {
+                                    onHide()
+                                }
                             },
                         )
                     }

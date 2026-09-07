@@ -22,7 +22,22 @@ data class SoundLibraryUiState(
     /** Total duration; null when no active preview or duration unknown. */
     val previewDurationMs: Long? = null,
     val messageResId: Int? = null,
+    /**
+     * False for the ViewModel placeholder before the first DataStore-backed [publish].
+     * Stays true for the lifetime of the VM after the first real list emission.
+     * Not inferred from [items].isNotEmpty().
+     */
+    val isListReady: Boolean = false,
 )
+
+/** Index of the first builtin sound in the filtered list; -1 if none. Never system_default. */
+fun firstVisibleBuiltinIndex(items: List<SoundLibraryItemUi>): Int =
+    items.indexOfFirst { it.asset.isBuiltin }
+
+/** True when restore control should carry SOUND_HIDE_RESTORE_INFO (all builtins hidden). */
+fun useRestoreHiddenTourTarget(items: List<SoundLibraryItemUi>, hiddenCount: Int): Boolean =
+    firstVisibleBuiltinIndex(items) < 0 && hiddenCount > 0
+
 
 /** Formats milliseconds as `m:ss` (minutes may exceed 9). */
 fun formatPreviewTimeMs(ms: Long): String {

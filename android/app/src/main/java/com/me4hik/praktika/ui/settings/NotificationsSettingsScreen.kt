@@ -41,6 +41,10 @@ import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
 import com.me4hik.praktika.ui.components.PracticeGlassActionRow
 import com.me4hik.praktika.ui.components.PracticeSectionHeader
 import com.me4hik.praktika.ui.components.PracticeSurface
+import com.me4hik.praktika.ui.tour.LocalTourController
+import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.notifyActivation
+import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.AccentViolet
 import com.me4hik.praktika.ui.theme.TextMuted
 import com.me4hik.praktika.ui.theme.TextPrimary
@@ -111,6 +115,7 @@ private fun NotificationsSettingsContent(
     onOpenSoundLibrary: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val tourController = LocalTourController.current
     Box(modifier = Modifier.fillMaxSize()) {
         PracticeBackground(style = PracticeBackgroundStyle.Subdued)
         Column(
@@ -153,7 +158,9 @@ private fun NotificationsSettingsContent(
                 )
                 PracticeSurface {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .tourTarget(TourTargetId.NOTIFICATIONS_SOUND_SWITCH),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -164,7 +171,11 @@ private fun NotificationsSettingsContent(
                         )
                         Switch(
                             checked = content.soundEnabled,
-                            onCheckedChange = onSoundEnabledChanged,
+                            onCheckedChange = { enabled ->
+                                if (tourController?.session?.value?.isActive != true) {
+                                    onSoundEnabledChanged(enabled)
+                                }
+                            },
                             enabled = !content.isChangingSound,
                             modifier = Modifier.testTag(SettingsTestTags.SETTINGS_SOUND_SWITCH),
                             colors = SwitchDefaults.colors(
@@ -183,7 +194,9 @@ private fun NotificationsSettingsContent(
                         title = stringResource(R.string.sound_library_entry_title),
                         supportingText = selectedDisplayName,
                         onClick = onOpenSoundLibrary,
-                        modifier = Modifier.testTag(SettingsTestTags.SOUND_LIBRARY_ENTRY),
+                        modifier = Modifier
+                            .testTag(SettingsTestTags.SOUND_LIBRARY_ENTRY)
+                            .tourTarget(TourTargetId.NOTIFICATIONS_SOUND_LIBRARY),
                     )
                 }
                 content.soundError?.let {
@@ -197,7 +210,9 @@ private fun NotificationsSettingsContent(
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_DEFER_SECTION),
+                modifier = Modifier
+                    .testTag(SettingsTestTags.SETTINGS_DEFER_SECTION)
+                    .tourTarget(TourTargetId.NOTIFICATIONS_DEFER),
             ) {
                 PracticeSectionHeader(
                     title = stringResource(R.string.settings_defer_section),
@@ -205,6 +220,7 @@ private fun NotificationsSettingsContent(
                 )
                 PracticeSurface {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val tourController = LocalTourController.current
                         listOf(
                             Triple(5, R.string.settings_defer_5, SettingsTestTags.SETTINGS_DEFER_5),
                             Triple(10, R.string.settings_defer_10, SettingsTestTags.SETTINGS_DEFER_10),
@@ -220,7 +236,10 @@ private fun NotificationsSettingsContent(
                                         enabled = !content.isChangingDeferDuration &&
                                             minutes in DeferDurationOptions.ALLOWED_MINUTES,
                                         role = Role.RadioButton,
-                                        onClick = { onDeferDurationMinutesChanged(minutes) },
+                                        onClick = {
+                                            onDeferDurationMinutesChanged(minutes)
+                                            tourController.notifyActivation(TourTargetId.NOTIFICATIONS_DEFER)
+                                        },
                                     )
                                     .padding(vertical = 4.dp)
                                     .testTag(tag),
@@ -259,7 +278,9 @@ private fun NotificationsSettingsContent(
                     title = stringResource(R.string.settings_notification_settings),
                     icon = Icons.Outlined.Notifications,
                     onClick = onOpenNotificationSettings,
-                    modifier = Modifier.testTag(SettingsTestTags.SETTINGS_NOTIFICATION_SETTINGS),
+                    modifier = Modifier
+                        .testTag(SettingsTestTags.SETTINGS_NOTIFICATION_SETTINGS)
+                        .tourTarget(TourTargetId.NOTIFICATIONS_SYSTEM_SETTINGS),
                 )
             }
         }

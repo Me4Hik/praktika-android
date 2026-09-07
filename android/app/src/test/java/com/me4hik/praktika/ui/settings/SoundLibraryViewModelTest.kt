@@ -88,6 +88,7 @@ class SoundLibraryViewModelTest {
     fun cleanList_isSystemDefaultPlusAllowlistBuiltins() = runBlocking {
         pump()
         val state = viewModel.uiState.value
+        assertTrue(state.isListReady)
         assertTrue(state.items.isNotEmpty())
         assertEquals(11, state.items.size)
         assertEquals(SoundAssetIds.SYSTEM_DEFAULT, state.items.first().asset.id)
@@ -95,6 +96,24 @@ class SoundLibraryViewModelTest {
         assertEquals(0, state.hiddenCount)
         assertTrue(state.items.none { it.asset.id == SoundAssetIds.builtin(1) })
         assertTrue(state.items.any { it.asset.id == SoundAssetIds.builtin(27) })
+    }
+
+    @Test
+    fun initialPlaceholder_isNotListReady_untilFirstPublish() = runBlocking {
+        // Reconstruct without pumping combine so we observe the true placeholder.
+        val fresh = SoundLibraryViewModel(
+            application = application,
+            soundPreferenceRepository = InMemorySoundPreferenceRepository(),
+            previewPlayer = FakeSoundPreviewPlayer(),
+            notificationSyncRequester = RecordingSyncRequester(),
+            notificationManager = notificationManager,
+            commandDispatcher = dispatcher,
+        )
+        assertFalse(fresh.uiState.value.isListReady)
+        assertTrue(fresh.uiState.value.items.isEmpty())
+        dispatcher.scheduler.runCurrent()
+        assertTrue(fresh.uiState.value.isListReady)
+        fresh.releasePreviewResources()
     }
 
     @Test

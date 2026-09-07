@@ -202,6 +202,18 @@ fun AppNavigation(
     // 07.08.2026 Stage 19 Markdown Export cursor by Me4Hik START - export orchestration wiring
     // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik START - format dialog before export
     val context = LocalContext.current
+    val testerToolsStore = remember(context) {
+        com.me4hik.praktika.ui.tour.DataStoreTesterToolsStore(context.applicationContext)
+    }
+    val tourController: com.me4hik.praktika.ui.tour.TourController = viewModel(
+        factory = com.me4hik.praktika.ui.tour.TourControllerFactory(testerToolsStore),
+    )
+    val testerToolsUnlocked by testerToolsStore.unlocked.collectAsStateWithLifecycle(initialValue = false)
+    val lastTourResult by testerToolsStore.lastTourResult.collectAsStateWithLifecycle(initialValue = null)
+    var aboutUnlockTapCount by remember { mutableStateOf(0) }
+    val tourResultSummary = remember(lastTourResult, context) {
+        lastTourResult?.let { com.me4hik.praktika.ui.tour.formatTourResultSummary(context, it) }
+    }
     val archiveZoneIdProvider = remember(runtime) {
         com.me4hik.praktika.ui.archive.TimeProviderArchiveZoneIdProvider(runtime.timeProvider)
     }
@@ -484,6 +496,10 @@ fun AppNavigation(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            com.me4hik.praktika.ui.tour.TourHost(
+                tourController = tourController,
+                navController = navController,
+            ) {
             NavHost(
                 navController = navController,
                 startDestination = startDestination,
@@ -705,21 +721,29 @@ fun AppNavigation(
                         }
                     },
                     onExportAll = {
-                        requestArchiveExport(ExportSelection.All)
+                        if (!tourController.session.value.isActive) {
+                            requestArchiveExport(ExportSelection.All)
+                        }
                     },
                     onExportPeriod = {
                         // 06.09.2026 Archive period bounds cursor by Me4Hik START
-                        if (archiveAnswerDateBounds != null) {
+                        if (!tourController.session.value.isActive &&
+                            archiveAnswerDateBounds != null
+                        ) {
                             showPeriodExportDialog = true
                         }
                         // 06.09.2026 Archive period bounds cursor by Me4Hik END
                     },
                     onShareAll = {
-                        requestArchiveShare(ExportSelection.All)
+                        if (!tourController.session.value.isActive) {
+                            requestArchiveShare(ExportSelection.All)
+                        }
                     },
                     onSharePeriod = {
                         // 06.09.2026 Archive period bounds cursor by Me4Hik START
-                        if (archiveAnswerDateBounds != null) {
+                        if (!tourController.session.value.isActive &&
+                            archiveAnswerDateBounds != null
+                        ) {
                             showPeriodShareDialog = true
                         }
                         // 06.09.2026 Archive period bounds cursor by Me4Hik END
@@ -984,7 +1008,9 @@ fun AppNavigation(
                         navController.popBackStack(Routes.HOME, inclusive = false)
                     },
                     onOpenNotificationSettings = { intent ->
-                        context.startActivity(intent)
+                        if (!tourController.session.value.isActive) {
+                            context.startActivity(intent)
+                        }
                     },
                 )
 
@@ -1032,6 +1058,23 @@ fun AppNavigation(
                     onBackupReconnectDifferentUseAsNew = settingsViewModel::onBackupReconnectDifferentUseAsNew,
                     onBackupReconnectDifferentCancel = settingsViewModel::onBackupReconnectDifferentCancelled,
                     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+                    testerToolsUnlocked = testerToolsUnlocked,
+                    tourResultSummary = tourResultSummary,
+                    onAboutVersionClick = {
+                        val (nextCount, unlockedNow) = com.me4hik.praktika.ui.tour.TesterUnlockGesture.onTap(
+                            currentCount = aboutUnlockTapCount,
+                            alreadyUnlocked = testerToolsUnlocked,
+                        )
+                        aboutUnlockTapCount = nextCount
+                        if (unlockedNow) {
+                            coroutineScope.launch {
+                                testerToolsStore.setUnlocked(true)
+                            }
+                        }
+                    },
+                    onStartInteractiveTour = {
+                        tourController.start()
+                    },
                 )
             }
             composable(Routes.SETTINGS_NOTIFICATIONS) { backStackEntry ->
@@ -1066,7 +1109,9 @@ fun AppNavigation(
                         )
                     },
                     onOpenNotificationSettings = { intent ->
-                        context.startActivity(intent)
+                        if (!tourController.session.value.isActive) {
+                            context.startActivity(intent)
+                        }
                     },
                 )
 
@@ -1117,12 +1162,13 @@ fun AppNavigation(
                     )
                 }
             }
-        }
+            }
+            }
         ProductionRestoreSessionHost(
             viewModel = restoreViewModel,
         )
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
-    }
+        }
     }
 }
 

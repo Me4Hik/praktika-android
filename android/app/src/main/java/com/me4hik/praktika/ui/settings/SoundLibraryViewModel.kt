@@ -57,6 +57,7 @@ class SoundLibraryViewModel(
             currentlyPreviewingId = null,
             previewPositionMs = 0L,
             previewDurationMs = null,
+            isListReady = false,
         ),
     )
     val uiState: StateFlow<SoundLibraryUiState> = _uiState.asStateFlow()
@@ -278,6 +279,7 @@ class SoundLibraryViewModel(
             previewPositionMs = if (previewingId != null) previous.previewPositionMs else 0L,
             previewDurationMs = if (previewingId != null) previous.previewDurationMs else null,
             messageResId = previous.messageResId,
+            isListReady = true,
         )
     }
 

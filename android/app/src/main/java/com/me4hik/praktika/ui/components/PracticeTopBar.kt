@@ -26,6 +26,7 @@ fun PracticeTopBar(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     backTestTag: String? = null,
+    backModifier: Modifier = Modifier,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     Row(
@@ -40,6 +41,7 @@ fun PracticeTopBar(
             enabled = enabled,
             modifier = Modifier
                 .size(48.dp)
+                .then(backModifier)
                 .then(
                     if (backTestTag != null) {
                         Modifier.testTag(backTestTag)

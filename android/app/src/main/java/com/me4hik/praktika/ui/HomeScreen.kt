@@ -43,6 +43,8 @@ import com.me4hik.praktika.ui.practice.HomeExactAlarmCardState
 import com.me4hik.praktika.ui.practice.HomeNotificationCardState
 import com.me4hik.praktika.ui.practice.MainContentUiState
 import com.me4hik.praktika.ui.practice.PracticeTestTags
+import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.AccentViolet
 import com.me4hik.praktika.ui.theme.HomeQuestionSerifStyle
 import com.me4hik.praktika.ui.theme.HomeTitleSerifStyle
@@ -91,7 +93,9 @@ fun HomeScreen(
             PracticeHeroAccent(widthFraction = heroWidthFraction)
 
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .tourTarget(TourTargetId.HOME_STATUS),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 HomeStatusTitle(content = content)
@@ -134,7 +138,9 @@ fun HomeScreen(
                         title = stringResource(R.string.practice_archive),
                         icon = Icons.Outlined.Archive,
                         onClick = onOpenArchive,
-                        modifier = Modifier.testTag(PracticeTestTags.HOME_ARCHIVE),
+                        modifier = Modifier
+                            .testTag(PracticeTestTags.HOME_ARCHIVE)
+                            .tourTarget(TourTargetId.HOME_ARCHIVE),
                     )
                 }
                 PracticeSurface(contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
@@ -142,7 +148,9 @@ fun HomeScreen(
                         title = stringResource(R.string.practice_settings),
                         icon = Icons.Outlined.Settings,
                         onClick = onOpenSettings,
-                        modifier = Modifier.testTag(PracticeTestTags.HOME_SETTINGS),
+                        modifier = Modifier
+                            .testTag(PracticeTestTags.HOME_SETTINGS)
+                            .tourTarget(TourTargetId.HOME_SETTINGS),
                     )
                 }
             }

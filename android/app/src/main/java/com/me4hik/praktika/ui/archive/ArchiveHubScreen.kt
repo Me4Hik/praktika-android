@@ -23,8 +23,10 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.me4hik.praktika.R
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
@@ -39,8 +42,14 @@ import com.me4hik.praktika.ui.components.PracticeGlassActionRow
 import com.me4hik.praktika.ui.components.PracticeHeroAccent
 import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.components.PracticeTopBar
+import com.me4hik.praktika.ui.tour.LocalTourController
+import com.me4hik.praktika.ui.tour.TourSessionState
+import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.notifyActivation
+import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
 import com.me4hik.praktika.ui.theme.TitleSerifStyle
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
 fun ArchiveHubScreen(
@@ -57,11 +66,29 @@ fun ArchiveHubScreen(
     // 06.09.2026 Archive period bounds cursor by Me4Hik END
 ) {
     var exportShareExpanded by rememberSaveable { mutableStateOf(false) }
+    val tourController = LocalTourController.current
+    val tourSession by (
+        tourController?.session
+            ?: remember { MutableStateFlow(TourSessionState()) }
+        ).collectAsStateWithLifecycle()
+    val tourActive = tourController != null && tourSession.isActive
+
+    // After accordion click or Skip: export/share targets must exist immediately.
+    LaunchedEffect(tourActive, tourSession.currentStep?.targetId) {
+        if (!tourActive) return@LaunchedEffect
+        when (tourSession.currentStep?.targetId) {
+            TourTargetId.ARCHIVE_EXPORT_SECTION,
+            TourTargetId.ARCHIVE_SHARE_SECTION,
+            -> exportShareExpanded = true
+            else -> Unit
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .testTag(ArchiveTestTags.HUB_SCREEN),
+            .testTag(ArchiveTestTags.HUB_SCREEN)
+            .tourTarget(TourTargetId.ARCHIVE_HUB),
     ) {
         PracticeBackground(style = PracticeBackgroundStyle.Archive)
         Column(
@@ -72,6 +99,7 @@ fun ArchiveHubScreen(
             PracticeTopBar(
                 onBack = onBack,
                 backTestTag = ArchiveTestTags.BACK,
+                backModifier = Modifier.tourTarget(TourTargetId.ARCHIVE_BACK),
                 trailing = {
                     Box(
                         modifier = Modifier
@@ -109,7 +137,9 @@ fun ArchiveHubScreen(
                         title = stringResource(R.string.archive_open_days),
                         icon = Icons.Outlined.CalendarMonth,
                         onClick = onOpenDays,
-                        modifier = Modifier.testTag(ArchiveTestTags.OPEN_DAYS),
+                        modifier = Modifier
+                            .testTag(ArchiveTestTags.OPEN_DAYS)
+                            .tourTarget(TourTargetId.ARCHIVE_OPEN_DAYS),
                     )
                 }
                 PracticeSurface(contentPadding = PaddingValues(4.dp)) {
@@ -138,44 +168,67 @@ fun ArchiveHubScreen(
                                 Icons.Outlined.ExpandMore
                             },
                             showChevron = false,
-                            onClick = { exportShareExpanded = !exportShareExpanded },
-                            modifier = Modifier.testTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION),
+                            onClick = {
+                                val accordionStep =
+                                    tourActive &&
+                                        tourSession.currentStep?.targetId ==
+                                        TourTargetId.ARCHIVE_EXPORT_ACCORDION
+                                if (accordionStep) {
+                                    exportShareExpanded = true
+                                    tourController.notifyActivation(
+                                        TourTargetId.ARCHIVE_EXPORT_ACCORDION,
+                                    )
+                                } else {
+                                    exportShareExpanded = !exportShareExpanded
+                                }
+                            },
+                            modifier = Modifier
+                                .testTag(ArchiveTestTags.EXPORT_SHARE_ACCORDION)
+                                .tourTarget(TourTargetId.ARCHIVE_EXPORT_ACCORDION),
                         )
                         if (exportShareExpanded) {
-                            PracticeGlassActionRow(
-                                title = stringResource(R.string.archive_export_all),
-                                icon = Icons.Outlined.FileDownload,
-                                showChevron = false,
-                                onClick = onExportAll,
-                                modifier = Modifier.testTag(ArchiveTestTags.EXPORT_ALL),
-                            )
-                            PracticeGlassActionRow(
-                                title = stringResource(R.string.archive_export_period),
-                                icon = Icons.Outlined.FileDownload,
-                                showChevron = false,
-                                // 06.09.2026 Archive period bounds cursor by Me4Hik START
-                                enabled = periodSelectionEnabled,
-                                // 06.09.2026 Archive period bounds cursor by Me4Hik END
-                                onClick = onExportPeriod,
-                                modifier = Modifier.testTag(ArchiveTestTags.EXPORT_PERIOD),
-                            )
-                            PracticeGlassActionRow(
-                                title = stringResource(R.string.archive_share_all),
-                                icon = Icons.Outlined.Share,
-                                showChevron = false,
-                                onClick = onShareAll,
-                                modifier = Modifier.testTag(ArchiveTestTags.SHARE_ALL),
-                            )
-                            PracticeGlassActionRow(
-                                title = stringResource(R.string.archive_share_period),
-                                icon = Icons.Outlined.Share,
-                                showChevron = false,
-                                // 06.09.2026 Archive period bounds cursor by Me4Hik START
-                                enabled = periodSelectionEnabled,
-                                // 06.09.2026 Archive period bounds cursor by Me4Hik END
-                                onClick = onSharePeriod,
-                                modifier = Modifier.testTag(ArchiveTestTags.SHARE_PERIOD),
-                            )
+                            Column(
+                                modifier = Modifier.tourTarget(TourTargetId.ARCHIVE_EXPORT_SECTION),
+                            ) {
+                                PracticeGlassActionRow(
+                                    title = stringResource(R.string.archive_export_all),
+                                    icon = Icons.Outlined.FileDownload,
+                                    showChevron = false,
+                                    onClick = onExportAll,
+                                    modifier = Modifier.testTag(ArchiveTestTags.EXPORT_ALL),
+                                )
+                                PracticeGlassActionRow(
+                                    title = stringResource(R.string.archive_export_period),
+                                    icon = Icons.Outlined.FileDownload,
+                                    showChevron = false,
+                                    // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                                    enabled = periodSelectionEnabled,
+                                    // 06.09.2026 Archive period bounds cursor by Me4Hik END
+                                    onClick = onExportPeriod,
+                                    modifier = Modifier.testTag(ArchiveTestTags.EXPORT_PERIOD),
+                                )
+                            }
+                            Column(
+                                modifier = Modifier.tourTarget(TourTargetId.ARCHIVE_SHARE_SECTION),
+                            ) {
+                                PracticeGlassActionRow(
+                                    title = stringResource(R.string.archive_share_all),
+                                    icon = Icons.Outlined.Share,
+                                    showChevron = false,
+                                    onClick = onShareAll,
+                                    modifier = Modifier.testTag(ArchiveTestTags.SHARE_ALL),
+                                )
+                                PracticeGlassActionRow(
+                                    title = stringResource(R.string.archive_share_period),
+                                    icon = Icons.Outlined.Share,
+                                    showChevron = false,
+                                    // 06.09.2026 Archive period bounds cursor by Me4Hik START
+                                    enabled = periodSelectionEnabled,
+                                    // 06.09.2026 Archive period bounds cursor by Me4Hik END
+                                    onClick = onSharePeriod,
+                                    modifier = Modifier.testTag(ArchiveTestTags.SHARE_PERIOD),
+                                )
+                            }
                         }
                     }
                 }

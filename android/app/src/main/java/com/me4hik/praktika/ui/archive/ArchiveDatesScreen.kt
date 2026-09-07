@@ -32,6 +32,8 @@ import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
 import com.me4hik.praktika.ui.components.PracticeHeroAccent
 import com.me4hik.praktika.ui.components.PracticeSectionHeader
 import com.me4hik.praktika.ui.components.PracticeTopBar
+import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.TextPrimary
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
 import com.me4hik.praktika.ui.theme.TimeSerifStyle
@@ -58,6 +60,7 @@ fun ArchiveDatesScreen(
             PracticeTopBar(
                 onBack = onBack,
                 backTestTag = ArchiveTestTags.BACK,
+                backModifier = Modifier.tourTarget(TourTargetId.ARCHIVE_BACK),
                 trailing = {
                     Box(
                         modifier = Modifier
@@ -83,72 +86,74 @@ fun ArchiveDatesScreen(
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
             Spacer(modifier = Modifier.height(12.dp))
-            when (uiState) {
-                ArchiveDatesUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(color = TextPrimary)
-                    }
-                }
-                ArchiveDatesUiState.Empty -> {
-                    Text(
-                        text = stringResource(R.string.archive_empty),
-                        modifier = Modifier
-                            .padding(horizontal = 24.dp)
-                            .testTag(ArchiveTestTags.DATES_EMPTY),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextPrimary,
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-                is ArchiveDatesUiState.Error -> {
-                    Text(
-                        text = uiState.message,
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-                is ArchiveDatesUiState.Content -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .testTag(ArchiveTestTags.DATES_LIST),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        item {
-                            PracticeSectionHeader(
-                                title = stringResource(R.string.archive_by_days_title),
-                                icon = Icons.Outlined.CalendarMonth,
-                            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .tourTarget(TourTargetId.ARCHIVE_DAYS_CONTENT),
+            ) {
+                when (uiState) {
+                    ArchiveDatesUiState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = TextPrimary)
                         }
-                        items(uiState.dates, key = { it.epochDay }) { dateItem ->
-                            // 06.09.2026 Archive UX polish cursor by Me4Hik START - show Ответов: 1 (hide only for 0)
-                            val supporting = if (dateItem.answerCount > 0) {
-                                stringResource(
-                                    R.string.archive_question_answer_count,
-                                    dateItem.answerCount,
+                    }
+                    ArchiveDatesUiState.Empty -> {
+                        Text(
+                            text = stringResource(R.string.archive_empty),
+                            modifier = Modifier
+                                .padding(horizontal = 24.dp)
+                                .testTag(ArchiveTestTags.DATES_EMPTY),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextPrimary,
+                        )
+                    }
+                    is ArchiveDatesUiState.Error -> {
+                        Text(
+                            text = uiState.message,
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                    is ArchiveDatesUiState.Content -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(ArchiveTestTags.DATES_LIST),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            item {
+                                PracticeSectionHeader(
+                                    title = stringResource(R.string.archive_by_days_title),
+                                    icon = Icons.Outlined.CalendarMonth,
                                 )
-                            } else {
-                                null
                             }
-                            // 06.09.2026 Archive UX polish cursor by Me4Hik END
-                            ArchiveListRow(
-                                title = dateItem.dateText,
-                                supporting = supporting,
-                                titleStyle = TimeSerifStyle,
-                                onClick = { onDateSelected(dateItem.epochDay) },
-                                modifier = Modifier.testTag(
-                                    "${ArchiveTestTags.DATE_ITEM_PREFIX}${dateItem.epochDay}",
-                                ),
-                            )
+                            items(uiState.dates, key = { it.epochDay }) { dateItem ->
+                                // 06.09.2026 Archive UX polish cursor by Me4Hik START - show Ответов: 1 (hide only for 0)
+                                val supporting = if (dateItem.answerCount > 0) {
+                                    stringResource(
+                                        R.string.archive_question_answer_count,
+                                        dateItem.answerCount,
+                                    )
+                                } else {
+                                    null
+                                }
+                                // 06.09.2026 Archive UX polish cursor by Me4Hik END
+                                ArchiveListRow(
+                                    title = dateItem.dateText,
+                                    supporting = supporting,
+                                    titleStyle = TimeSerifStyle,
+                                    onClick = { onDateSelected(dateItem.epochDay) },
+                                    modifier = Modifier.testTag(
+                                        "${ArchiveTestTags.DATE_ITEM_PREFIX}${dateItem.epochDay}",
+                                    ),
+                                )
+                            }
                         }
                     }
                 }

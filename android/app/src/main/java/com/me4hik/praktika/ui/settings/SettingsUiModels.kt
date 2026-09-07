@@ -136,6 +136,9 @@ object SettingsTestTags {
     const val SETTINGS_BUG_REPORT_CLOSE = "settings_bug_report_close"
     const val SETTINGS_BUG_REPORT_PROGRESS = "settings_bug_report_progress"
     const val SETTINGS_BUG_REPORT_RESULT = "settings_bug_report_result"
+    const val SETTINGS_TESTER_SECTION = "settings_tester_section"
+    const val SETTINGS_START_TOUR = "settings_start_tour"
+    const val SETTINGS_TOUR_RESULT = "settings_tour_result"
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
     const val SETTINGS_BACKUP_SECTION = "settings_backup_section"
     const val SETTINGS_BACKUP_STATUS = "settings_backup_status"
