@@ -359,6 +359,34 @@ class AndroidPracticeNotificationPresenterTest {
         assertEquals(PracticeNotificationChannels.DUE_SILENT, posted.notification.channelId)
     }
 
+    @Test
+    // 01.10.2026 Archive Acceptance E cursor by Me4Hik START - no dismiss callback on swipe
+    fun questionNotification_hasNoDeleteIntent() {
+        // No deleteIntent means Android notification dismiss/swipe has no app callback,
+        // so dismiss itself cannot trigger Defer / Skip / Missed / Archive mutation.
+        presenter.showNotification(showPlan(occurrenceId = 55L, text = "Due question"))
+        val posted = practiceNotifications().single().notification
+        assertEquals(PracticeNotificationKind.QUESTION, presenter.findActivePracticeNotificationKind())
+        assertNull(posted.deleteIntent)
+    }
+
+    @Test
+    fun snoozedNotification_hasNoDeleteIntent() {
+        // Same dismiss contract for SNOOZED shade entry.
+        presenter.showNotification(
+            showPlan(
+                occurrenceId = 56L,
+                text = "Snoozed",
+                kind = PracticeNotificationKind.SNOOZED,
+                deferredUntil = 1_800_000L,
+            ),
+        )
+        val posted = practiceNotifications().single().notification
+        assertEquals(PracticeNotificationKind.SNOOZED, presenter.findActivePracticeNotificationKind())
+        assertNull(posted.deleteIntent)
+    }
+    // 01.10.2026 Archive Acceptance E cursor by Me4Hik END
+
     private fun showPlan(
         occurrenceId: Long,
         plannedAt: Long = 1_000L,

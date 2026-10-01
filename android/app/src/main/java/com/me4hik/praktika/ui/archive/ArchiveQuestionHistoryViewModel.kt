@@ -1,11 +1,14 @@
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - ViewModel истории вопроса
 // PROMPT 119 — detail from mixed history events (ASC from repository)
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - map units at presentation boundary
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - deferCount on history item
 package com.me4hik.praktika.ui.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.me4hik.praktika.data.delete.AnswerDeleteRepository
-import com.me4hik.praktika.data.read.ArchiveHistoryEvent
+import com.me4hik.praktika.data.read.ArchiveOccurrenceOutcome
+import com.me4hik.praktika.data.read.ArchiveOccurrenceUnit
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,19 +58,19 @@ class ArchiveQuestionHistoryViewModel(
     private fun observeQuestionHistory(questionId: Int) {
         viewModelScope.launch {
             val zoneId = zoneIdProvider.currentZoneId()
-            archiveReadRepository.observeHistoryForQuestion(questionId)
+            archiveReadRepository.observeOccurrenceHistoryForQuestion(questionId)
                 .catch { throwable ->
                     _uiState.value = ArchiveQuestionHistoryUiState.Error(
                         message = throwable.message ?: "Archive question read failed",
                     )
                 }
-                .collect { events ->
-                    _uiState.value = if (events.isEmpty()) {
+                .collect { units ->
+                    _uiState.value = if (units.isEmpty()) {
                         ArchiveQuestionHistoryUiState.Empty
                     } else {
                         ArchiveQuestionHistoryUiState.Content(
-                            entries = events.map { event ->
-                                event.toHistoryItem(displayFormatter, zoneId)
+                            entries = units.map { unit ->
+                                unit.toHistoryItem(displayFormatter, zoneId)
                             },
                         )
                     }
@@ -76,13 +79,14 @@ class ArchiveQuestionHistoryViewModel(
     }
 
     private companion object {
-        fun ArchiveHistoryEvent.toHistoryItem(
+        fun ArchiveOccurrenceUnit.toHistoryItem(
             displayFormatter: ArchiveDisplayFormatter,
             zoneId: java.time.ZoneId,
         ): ArchiveQuestionHistoryItem {
             val dateTimeText = displayFormatter.formatDateTimeLine(eventAtEpochMillis, zoneId)
-            return when (this) {
-                is ArchiveHistoryEvent.Answer -> {
+            val mappedDeferCount = deferCount
+            return when (outcome) {
+                ArchiveOccurrenceOutcome.ANSWERED -> {
                     val liveAnswer = answerId != null
                     ArchiveQuestionHistoryItem(
                         stableKey = stableKey,
@@ -94,12 +98,12 @@ class ArchiveQuestionHistoryViewModel(
                         dateTimeText = dateTimeText,
                         cycleNumber = cycleNumber,
                         cyclePosition = cyclePosition,
-                        durationMinutes = null,
+                        deferCount = mappedDeferCount,
                         canShare = liveAnswer,
                         canDelete = liveAnswer,
                     )
                 }
-                is ArchiveHistoryEvent.Rejected -> ArchiveQuestionHistoryItem(
+                ArchiveOccurrenceOutcome.REJECTED -> ArchiveQuestionHistoryItem(
                     stableKey = stableKey,
                     kind = ArchiveHistoryItemKind.Rejected,
                     occurrenceId = occurrenceId,
@@ -109,11 +113,11 @@ class ArchiveQuestionHistoryViewModel(
                     dateTimeText = dateTimeText,
                     cycleNumber = cycleNumber,
                     cyclePosition = cyclePosition,
-                    durationMinutes = null,
+                    deferCount = mappedDeferCount,
                     canShare = false,
                     canDelete = false,
                 )
-                is ArchiveHistoryEvent.Missed -> ArchiveQuestionHistoryItem(
+                ArchiveOccurrenceOutcome.MISSED -> ArchiveQuestionHistoryItem(
                     stableKey = stableKey,
                     kind = ArchiveHistoryItemKind.Missed,
                     occurrenceId = occurrenceId,
@@ -123,21 +127,7 @@ class ArchiveQuestionHistoryViewModel(
                     dateTimeText = dateTimeText,
                     cycleNumber = cycleNumber,
                     cyclePosition = cyclePosition,
-                    durationMinutes = null,
-                    canShare = false,
-                    canDelete = false,
-                )
-                is ArchiveHistoryEvent.Deferred -> ArchiveQuestionHistoryItem(
-                    stableKey = stableKey,
-                    kind = ArchiveHistoryItemKind.Deferred,
-                    occurrenceId = occurrenceId,
-                    questionText = questionTextSnapshot,
-                    answerId = null,
-                    answerText = null,
-                    dateTimeText = dateTimeText,
-                    cycleNumber = cycleNumber,
-                    cyclePosition = cyclePosition,
-                    durationMinutes = durationMinutes,
+                    deferCount = mappedDeferCount,
                     canShare = false,
                     canDelete = false,
                 )
@@ -145,4 +135,6 @@ class ArchiveQuestionHistoryViewModel(
         }
     }
 }
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik END
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END

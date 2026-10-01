@@ -40,6 +40,9 @@ fun ArchiveEntryCard(
      */
     bodyText: String? = null,
     answerText: String? = null,
+    // 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - optional defer summary line
+    deferSummaryText: String? = null,
+    // 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik END
     cycleLabel: String? = null,
     showShare: Boolean = true,
     showDelete: Boolean = true,
@@ -57,6 +60,9 @@ fun ArchiveEntryCard(
                 )
             }
             MetadataText(text = resolvedLabel)
+            if (deferSummaryText != null) {
+                MetadataText(text = deferSummaryText)
+            }
             if (resolvedBody != null) {
                 Text(
                     text = resolvedBody,

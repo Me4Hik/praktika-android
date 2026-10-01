@@ -1,5 +1,7 @@
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - ViewModel списка вопросов архива
 // PROMPT 119 — list from mixed history events
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - list from occurrence units
+// 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik - list without deferredCount
 package com.me4hik.praktika.ui.archive
 
 import androidx.lifecycle.ViewModel
@@ -20,14 +22,14 @@ class ArchiveQuestionsViewModel(
 
     init {
         viewModelScope.launch {
-            archiveReadRepository.observeAllHistoryEvents()
+            archiveReadRepository.observeAllOccurrenceHistory()
                 .catch { throwable ->
                     _uiState.value = ArchiveQuestionsUiState.Error(
                         message = throwable.message ?: "Archive read failed",
                     )
                 }
-                .collect { events ->
-                    val summarized = ArchiveHistoryQuestionGrouping.summarize(events)
+                .collect { units ->
+                    val summarized = ArchiveHistoryQuestionGrouping.summarize(units)
                     _uiState.value = if (summarized.isEmpty()) {
                         ArchiveQuestionsUiState.Empty
                     } else {
@@ -41,7 +43,6 @@ class ArchiveQuestionsViewModel(
                                     answerCount = summary.answerCount,
                                     rejectedCount = summary.rejectedCount,
                                     missedCount = summary.missedCount,
-                                    deferredCount = summary.deferredCount,
                                 )
                             },
                         )
@@ -50,4 +51,5 @@ class ArchiveQuestionsViewModel(
         }
     }
 }
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END

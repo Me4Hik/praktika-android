@@ -4,7 +4,7 @@ package com.me4hik.praktika.ui.archive
 
 import android.net.Uri
 import com.me4hik.praktika.data.read.ArchiveEntry
-import com.me4hik.praktika.data.read.ArchiveHistoryEvent
+import com.me4hik.praktika.data.read.ArchiveOccurrenceUnit
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import com.me4hik.praktika.export.ExportDocumentWriter
 import java.time.ZoneId
@@ -40,11 +40,13 @@ internal class AndroidTestArchiveReadRepository : ArchiveReadRepository {
         }
     }
 
-    override fun observeHistoryForQuestion(questionId: Int): Flow<List<ArchiveHistoryEvent>> =
+    // 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - empty occurrence history stub
+    override fun observeOccurrenceHistoryForQuestion(questionId: Int): Flow<List<ArchiveOccurrenceUnit>> =
         flowOf(emptyList())
 
-    override fun observeAllHistoryEvents(): Flow<List<ArchiveHistoryEvent>> =
+    override fun observeAllOccurrenceHistory(): Flow<List<ArchiveOccurrenceUnit>> =
         flowOf(emptyList())
+    // 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END
 
     fun emit(value: List<ArchiveEntry>) {
         entries.value = value

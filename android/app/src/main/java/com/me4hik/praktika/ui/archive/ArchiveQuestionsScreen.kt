@@ -124,11 +124,11 @@ fun ArchiveQuestionsScreen(
                             )
                         }
                         itemsIndexed(uiState.questions, key = { _, item -> item.questionId }) { index, questionItem ->
+                            // 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik START - no Deferred segment
                             val summarySegments = ArchiveQuestionSummaryFormatter.nonzeroSegments(
                                 answerCount = questionItem.answerCount,
                                 rejectedCount = questionItem.rejectedCount,
                                 missedCount = questionItem.missedCount,
-                                deferredCount = questionItem.deferredCount,
                             )
                             val supporting = if (summarySegments.isEmpty()) {
                                 null
@@ -148,14 +148,11 @@ fun ArchiveQuestionsScreen(
                                                 R.string.archive_question_missed_count,
                                                 segment.count,
                                             )
-                                            ArchiveSummaryCountKind.Deferred -> stringResource(
-                                                R.string.archive_question_deferred_count,
-                                                segment.count,
-                                            )
                                         }
                                     },
                                 )
                             }
+                            // 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik END
                             ArchiveListRow(
                                 title = questionItem.questionText,
                                 titleStyle = HomeQuestionSerifStyle,

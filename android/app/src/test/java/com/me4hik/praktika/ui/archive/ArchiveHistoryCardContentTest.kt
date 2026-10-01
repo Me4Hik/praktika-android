@@ -1,4 +1,5 @@
 // PROMPT 123 — pure mapping rules for history card label/body/actions
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - no Deferred peer kind
 package com.me4hik.praktika.ui.archive
 
 import org.junit.Assert.assertEquals
@@ -20,6 +21,7 @@ class ArchiveHistoryCardContentTest {
         assertEquals("Live text", resolveBody(item, deletedBody = "Ответ удалён"))
         assertTrue(item.canShare)
         assertTrue(item.canDelete)
+        assertEquals(0, item.deferCount)
     }
 
     @Test
@@ -38,26 +40,33 @@ class ArchiveHistoryCardContentTest {
 
     @Test
     fun rejected_noBodyNoActions() {
-        val item = historyItem(kind = ArchiveHistoryItemKind.Rejected)
+        val item = historyItem(kind = ArchiveHistoryItemKind.Rejected, deferCount = 1)
         assertNull(resolveBody(item, deletedBody = "Ответ удалён"))
         assertFalse(item.canShare)
         assertFalse(item.canDelete)
+        assertEquals(1, item.deferCount)
     }
 
     @Test
     fun missed_noBodyNoActions() {
-        val item = historyItem(kind = ArchiveHistoryItemKind.Missed)
+        val item = historyItem(kind = ArchiveHistoryItemKind.Missed, deferCount = 2)
         assertNull(resolveBody(item, deletedBody = "Ответ удалён"))
+        assertEquals(2, item.deferCount)
     }
 
     @Test
-    fun deferred_keepsDuration_noBody() {
+    fun answerWithDefers_keepsDeferCountWithoutDeferredKind() {
         val item = historyItem(
-            kind = ArchiveHistoryItemKind.Deferred,
-            durationMinutes = 15,
+            kind = ArchiveHistoryItemKind.Answer,
+            answerId = 1L,
+            answerText = "A",
+            deferCount = 5,
+            canShare = true,
+            canDelete = true,
         )
-        assertEquals(15, item.durationMinutes)
-        assertNull(resolveBody(item, deletedBody = "Ответ удалён"))
+        assertEquals(5, item.deferCount)
+        assertEquals(ArchiveHistoryItemKind.Answer, item.kind)
+        assertTrue(ArchiveHistoryItemKind.entries.none { it.name == "Deferred" })
     }
 
     private fun resolveBody(
@@ -68,7 +77,6 @@ class ArchiveHistoryCardContentTest {
             ArchiveHistoryItemKind.Answer -> item.answerText ?: deletedBody
             ArchiveHistoryItemKind.Rejected,
             ArchiveHistoryItemKind.Missed,
-            ArchiveHistoryItemKind.Deferred,
             -> null
         }
     }
@@ -77,7 +85,7 @@ class ArchiveHistoryCardContentTest {
         kind: ArchiveHistoryItemKind,
         answerId: Long? = null,
         answerText: String? = null,
-        durationMinutes: Int? = null,
+        deferCount: Int = 0,
         canShare: Boolean = false,
         canDelete: Boolean = false,
     ) = ArchiveQuestionHistoryItem(
@@ -90,8 +98,9 @@ class ArchiveHistoryCardContentTest {
         dateTimeText = "date",
         cycleNumber = 1,
         cyclePosition = 1,
-        durationMinutes = durationMinutes,
+        deferCount = deferCount,
         canShare = canShare,
         canDelete = canDelete,
     )
 }
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik END

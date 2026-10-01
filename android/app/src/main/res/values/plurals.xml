@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - quantity forms -->
+<resources>
+    <plurals name="archive_occurrence_deferred_count">
+        <item quantity="one">Отложено %d раз</item>
+        <item quantity="few">Отложено %d раза</item>
+        <item quantity="many">Отложено %d раз</item>
+        <item quantity="other">Отложено %d раз</item>
+    </plurals>
+</resources>

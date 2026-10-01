@@ -48,6 +48,7 @@ interface DeferEventDao {
     suspend fun deleteAll()
 
     // PROMPT 115 — defer archive history rows (joined occurrence snapshot/cycle)
+    // 01.10.2026 Archive T1 incomplete defer filter cursor by Me4Hik START - only terminal occurrences
     @Query(
         """
         SELECT
@@ -63,6 +64,7 @@ interface DeferEventDao {
         FROM defer_events d
         INNER JOIN question_occurrences o ON d.occurrenceId = o.id
         WHERE d.questionId = :questionId
+          AND o.status IN ('ANSWERED', 'SKIPPED_BY_USER', 'MISSED_BY_TIME')
         ORDER BY d.occurredAtEpochMillis ASC, d.id ASC
         """,
     )
@@ -82,10 +84,12 @@ interface DeferEventDao {
             d.durationMinutes AS durationMinutes
         FROM defer_events d
         INNER JOIN question_occurrences o ON d.occurrenceId = o.id
+        WHERE o.status IN ('ANSWERED', 'SKIPPED_BY_USER', 'MISSED_BY_TIME')
         ORDER BY d.occurredAtEpochMillis ASC, d.id ASC
         """,
     )
     fun observeArchiveDeferRows(): Flow<List<ArchiveDeferEventRow>>
+    // 01.10.2026 Archive T1 incomplete defer filter cursor by Me4Hik END
 
     // PROMPT 129 — analytics defer rows (includes stored zoneId)
     @Query(

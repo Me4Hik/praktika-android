@@ -102,11 +102,11 @@ class ArchiveDatesViewModelTest {
 
             override fun observeEntriesForQuestion(questionId: Int) = observeEntries()
 
-            override fun observeHistoryForQuestion(questionId: Int) =
-                kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveHistoryEvent>())
+            override fun observeOccurrenceHistoryForQuestion(questionId: Int) =
+                kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveOccurrenceUnit>())
 
-            override fun observeAllHistoryEvents() =
-                kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveHistoryEvent>())
+            override fun observeAllOccurrenceHistory() =
+                kotlinx.coroutines.flow.flowOf(emptyList<com.me4hik.praktika.data.read.ArchiveOccurrenceUnit>())
         }
         val viewModel = ArchiveDatesViewModel(
             archiveReadRepository = failingRepository,

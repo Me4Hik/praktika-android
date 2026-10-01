@@ -1,10 +1,13 @@
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - fakes for archive ViewModel tests
 // PROMPT 119 — fake history feed for mixed archive VM tests
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - fake occurrence units
 package com.me4hik.praktika.ui.archive
 
 import com.me4hik.praktika.data.delete.AnswerDeleteRepository
 import com.me4hik.praktika.data.read.ArchiveEntry
-import com.me4hik.praktika.data.read.ArchiveHistoryEvent
+import com.me4hik.praktika.data.read.ArchiveOccurrenceDeferEvent
+import com.me4hik.praktika.data.read.ArchiveOccurrenceOutcome
+import com.me4hik.praktika.data.read.ArchiveOccurrenceUnit
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
@@ -13,7 +16,7 @@ import kotlinx.coroutines.flow.map
 
 internal class FakeArchiveReadRepository : ArchiveReadRepository {
     private val entries = MutableStateFlow<List<ArchiveEntry>>(emptyList())
-    private val historyEvents = MutableStateFlow<List<ArchiveHistoryEvent>>(emptyList())
+    private val occurrenceUnits = MutableStateFlow<List<ArchiveOccurrenceUnit>>(emptyList())
 
     override fun observeEntries(): Flow<List<ArchiveEntry>> = entries
 
@@ -41,35 +44,24 @@ internal class FakeArchiveReadRepository : ArchiveReadRepository {
     }
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
 
-    override fun observeHistoryForQuestion(questionId: Int): Flow<List<ArchiveHistoryEvent>> {
-        return historyEvents.map { list ->
+    override fun observeOccurrenceHistoryForQuestion(questionId: Int): Flow<List<ArchiveOccurrenceUnit>> {
+        return occurrenceUnits.map { list ->
             list.filter { it.questionId == questionId }
                 .sortedWith(
-                    compareBy<ArchiveHistoryEvent> { it.eventAtEpochMillis }
-                        .thenBy { kindTieRank(it) }
-                        .thenBy { it.stableKey },
+                    compareBy<ArchiveOccurrenceUnit> { it.eventAtEpochMillis }
+                        .thenBy { it.occurrenceId },
                 )
         }
     }
 
-    override fun observeAllHistoryEvents(): Flow<List<ArchiveHistoryEvent>> = historyEvents
+    override fun observeAllOccurrenceHistory(): Flow<List<ArchiveOccurrenceUnit>> = occurrenceUnits
 
     fun emit(value: List<ArchiveEntry>) {
         entries.value = value
     }
 
-    fun emitHistory(value: List<ArchiveHistoryEvent>) {
-        historyEvents.value = value
-    }
-
-    private fun kindTieRank(event: ArchiveHistoryEvent): Int {
-        return when (event) {
-            is ArchiveHistoryEvent.Deferred -> 0
-            is ArchiveHistoryEvent.Answer,
-            is ArchiveHistoryEvent.Rejected,
-            is ArchiveHistoryEvent.Missed,
-            -> 1
-        }
+    fun emitHistory(value: List<ArchiveOccurrenceUnit>) {
+        occurrenceUnits.value = value
     }
 }
 
@@ -98,7 +90,7 @@ internal fun sampleArchiveEntry(
     cyclePosition = 1,
 )
 
-internal fun sampleAnswerEvent(
+internal fun sampleAnsweredUnit(
     occurrenceId: Long,
     eventAt: Long,
     questionId: Int = 1,
@@ -107,73 +99,77 @@ internal fun sampleAnswerEvent(
     answerText: String? = if (answerId != null) "Answer $answerId" else null,
     cycleNumber: Int = 1,
     cyclePosition: Int = questionId,
-): ArchiveHistoryEvent.Answer {
+    deferEvents: List<ArchiveOccurrenceDeferEvent> = emptyList(),
+): ArchiveOccurrenceUnit {
     val key = if (answerId != null) "a:$answerId" else "o:$occurrenceId:answered"
-    return ArchiveHistoryEvent.Answer(
+    return ArchiveOccurrenceUnit(
         stableKey = key,
-        questionId = questionId,
         occurrenceId = occurrenceId,
+        questionId = questionId,
         questionTextSnapshot = questionText,
         cycleNumber = cycleNumber,
         cyclePosition = cyclePosition,
+        outcome = ArchiveOccurrenceOutcome.ANSWERED,
         eventAtEpochMillis = eventAt,
         answerId = answerId,
         answerText = answerText,
+        deferEvents = deferEvents,
     )
 }
 
-internal fun sampleRejectedEvent(
+internal fun sampleRejectedUnit(
     occurrenceId: Long,
     eventAt: Long,
     questionId: Int = 1,
     questionText: String = "Question $questionId",
     cyclePosition: Int = questionId,
-) = ArchiveHistoryEvent.Rejected(
+    deferEvents: List<ArchiveOccurrenceDeferEvent> = emptyList(),
+) = ArchiveOccurrenceUnit(
     stableKey = "o:$occurrenceId:rejected",
-    questionId = questionId,
     occurrenceId = occurrenceId,
+    questionId = questionId,
     questionTextSnapshot = questionText,
     cycleNumber = 1,
     cyclePosition = cyclePosition,
+    outcome = ArchiveOccurrenceOutcome.REJECTED,
     eventAtEpochMillis = eventAt,
+    answerId = null,
+    answerText = null,
+    deferEvents = deferEvents,
 )
 
-internal fun sampleMissedEvent(
+internal fun sampleMissedUnit(
     occurrenceId: Long,
     eventAt: Long,
     questionId: Int = 1,
     questionText: String = "Question $questionId",
     cyclePosition: Int = questionId,
-) = ArchiveHistoryEvent.Missed(
+    deferEvents: List<ArchiveOccurrenceDeferEvent> = emptyList(),
+) = ArchiveOccurrenceUnit(
     stableKey = "o:$occurrenceId:missed",
-    questionId = questionId,
     occurrenceId = occurrenceId,
+    questionId = questionId,
     questionTextSnapshot = questionText,
     cycleNumber = 1,
     cyclePosition = cyclePosition,
+    outcome = ArchiveOccurrenceOutcome.MISSED,
     eventAtEpochMillis = eventAt,
+    answerId = null,
+    answerText = null,
+    deferEvents = deferEvents,
 )
 
-internal fun sampleDeferredEvent(
+internal fun sampleDeferDetail(
     deferEventId: Long,
-    occurrenceId: Long,
     eventAt: Long,
     durationMinutes: Int = 15,
-    questionId: Int = 1,
-    questionText: String = "Question $questionId",
-    cyclePosition: Int = questionId,
-) = ArchiveHistoryEvent.Deferred(
-    stableKey = "d:$deferEventId",
-    questionId = questionId,
-    occurrenceId = occurrenceId,
-    questionTextSnapshot = questionText,
-    cycleNumber = 1,
-    cyclePosition = cyclePosition,
-    eventAtEpochMillis = eventAt,
+) = ArchiveOccurrenceDeferEvent(
     deferEventId = deferEventId,
-    durationMinutes = durationMinutes,
+    occurredAtEpochMillis = eventAt,
     deferredUntilEpochMillis = eventAt + durationMinutes * 60_000L,
+    durationMinutes = durationMinutes,
 )
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END
 
 // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - fake delete repository для ViewModel tests

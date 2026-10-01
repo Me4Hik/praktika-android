@@ -126,6 +126,7 @@ sealed interface ArchiveQuestionsUiState {
     ) : ArchiveQuestionsUiState
 }
 
+// 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik START - no deferredCount in list
 data class ArchiveQuestionListItem(
     val questionId: Int,
     val questionText: String,
@@ -134,8 +135,8 @@ data class ArchiveQuestionListItem(
     val answerCount: Int,
     val rejectedCount: Int,
     val missedCount: Int,
-    val deferredCount: Int,
 )
+// 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik END
 
 sealed interface ArchiveQuestionHistoryUiState {
     data object Loading : ArchiveQuestionHistoryUiState
@@ -152,9 +153,9 @@ enum class ArchiveHistoryItemKind {
     Answer,
     Rejected,
     Missed,
-    Deferred,
 }
 
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - deferCount on occurrence card
 data class ArchiveQuestionHistoryItem(
     val stableKey: String,
     val kind: ArchiveHistoryItemKind,
@@ -165,10 +166,11 @@ data class ArchiveQuestionHistoryItem(
     val dateTimeText: String,
     val cycleNumber: Int,
     val cyclePosition: Int,
-    val durationMinutes: Int?,
+    val deferCount: Int,
     val canShare: Boolean,
     val canDelete: Boolean,
 )
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik END
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
 
 // 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - UI state confirmation delete

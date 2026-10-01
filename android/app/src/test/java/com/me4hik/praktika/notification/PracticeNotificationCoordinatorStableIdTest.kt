@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink
 import com.me4hik.praktika.data.cycle.CycleRepository
+import com.me4hik.praktika.data.cycle.CycleResult
 import com.me4hik.praktika.data.cycle.FakeTimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
@@ -13,6 +14,8 @@ import com.me4hik.praktika.data.local.entity.QuestionEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.read.ArchiveOccurrenceOutcome
+import com.me4hik.praktika.data.read.RoomArchiveReadRepository
 import com.me4hik.praktika.data.read.RoomPracticeReadRepository
 import com.me4hik.praktika.runtime.PraktikaRuntimeInitializer
 import java.time.ZoneId
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -42,6 +46,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     private lateinit var database: PraktikaDatabase
     private lateinit var timeProvider: FakeTimeProvider
     private lateinit var cycleRepository: CycleRepository
+    private lateinit var archiveReadRepository: RoomArchiveReadRepository
     private lateinit var presenter: RecordingPracticeNotificationPresenter
     private lateinit var alarmScheduler: RecordingPlatformAlarmScheduler
     private lateinit var coordinator: PracticeNotificationCoordinator
@@ -54,22 +59,9 @@ class PracticeNotificationCoordinatorStableIdTest {
             .build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(11, 0, 0), ZONE_KIEV)
-        cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
         presenter = RecordingPracticeNotificationPresenter()
         alarmScheduler = RecordingPlatformAlarmScheduler()
-        val initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }
-        initializer.completeActivityInit(true)
-        coordinator = PracticeNotificationCoordinator(
-            initializer = initializer,
-            cycleRepository = cycleRepository,
-            practiceReadRepository = RoomPracticeReadRepository(database),
-            permissionRepository = EnabledNotificationPermissionPolicy(),
-            soundEnabledProvider = { true },
-            alarmScheduler = alarmScheduler,
-            notificationPresenter = presenter,
-            openRequestStore = NotificationOpenRequestStore(),
-            timeProvider = timeProvider,
-        )
+        wireRepositoriesAndCoordinator()
     }
 
     @After
@@ -819,6 +811,87 @@ class PracticeNotificationCoordinatorStableIdTest {
         val occurrenceB = currentOccurrence()
         assertEquals(occurrenceB.id, presenter.shown.single().occurrenceId)
         assertTrue(presenter.shown.none { it.occurrenceId == occurrenceA.id })
+    }
+
+    // 01.10.2026 Archive Acceptance F deferred boot host cursor by Me4Hik START
+    @Test
+    fun deferredOccurrence_afterBoot_keepsSameOccurrenceAndAppearsOnceAfterTerminal() = runBlocking {
+        startAvailableOccurrence()
+        val occurrence = currentOccurrence()
+        val occurrenceId = occurrence.id
+        assertTrue(occurrence.availableUntilEpochMillis > epochAt(11, 45, 0))
+
+        timeProvider.setEpochMillis(epochAt(11, 30, 0))
+        val deferResult = cycleRepository.deferAvailableOccurrence(occurrenceId, durationMinutes = 15)
+        assertTrue(deferResult is CycleResult.DeferCompleted)
+
+        val deferredUntil = epochAt(11, 45, 0)
+        val afterDefer = occurrenceById(occurrenceId)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, afterDefer.status)
+        assertEquals(deferredUntil, afterDefer.deferredUntilEpochMillis)
+        val preBootDeferEvents = database.deferEventDao().getForOccurrenceOrdered(occurrenceId)
+        assertEquals(1, preBootDeferEvents.size)
+        assertEquals(deferredUntil, preBootDeferEvents.single().deferredUntilEpochMillis)
+        assertTrue(archiveReadRepository.observeAllOccurrenceHistory().first().isEmpty())
+        assertTrue(archiveReadRepository.observeOccurrenceHistoryForQuestion(occurrence.questionId).first().isEmpty())
+
+        val occurrenceCountBeforeBoot = database.questionOccurrenceDao().count()
+        // Simulate process restart: new repository/coordinator instances on the same Room DB.
+        wireRepositoriesAndCoordinator()
+        presenter.reset()
+        alarmScheduler.lastPlan = null
+        // now < deferredUntil < availableUntil — avoid Missed branch.
+        timeProvider.setEpochMillis(epochAt(11, 35, 0))
+
+        coordinator.sync(NotificationSyncReason.BOOT)
+
+        val incomplete = database.questionOccurrenceDao().getIncompleteOrdered()
+        assertEquals(1, incomplete.size)
+        val afterBoot = incomplete.single()
+        assertEquals(occurrenceId, afterBoot.id)
+        assertEquals(QuestionOccurrenceStatus.AVAILABLE, afterBoot.status)
+        assertEquals(deferredUntil, afterBoot.deferredUntilEpochMillis)
+        assertEquals(occurrenceCountBeforeBoot, database.questionOccurrenceDao().count())
+        assertEquals(1, database.deferEventDao().getForOccurrenceOrdered(occurrenceId).size)
+        assertTrue(archiveReadRepository.observeAllOccurrenceHistory().first().isEmpty())
+        assertEquals(PracticeNotificationKind.SNOOZED, presenter.shown.single().kind)
+        assertEquals(occurrenceId, presenter.shown.single().occurrenceId)
+        assertEquals(
+            deferredUntil,
+            alarmScheduler.lastPlan?.deferredReminderAlarm?.triggerAtEpochMillis,
+        )
+
+        val answerResult = cycleRepository.saveAnswer(occurrenceId, "post-boot answer")
+        assertTrue(answerResult is CycleResult.AnswerSaved)
+
+        val history = archiveReadRepository.observeAllOccurrenceHistory().first()
+        assertEquals(1, history.size)
+        val unit = history.single()
+        assertEquals(occurrenceId, unit.occurrenceId)
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+        assertEquals(1, unit.deferCount)
+        assertEquals(1, database.deferEventDao().getForOccurrenceOrdered(occurrenceId).size)
+        // Occurrence-centric Archive: one terminal unit only — no standalone Deferred cards.
+        assertEquals(listOf(ArchiveOccurrenceOutcome.ANSWERED), history.map { it.outcome })
+    }
+    // 01.10.2026 Archive Acceptance F deferred boot host cursor by Me4Hik END
+
+    private fun wireRepositoriesAndCoordinator() {
+        cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
+        archiveReadRepository = RoomArchiveReadRepository(database)
+        val initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }
+        initializer.completeActivityInit(true)
+        coordinator = PracticeNotificationCoordinator(
+            initializer = initializer,
+            cycleRepository = cycleRepository,
+            practiceReadRepository = RoomPracticeReadRepository(database),
+            permissionRepository = EnabledNotificationPermissionPolicy(),
+            soundEnabledProvider = { true },
+            alarmScheduler = alarmScheduler,
+            notificationPresenter = presenter,
+            openRequestStore = NotificationOpenRequestStore(),
+            timeProvider = timeProvider,
+        )
     }
 
     private suspend fun startAvailableOccurrence() {

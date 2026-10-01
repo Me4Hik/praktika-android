@@ -144,7 +144,7 @@ class Stage21ShareComposeInstrumentedTest {
                                 dateTimeText = "7 августа 2026 · 12:00",
                                 cycleNumber = 2,
                                 cyclePosition = 1,
-                                durationMinutes = null,
+                                deferCount = 0,
                                 canShare = true,
                                 canDelete = true,
                             ),

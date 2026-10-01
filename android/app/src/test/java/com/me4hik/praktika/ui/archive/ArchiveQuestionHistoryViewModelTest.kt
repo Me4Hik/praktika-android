@@ -1,5 +1,7 @@
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik START - unit tests ArchiveQuestionHistoryViewModel
 // PROMPT 119 — detail VM maps mixed history ASC
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - one unit → one card
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - deferCount on cards
 package com.me4hik.praktika.ui.archive
 
 import java.time.LocalDate
@@ -39,13 +41,11 @@ class ArchiveQuestionHistoryViewModelTest {
     }
 
     @Test
-    fun twoDeferThenAnswer_preservesAscOrder() = runTest {
+    fun answerWithFiveDefers_oneCardDeferCountFive() = runTest {
         val day = LocalDate.of(2026, 8, 7)
         repository.emitHistory(
             listOf(
-                sampleDeferredEvent(1, 10, epoch(day, 10, 0), questionId = 1, durationMinutes = 15),
-                sampleDeferredEvent(2, 10, epoch(day, 11, 0), questionId = 1, durationMinutes = 5),
-                sampleAnswerEvent(
+                sampleAnsweredUnit(
                     occurrenceId = 10,
                     eventAt = epoch(day, 18, 42),
                     questionId = 1,
@@ -53,33 +53,100 @@ class ArchiveQuestionHistoryViewModelTest {
                     answerText = "Final",
                     questionText = "Snapshot B",
                     cycleNumber = 2,
+                    deferEvents = (1..5).map { index ->
+                        sampleDeferDetail(index.toLong(), epoch(day, 10, index), durationMinutes = 5)
+                    },
                 ),
-                sampleMissedEvent(99, epoch(day, 12, 0), questionId = 2),
+                sampleMissedUnit(99, epoch(day, 12, 0), questionId = 2),
             ),
         )
         val viewModel = createViewModel(questionId = 1)
         dispatcher.scheduler.advanceUntilIdle()
         val content = viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content
-        assertEquals(3, content.entries.size)
-        assertEquals(ArchiveHistoryItemKind.Deferred, content.entries[0].kind)
-        assertEquals(15, content.entries[0].durationMinutes)
-        assertEquals(ArchiveHistoryItemKind.Deferred, content.entries[1].kind)
-        assertEquals(5, content.entries[1].durationMinutes)
-        assertEquals(ArchiveHistoryItemKind.Answer, content.entries[2].kind)
-        assertEquals(55L, content.entries[2].answerId)
-        assertEquals("Final", content.entries[2].answerText)
-        assertTrue(content.entries[2].canShare)
-        assertTrue(content.entries[2].canDelete)
-        assertTrue(content.entries[0].dateTimeText.contains("10:00"))
+        assertEquals(1, content.entries.size)
+        val entry = content.entries.single()
+        assertEquals(ArchiveHistoryItemKind.Answer, entry.kind)
+        assertEquals(5, entry.deferCount)
+        assertEquals(55L, entry.answerId)
+        assertEquals("Final", entry.answerText)
+        assertTrue(entry.canShare)
+        assertTrue(entry.canDelete)
+        assertTrue(entry.dateTimeText.contains("18:42"))
+        assertFalse(content.entries.any { it.kind.name == "Deferred" })
     }
 
     @Test
-    fun mapsMissedRejectedDeferredKinds() = runTest {
+    fun answerWithoutDefer_deferCountZero() = runTest {
         repository.emitHistory(
             listOf(
-                sampleMissedEvent(1, 1_000L, questionId = 1, questionText = "M"),
-                sampleRejectedEvent(2, 2_000L, questionId = 1, questionText = "R"),
-                sampleDeferredEvent(3, 2, 3_000L, questionId = 1, durationMinutes = 30, questionText = "D"),
+                sampleAnsweredUnit(
+                    occurrenceId = 7,
+                    eventAt = 7_000L,
+                    questionId = 1,
+                    answerId = 7,
+                    answerText = "Plain",
+                ),
+            ),
+        )
+        val viewModel = createViewModel(questionId = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+        val entry = (viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content).entries.single()
+        assertEquals(ArchiveHistoryItemKind.Answer, entry.kind)
+        assertEquals(0, entry.deferCount)
+    }
+
+    @Test
+    fun skipWithOneDefer_oneRejectedCard() = runTest {
+        repository.emitHistory(
+            listOf(
+                sampleRejectedUnit(
+                    occurrenceId = 2,
+                    eventAt = 2_000L,
+                    questionId = 1,
+                    questionText = "R",
+                    deferEvents = listOf(sampleDeferDetail(1, 1_500L)),
+                ),
+            ),
+        )
+        val viewModel = createViewModel(questionId = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+        val entry = (viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content).entries.single()
+        assertEquals(ArchiveHistoryItemKind.Rejected, entry.kind)
+        assertEquals(1, entry.deferCount)
+        assertFalse(entry.canShare)
+        assertFalse(entry.canDelete)
+        assertNull(entry.answerId)
+    }
+
+    @Test
+    fun missedWithTwoDefers_oneMissedCard() = runTest {
+        repository.emitHistory(
+            listOf(
+                sampleMissedUnit(
+                    occurrenceId = 3,
+                    eventAt = 3_000L,
+                    questionId = 1,
+                    questionText = "M",
+                    deferEvents = listOf(
+                        sampleDeferDetail(1, 1_000L),
+                        sampleDeferDetail(2, 2_000L),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = createViewModel(questionId = 1)
+        dispatcher.scheduler.advanceUntilIdle()
+        val entry = (viewModel.uiState.value as ArchiveQuestionHistoryUiState.Content).entries.single()
+        assertEquals(ArchiveHistoryItemKind.Missed, entry.kind)
+        assertEquals(2, entry.deferCount)
+    }
+
+    @Test
+    fun mapsMissedAndRejectedKinds_orderByTerminalTimestamp() = runTest {
+        repository.emitHistory(
+            listOf(
+                sampleMissedUnit(1, 1_000L, questionId = 1, questionText = "M"),
+                sampleRejectedUnit(2, 2_000L, questionId = 1, questionText = "R"),
             ),
         )
         val viewModel = createViewModel(questionId = 1)
@@ -89,23 +156,17 @@ class ArchiveQuestionHistoryViewModelTest {
             listOf(
                 ArchiveHistoryItemKind.Missed,
                 ArchiveHistoryItemKind.Rejected,
-                ArchiveHistoryItemKind.Deferred,
             ),
             content.entries.map { it.kind },
         )
-        content.entries.forEach { entry ->
-            assertFalse(entry.canShare)
-            assertFalse(entry.canDelete)
-            assertNull(entry.answerId)
-        }
-        assertEquals(30, content.entries[2].durationMinutes)
+        assertEquals(listOf(0, 0), content.entries.map { it.deferCount })
     }
 
     @Test
     fun deletedAnswerDetail_noShareDelete() = runTest {
         repository.emitHistory(
             listOf(
-                sampleAnswerEvent(
+                sampleAnsweredUnit(
                     occurrenceId = 7,
                     eventAt = 7_000L,
                     questionId = 1,
@@ -124,6 +185,7 @@ class ArchiveQuestionHistoryViewModelTest {
         assertNull(entry.answerText)
         assertFalse(entry.canShare)
         assertFalse(entry.canDelete)
+        assertEquals(0, entry.deferCount)
     }
 
     @Test
@@ -156,4 +218,6 @@ class ArchiveQuestionHistoryViewModelTest {
             .toInstant()
             .toEpochMilli()
 }
+// 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik END
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END
 // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END

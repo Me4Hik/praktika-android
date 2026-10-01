@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
@@ -130,14 +131,11 @@ fun ArchiveQuestionHistoryScreen(
                     ) {
                         items(uiState.entries, key = { it.stableKey }) { entry ->
                             val actionTagId = entry.answerId?.toString() ?: entry.stableKey
+                            // 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik START - compact defer line
                             val eventLabel = when (entry.kind) {
                                 ArchiveHistoryItemKind.Answer -> stringResource(R.string.archive_answer_label)
                                 ArchiveHistoryItemKind.Rejected -> stringResource(R.string.archive_rejected_label)
                                 ArchiveHistoryItemKind.Missed -> stringResource(R.string.archive_missed_label)
-                                ArchiveHistoryItemKind.Deferred -> stringResource(
-                                    R.string.archive_deferred_label,
-                                    entry.durationMinutes ?: 0,
-                                )
                             }
                             val bodyText = when (entry.kind) {
                                 ArchiveHistoryItemKind.Answer -> {
@@ -146,13 +144,22 @@ fun ArchiveQuestionHistoryScreen(
                                 }
                                 ArchiveHistoryItemKind.Rejected,
                                 ArchiveHistoryItemKind.Missed,
-                                ArchiveHistoryItemKind.Deferred,
                                 -> null
+                            }
+                            val deferSummaryText = if (entry.deferCount > 0) {
+                                pluralStringResource(
+                                    R.plurals.archive_occurrence_deferred_count,
+                                    entry.deferCount,
+                                    entry.deferCount,
+                                )
+                            } else {
+                                null
                             }
                             ArchiveEntryCard(
                                 questionText = null,
                                 eventLabel = eventLabel,
                                 bodyText = bodyText,
+                                deferSummaryText = deferSummaryText,
                                 metadata = entry.dateTimeText,
                                 cycleLabel = stringResource(
                                     R.string.archive_cycle_label,
@@ -178,6 +185,7 @@ fun ArchiveQuestionHistoryScreen(
                                     "${ArchiveTestTags.QUESTION_HISTORY_ENTRY_PREFIX}${entry.stableKey}",
                                 ),
                             )
+                            // 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik END
                         }
                     }
                 }

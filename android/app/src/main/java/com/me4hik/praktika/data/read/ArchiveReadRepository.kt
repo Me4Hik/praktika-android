@@ -1,6 +1,8 @@
 // 07.08.2026 Stage 14 Archive Layer cursor by Me4Hik START - read repository архива
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - range observe API
 // PROMPT 115 — mixed history events (terminal + defer) without changing answer-only APIs
+// 01.10.2026 Archive T1 incomplete defer filter cursor by Me4Hik - defer rows filtered in DeferEventDao
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - units instead of flat events
 package com.me4hik.praktika.data.read
 
 import com.me4hik.praktika.data.local.PraktikaDatabase
@@ -25,9 +27,9 @@ interface ArchiveReadRepository {
     fun observeEntriesForQuestion(questionId: Int): Flow<List<ArchiveEntry>>
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
 
-    fun observeHistoryForQuestion(questionId: Int): Flow<List<ArchiveHistoryEvent>>
+    fun observeOccurrenceHistoryForQuestion(questionId: Int): Flow<List<ArchiveOccurrenceUnit>>
 
-    fun observeAllHistoryEvents(): Flow<List<ArchiveHistoryEvent>>
+    fun observeAllOccurrenceHistory(): Flow<List<ArchiveOccurrenceUnit>>
 }
 
 data class ArchiveEntry(
@@ -72,21 +74,21 @@ class RoomArchiveReadRepository(
     }
     // 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END
 
-    override fun observeHistoryForQuestion(questionId: Int): Flow<List<ArchiveHistoryEvent>> {
+    override fun observeOccurrenceHistoryForQuestion(questionId: Int): Flow<List<ArchiveOccurrenceUnit>> {
         return combine(
             database.questionOccurrenceDao().observeTerminalArchiveRowsForQuestion(questionId),
             database.deferEventDao().observeArchiveDeferRowsForQuestion(questionId),
         ) { terminals, defers ->
-            mergeHistoryEvents(terminals, defers)
+            buildOccurrenceUnits(terminals, defers)
         }.distinctUntilChanged()
     }
 
-    override fun observeAllHistoryEvents(): Flow<List<ArchiveHistoryEvent>> {
+    override fun observeAllOccurrenceHistory(): Flow<List<ArchiveOccurrenceUnit>> {
         return combine(
             database.questionOccurrenceDao().observeTerminalArchiveRows(),
             database.deferEventDao().observeArchiveDeferRows(),
         ) { terminals, defers ->
-            mergeHistoryEvents(terminals, defers)
+            buildOccurrenceUnits(terminals, defers)
         }.distinctUntilChanged()
     }
 
@@ -105,69 +107,83 @@ class RoomArchiveReadRepository(
     }
 
     companion object {
-        internal fun mergeHistoryEvents(
+        internal fun buildOccurrenceUnits(
             terminals: List<ArchiveTerminalOccurrenceRow>,
             defers: List<ArchiveDeferEventRow>,
-        ): List<ArchiveHistoryEvent> {
-            val events = ArrayList<ArchiveHistoryEvent>(terminals.size + defers.size)
-            terminals.mapNotNullTo(events) { it.toHistoryEventOrNull() }
-            defers.mapTo(events) { it.toDeferredEvent() }
-            return events.sortedWith(HISTORY_EVENT_COMPARATOR)
-        }
-
-        private val HISTORY_EVENT_COMPARATOR = compareBy<ArchiveHistoryEvent> { it.eventAtEpochMillis }
-            .thenBy { kindTieRank(it) }
-            .thenBy { it.stableKey }
-
-        /** Deferred before terminal outcome when timestamps collide. */
-        private fun kindTieRank(event: ArchiveHistoryEvent): Int {
-            return when (event) {
-                is ArchiveHistoryEvent.Deferred -> 0
-                is ArchiveHistoryEvent.Answer,
-                is ArchiveHistoryEvent.Rejected,
-                is ArchiveHistoryEvent.Missed,
-                -> 1
+        ): List<ArchiveOccurrenceUnit> {
+            val defersByOccurrenceId = defers
+                .groupBy { it.occurrenceId }
+                .mapValues { (_, rows) ->
+                    rows
+                        .sortedWith(
+                            compareBy<ArchiveDeferEventRow> { it.occurredAtEpochMillis }
+                                .thenBy { it.deferEventId },
+                        )
+                        .map { it.toDeferDetail() }
+                }
+            val units = ArrayList<ArchiveOccurrenceUnit>(terminals.size)
+            terminals.mapNotNullTo(units) { row ->
+                row.toOccurrenceUnitOrNull(
+                    deferEvents = defersByOccurrenceId[row.occurrenceId].orEmpty(),
+                )
             }
+            return units.sortedWith(OCCURRENCE_UNIT_COMPARATOR)
         }
 
-        private fun ArchiveTerminalOccurrenceRow.toHistoryEventOrNull(): ArchiveHistoryEvent? {
+        private val OCCURRENCE_UNIT_COMPARATOR =
+            compareBy<ArchiveOccurrenceUnit> { it.eventAtEpochMillis }
+                .thenBy { it.occurrenceId }
+
+        private fun ArchiveTerminalOccurrenceRow.toOccurrenceUnitOrNull(
+            deferEvents: List<ArchiveOccurrenceDeferEvent>,
+        ): ArchiveOccurrenceUnit? {
             val completedAt = completedAtEpochMillis ?: return null
             return when (status) {
                 QuestionOccurrenceStatus.ANSWERED -> {
                     val hasAnswer = answerId != null
-                    ArchiveHistoryEvent.Answer(
+                    ArchiveOccurrenceUnit(
                         stableKey = if (hasAnswer) {
                             "a:$answerId"
                         } else {
                             "o:$occurrenceId:answered"
                         },
-                        questionId = questionId,
                         occurrenceId = occurrenceId,
+                        questionId = questionId,
                         questionTextSnapshot = questionTextSnapshot,
                         cycleNumber = cycleNumber,
                         cyclePosition = cyclePosition,
+                        outcome = ArchiveOccurrenceOutcome.ANSWERED,
                         eventAtEpochMillis = answerCreatedAtEpochMillis ?: completedAt,
                         answerId = answerId,
                         answerText = answerText,
+                        deferEvents = deferEvents,
                     )
                 }
-                QuestionOccurrenceStatus.SKIPPED_BY_USER -> ArchiveHistoryEvent.Rejected(
+                QuestionOccurrenceStatus.SKIPPED_BY_USER -> ArchiveOccurrenceUnit(
                     stableKey = "o:$occurrenceId:rejected",
-                    questionId = questionId,
                     occurrenceId = occurrenceId,
+                    questionId = questionId,
                     questionTextSnapshot = questionTextSnapshot,
                     cycleNumber = cycleNumber,
                     cyclePosition = cyclePosition,
+                    outcome = ArchiveOccurrenceOutcome.REJECTED,
                     eventAtEpochMillis = completedAt,
+                    answerId = null,
+                    answerText = null,
+                    deferEvents = deferEvents,
                 )
-                QuestionOccurrenceStatus.MISSED_BY_TIME -> ArchiveHistoryEvent.Missed(
+                QuestionOccurrenceStatus.MISSED_BY_TIME -> ArchiveOccurrenceUnit(
                     stableKey = "o:$occurrenceId:missed",
-                    questionId = questionId,
                     occurrenceId = occurrenceId,
+                    questionId = questionId,
                     questionTextSnapshot = questionTextSnapshot,
                     cycleNumber = cycleNumber,
                     cyclePosition = cyclePosition,
+                    outcome = ArchiveOccurrenceOutcome.MISSED,
                     eventAtEpochMillis = completedAt,
+                    answerId = null,
+                    answerText = null,
+                    deferEvents = deferEvents,
                 )
                 QuestionOccurrenceStatus.SCHEDULED,
                 QuestionOccurrenceStatus.AVAILABLE,
@@ -175,21 +191,16 @@ class RoomArchiveReadRepository(
             }
         }
 
-        private fun ArchiveDeferEventRow.toDeferredEvent(): ArchiveHistoryEvent.Deferred {
-            return ArchiveHistoryEvent.Deferred(
-                stableKey = "d:$deferEventId",
-                questionId = questionId,
-                occurrenceId = occurrenceId,
-                questionTextSnapshot = questionTextSnapshot,
-                cycleNumber = cycleNumber,
-                cyclePosition = cyclePosition,
-                eventAtEpochMillis = occurredAtEpochMillis,
+        private fun ArchiveDeferEventRow.toDeferDetail(): ArchiveOccurrenceDeferEvent {
+            return ArchiveOccurrenceDeferEvent(
                 deferEventId = deferEventId,
-                durationMinutes = durationMinutes,
+                occurredAtEpochMillis = occurredAtEpochMillis,
                 deferredUntilEpochMillis = deferredUntilEpochMillis,
+                durationMinutes = durationMinutes,
             )
         }
     }
 }
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik END
 // 07.08.2026 Stage 14 Archive Layer cursor by Me4Hik END

@@ -1,4 +1,6 @@
 // PROMPT 115 — host tests for mixed archive history read model
+// 01.10.2026 Archive T1 incomplete defer filter cursor by Me4Hik
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik START - occurrence unit contract
 package com.me4hik.praktika.data.read
 
 import android.content.Context
@@ -47,7 +49,7 @@ class ArchiveHistoryReadRepositoryHostTest {
     }
 
     @Test
-    fun missOnlyQuestion_historyContainsMissed() = runBlocking {
+    fun missOnlyQuestion_historyContainsMissedUnit() = runBlocking {
         seedBase()
         val occurrenceId = insertOccurrence(
             questionId = 1,
@@ -57,17 +59,19 @@ class ArchiveHistoryReadRepositoryHostTest {
             questionTextSnapshot = "Missed Q",
         )
 
-        val history = repository.observeHistoryForQuestion(1).first()
+        val history = repository.observeOccurrenceHistoryForQuestion(1).first()
         assertEquals(1, history.size)
-        val event = history.single() as ArchiveHistoryEvent.Missed
-        assertEquals("o:$occurrenceId:missed", event.stableKey)
-        assertEquals(2_000L, event.eventAtEpochMillis)
-        assertEquals("Missed Q", event.questionTextSnapshot)
+        val unit = history.single()
+        assertEquals(ArchiveOccurrenceOutcome.MISSED, unit.outcome)
+        assertEquals("o:$occurrenceId:missed", unit.stableKey)
+        assertEquals(2_000L, unit.eventAtEpochMillis)
+        assertEquals("Missed Q", unit.questionTextSnapshot)
+        assertEquals(0, unit.deferCount)
         assertTrue(repository.observeEntries().first().isEmpty())
     }
 
     @Test
-    fun skipOnlyQuestion_historyContainsRejected() = runBlocking {
+    fun skipOnlyQuestion_historyContainsRejectedUnit() = runBlocking {
         seedBase()
         val occurrenceId = insertOccurrence(
             questionId = 2,
@@ -77,15 +81,152 @@ class ArchiveHistoryReadRepositoryHostTest {
             questionTextSnapshot = "Skipped Q",
         )
 
-        val history = repository.observeHistoryForQuestion(2).first()
+        val history = repository.observeOccurrenceHistoryForQuestion(2).first()
         assertEquals(1, history.size)
-        val event = history.single() as ArchiveHistoryEvent.Rejected
-        assertEquals("o:$occurrenceId:rejected", event.stableKey)
-        assertEquals(3_000L, event.eventAtEpochMillis)
+        val unit = history.single()
+        assertEquals(ArchiveOccurrenceOutcome.REJECTED, unit.outcome)
+        assertEquals("o:$occurrenceId:rejected", unit.stableKey)
+        assertEquals(3_000L, unit.eventAtEpochMillis)
+        assertEquals(0, unit.deferCount)
     }
 
     @Test
-    fun deferOnlyAvailableOccurrence_historyContainsDeferred() = runBlocking {
+    fun deferOnlyAvailableOccurrence_historyIsEmpty() = runBlocking {
+        seedBase()
+        val occurrenceId = insertOccurrence(
+            questionId = 3,
+            cyclePosition = 1,
+            status = QuestionOccurrenceStatus.AVAILABLE,
+            completedAt = null,
+            questionTextSnapshot = "Live Q",
+        )
+        database.deferEventDao().insert(
+            DeferEventEntity(
+                occurrenceId = occurrenceId,
+                questionId = 3,
+                occurredAtEpochMillis = 1_500L,
+                deferredUntilEpochMillis = 1_500L + 15 * 60_000L,
+                durationMinutes = 15,
+                zoneId = ZONE,
+            ),
+        )
+
+        assertTrue(repository.observeOccurrenceHistoryForQuestion(3).first().isEmpty())
+        assertTrue(repository.observeAllOccurrenceHistory().first().isEmpty())
+        assertTrue(repository.observeEntriesForQuestion(3).first().isEmpty())
+    }
+
+    @Test
+    fun fiveDeferThenAnswer_oneUnitWithDeferCountFive() = runBlocking {
+        seedBase()
+        val occurrenceId = insertOccurrence(
+            questionId = 4,
+            cyclePosition = 1,
+            status = QuestionOccurrenceStatus.ANSWERED,
+            completedAt = 10_000L,
+            questionTextSnapshot = "Contract Q",
+        )
+        repeat(5) { index ->
+            database.deferEventDao().insert(
+                DeferEventEntity(
+                    occurrenceId = occurrenceId,
+                    questionId = 4,
+                    occurredAtEpochMillis = 1_000L + index,
+                    deferredUntilEpochMillis = 2_000L + index,
+                    durationMinutes = 5,
+                    zoneId = ZONE,
+                ),
+            )
+        }
+        database.answerDao().insert(
+            AnswerEntity(
+                occurrenceId = occurrenceId,
+                text = "Final after five",
+                createdAtEpochMillis = 10_000L,
+            ),
+        )
+
+        val history = repository.observeOccurrenceHistoryForQuestion(4).first()
+        assertEquals(1, history.size)
+        val unit = history.single()
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+        assertEquals(5, unit.deferCount)
+        assertEquals(5, unit.deferEvents.size)
+        assertEquals(occurrenceId, unit.occurrenceId)
+    }
+
+    @Test
+    // 01.10.2026 Archive Acceptance B cursor by Me4Hik START - 5 occurrences × defer×1 vs A (1×defer×5)
+    fun fiveOccurrencesEachDeferOnceThenAnswer_fiveUnitsDeferCountOne() = runBlocking {
+        // Same raw defer count as fiveDeferThenAnswer_oneUnitWithDeferCountFive (5),
+        // but Archive must show 5 units with deferCount=1 each — not 1 unit with deferCount=5.
+        seedBase()
+        val questionId = 1
+        val occurrenceIds = ArrayList<Long>(5)
+        repeat(5) { index ->
+            val completedAt = 10_000L + index * 1_000L
+            val occurrenceId = insertOccurrence(
+                questionId = questionId,
+                cyclePosition = index + 1,
+                status = QuestionOccurrenceStatus.ANSWERED,
+                completedAt = completedAt,
+                questionTextSnapshot = "Q1 occurrence ${index + 1}",
+                plannedAt = 1_000L + index,
+            )
+            occurrenceIds += occurrenceId
+            database.deferEventDao().insert(
+                DeferEventEntity(
+                    occurrenceId = occurrenceId,
+                    questionId = questionId,
+                    occurredAtEpochMillis = completedAt - 500L,
+                    deferredUntilEpochMillis = completedAt - 100L,
+                    durationMinutes = 5,
+                    zoneId = ZONE,
+                ),
+            )
+            database.answerDao().insert(
+                AnswerEntity(
+                    occurrenceId = occurrenceId,
+                    text = "Answer ${index + 1}",
+                    createdAtEpochMillis = completedAt,
+                ),
+            )
+        }
+
+        val history = repository.observeOccurrenceHistoryForQuestion(questionId).first()
+        assertEquals(5, history.size)
+        assertEquals(5, history.map { it.occurrenceId }.toSet().size)
+        assertEquals(occurrenceIds, history.map { it.occurrenceId })
+        history.forEach { unit ->
+            assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+            assertEquals(1, unit.deferCount)
+            assertEquals(1, unit.deferEvents.size)
+        }
+        for (i in 1 until history.size) {
+            assertTrue(history[i - 1].eventAtEpochMillis < history[i].eventAtEpochMillis)
+        }
+    }
+    // 01.10.2026 Archive Acceptance B cursor by Me4Hik END
+
+    @Test
+    fun completedWithoutDefer_oneUnitDeferCountZero() = runBlocking {
+        seedBase()
+        insertOccurrence(
+            questionId = 5,
+            cyclePosition = 1,
+            status = QuestionOccurrenceStatus.ANSWERED,
+            completedAt = 7_000L,
+            questionTextSnapshot = "No defer Q",
+        )
+
+        val unit = repository.observeOccurrenceHistoryForQuestion(5).first().single()
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+        assertEquals(0, unit.deferCount)
+        assertTrue(unit.deferEvents.isEmpty())
+    }
+
+    @Test
+    fun deferThenAnswer_oneUnitWithNestedDefer() = runBlocking {
         seedBase()
         val occurrenceId = insertOccurrence(
             questionId = 3,
@@ -104,19 +245,148 @@ class ArchiveHistoryReadRepositoryHostTest {
                 zoneId = ZONE,
             ),
         )
+        assertTrue(repository.observeOccurrenceHistoryForQuestion(3).first().isEmpty())
 
-        val history = repository.observeHistoryForQuestion(3).first()
+        database.questionOccurrenceDao().updateStatusAndCompletion(
+            id = occurrenceId,
+            status = QuestionOccurrenceStatus.ANSWERED,
+            completedAtEpochMillis = 5_000L,
+        )
+        val answerId = database.answerDao().insert(
+            AnswerEntity(
+                occurrenceId = occurrenceId,
+                text = "After defer",
+                createdAtEpochMillis = 5_000L,
+            ),
+        )
+
+        val history = repository.observeOccurrenceHistoryForQuestion(3).first()
         assertEquals(1, history.size)
-        val event = history.single() as ArchiveHistoryEvent.Deferred
-        assertEquals("d:$deferId", event.stableKey)
-        assertEquals(15, event.durationMinutes)
-        assertEquals(1_500L, event.eventAtEpochMillis)
-        assertEquals(occurrenceId, event.occurrenceId)
-        assertTrue(repository.observeEntriesForQuestion(3).first().isEmpty())
+        val unit = history.single()
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+        assertEquals("a:$answerId", unit.stableKey)
+        assertEquals(1, unit.deferCount)
+        assertEquals(deferId, unit.deferEvents.single().deferEventId)
     }
 
     @Test
-    fun twoDeferThenAnswer_threeEventsInOrder() = runBlocking {
+    fun deferThenExplicitSkip_oneUnitWithDeferCount() = runBlocking {
+        seedBase()
+        val occurrenceId = insertOccurrence(
+            questionId = 3,
+            cyclePosition = 1,
+            status = QuestionOccurrenceStatus.AVAILABLE,
+            completedAt = null,
+            questionTextSnapshot = "Skip after defer",
+        )
+        val deferId = database.deferEventDao().insert(
+            DeferEventEntity(
+                occurrenceId = occurrenceId,
+                questionId = 3,
+                occurredAtEpochMillis = 2_000L,
+                deferredUntilEpochMillis = 2_000L + 10 * 60_000L,
+                durationMinutes = 10,
+                zoneId = ZONE,
+            ),
+        )
+        assertTrue(repository.observeOccurrenceHistoryForQuestion(3).first().isEmpty())
+
+        database.questionOccurrenceDao().updateStatusAndCompletion(
+            id = occurrenceId,
+            status = QuestionOccurrenceStatus.SKIPPED_BY_USER,
+            completedAtEpochMillis = 4_000L,
+        )
+
+        val unit = repository.observeOccurrenceHistoryForQuestion(3).first().single()
+        assertEquals(ArchiveOccurrenceOutcome.REJECTED, unit.outcome)
+        assertEquals("o:$occurrenceId:rejected", unit.stableKey)
+        assertEquals(1, unit.deferCount)
+        assertEquals(deferId, unit.deferEvents.single().deferEventId)
+    }
+
+    @Test
+    fun deferThenMissedByTime_oneUnitWithDeferCount() = runBlocking {
+        seedBase()
+        val occurrenceId = insertOccurrence(
+            questionId = 3,
+            cyclePosition = 1,
+            status = QuestionOccurrenceStatus.AVAILABLE,
+            completedAt = null,
+            questionTextSnapshot = "Miss after defer",
+        )
+        val deferId = database.deferEventDao().insert(
+            DeferEventEntity(
+                occurrenceId = occurrenceId,
+                questionId = 3,
+                occurredAtEpochMillis = 2_500L,
+                deferredUntilEpochMillis = 2_500L + 5 * 60_000L,
+                durationMinutes = 5,
+                zoneId = ZONE,
+            ),
+        )
+        assertTrue(repository.observeOccurrenceHistoryForQuestion(3).first().isEmpty())
+
+        database.questionOccurrenceDao().updateStatusAndCompletion(
+            id = occurrenceId,
+            status = QuestionOccurrenceStatus.MISSED_BY_TIME,
+            completedAtEpochMillis = 6_000L,
+        )
+
+        val unit = repository.observeOccurrenceHistoryForQuestion(3).first().single()
+        assertEquals(ArchiveOccurrenceOutcome.MISSED, unit.outcome)
+        assertEquals("o:$occurrenceId:missed", unit.stableKey)
+        assertEquals(1, unit.deferCount)
+        assertEquals(deferId, unit.deferEvents.single().deferEventId)
+    }
+
+    @Test
+    fun multipleOccurrencesSameQuestion_oneUnitEach_orderedByTerminalTimestamp() = runBlocking {
+        seedBase()
+        val firstId = insertOccurrence(
+            questionId = 1,
+            cyclePosition = 1,
+            status = QuestionOccurrenceStatus.MISSED_BY_TIME,
+            completedAt = 3_000L,
+            questionTextSnapshot = "First",
+        )
+        val secondId = insertOccurrence(
+            questionId = 1,
+            cyclePosition = 2,
+            status = QuestionOccurrenceStatus.ANSWERED,
+            completedAt = 8_000L,
+            questionTextSnapshot = "Second",
+        )
+        database.deferEventDao().insert(
+            DeferEventEntity(
+                occurrenceId = secondId,
+                questionId = 1,
+                occurredAtEpochMillis = 5_000L,
+                deferredUntilEpochMillis = 6_000L,
+                durationMinutes = 10,
+                zoneId = ZONE,
+            ),
+        )
+        database.answerDao().insert(
+            AnswerEntity(
+                occurrenceId = secondId,
+                text = "Later answer",
+                createdAtEpochMillis = 8_000L,
+            ),
+        )
+
+        val history = repository.observeOccurrenceHistoryForQuestion(1).first()
+        assertEquals(2, history.size)
+        assertEquals(firstId, history[0].occurrenceId)
+        assertEquals(ArchiveOccurrenceOutcome.MISSED, history[0].outcome)
+        assertEquals(0, history[0].deferCount)
+        assertEquals(secondId, history[1].occurrenceId)
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, history[1].outcome)
+        assertEquals(1, history[1].deferCount)
+        assertTrue(history[0].eventAtEpochMillis < history[1].eventAtEpochMillis)
+    }
+
+    @Test
+    fun twoDeferThenAnswer_oneUnitNotThreeEvents() = runBlocking {
         seedBase()
         val occurrenceId = insertOccurrence(
             questionId = 4,
@@ -153,18 +423,19 @@ class ArchiveHistoryReadRepositoryHostTest {
             ),
         )
 
-        val history = repository.observeHistoryForQuestion(4).first()
-        assertEquals(3, history.size)
-        assertEquals("d:$deferOne", history[0].stableKey)
-        assertEquals("d:$deferTwo", history[1].stableKey)
-        val answer = history[2] as ArchiveHistoryEvent.Answer
-        assertEquals("a:$answerId", answer.stableKey)
-        assertEquals("Final answer", answer.answerText)
-        assertEquals(answerId, answer.answerId)
+        val history = repository.observeOccurrenceHistoryForQuestion(4).first()
+        assertEquals(1, history.size)
+        val unit = history.single()
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+        assertEquals("a:$answerId", unit.stableKey)
+        assertEquals("Final answer", unit.answerText)
+        assertEquals(answerId, unit.answerId)
+        assertEquals(2, unit.deferCount)
+        assertEquals(listOf(deferOne, deferTwo), unit.deferEvents.map { it.deferEventId })
     }
 
     @Test
-    fun answeredWithoutAnswerRow_keepsAnswerEvent() = runBlocking {
+    fun answeredWithoutAnswerRow_keepsAnsweredUnit() = runBlocking {
         seedBase()
         val occurrenceId = insertOccurrence(
             questionId = 5,
@@ -174,13 +445,12 @@ class ArchiveHistoryReadRepositoryHostTest {
             questionTextSnapshot = "Deleted text Q",
         )
 
-        val history = repository.observeHistoryForQuestion(5).first()
-        assertEquals(1, history.size)
-        val event = history.single() as ArchiveHistoryEvent.Answer
-        assertEquals("o:$occurrenceId:answered", event.stableKey)
-        assertNull(event.answerId)
-        assertNull(event.answerText)
-        assertEquals(7_000L, event.eventAtEpochMillis)
+        val unit = repository.observeOccurrenceHistoryForQuestion(5).first().single()
+        assertEquals(ArchiveOccurrenceOutcome.ANSWERED, unit.outcome)
+        assertEquals("o:$occurrenceId:answered", unit.stableKey)
+        assertNull(unit.answerId)
+        assertNull(unit.answerText)
+        assertEquals(7_000L, unit.eventAtEpochMillis)
         assertTrue(repository.observeEntries().first().isEmpty())
     }
 
@@ -202,12 +472,11 @@ class ArchiveHistoryReadRepositoryHostTest {
             ),
         )
 
-        val history = repository.observeHistoryForQuestion(6).first()
-        val event = history.single() as ArchiveHistoryEvent.Answer
-        assertEquals("a:$answerId", event.stableKey)
-        assertEquals(answerId, event.answerId)
-        assertEquals("Keep me", event.answerText)
-        assertEquals(8_100L, event.eventAtEpochMillis)
+        val unit = repository.observeOccurrenceHistoryForQuestion(6).first().single()
+        assertEquals("a:$answerId", unit.stableKey)
+        assertEquals(answerId, unit.answerId)
+        assertEquals("Keep me", unit.answerText)
+        assertEquals(8_100L, unit.eventAtEpochMillis)
 
         val answerOnly = repository.observeEntries().first().single()
         assertEquals(answerId, answerOnly.answerId)
@@ -215,7 +484,7 @@ class ArchiveHistoryReadRepositoryHostTest {
     }
 
     @Test
-    fun sameTimestamp_deferredBeforeTerminal_deterministic() = runBlocking {
+    fun skipWithSameTimestampDefer_stillOneRejectedUnit() = runBlocking {
         seedBase()
         val occurrenceId = insertOccurrence(
             questionId = 7,
@@ -235,14 +504,15 @@ class ArchiveHistoryReadRepositoryHostTest {
             ),
         )
 
-        val history = repository.observeHistoryForQuestion(7).first()
-        assertEquals(2, history.size)
-        assertEquals("d:$deferId", history[0].stableKey)
-        assertEquals("o:$occurrenceId:rejected", history[1].stableKey)
+        val unit = repository.observeOccurrenceHistoryForQuestion(7).first().single()
+        assertEquals(ArchiveOccurrenceOutcome.REJECTED, unit.outcome)
+        assertEquals("o:$occurrenceId:rejected", unit.stableKey)
+        assertEquals(1, unit.deferCount)
+        assertEquals(deferId, unit.deferEvents.single().deferEventId)
     }
 
     @Test
-    fun allHistoryFeed_includesTerminalAndDeferWithoutAnswers() = runBlocking {
+    fun allHistoryFeed_includesTerminalOnly_excludesDeferOnAvailable() = runBlocking {
         seedBase()
         insertOccurrence(
             questionId = 1,
@@ -266,7 +536,6 @@ class ArchiveHistoryReadRepositoryHostTest {
                 zoneId = ZONE,
             ),
         )
-        // Quiet question 3 has neither terminal nor defer — must stay out of feed.
         insertOccurrence(
             questionId = 3,
             cyclePosition = 3,
@@ -274,11 +543,9 @@ class ArchiveHistoryReadRepositoryHostTest {
             completedAt = null,
         )
 
-        val all = repository.observeAllHistoryEvents().first()
-        val questionIds = all.map { it.questionId }.toSet()
-        assertEquals(setOf(1, 2), questionIds)
-        assertTrue(all.any { it is ArchiveHistoryEvent.Missed && it.questionId == 1 })
-        assertTrue(all.any { it is ArchiveHistoryEvent.Deferred && it.questionId == 2 })
+        val all = repository.observeAllOccurrenceHistory().first()
+        assertEquals(setOf(1), all.map { it.questionId }.toSet())
+        assertEquals(ArchiveOccurrenceOutcome.MISSED, all.single().outcome)
         assertTrue(repository.observeEntries().first().isEmpty())
     }
 
@@ -375,3 +642,4 @@ class ArchiveHistoryReadRepositoryHostTest {
         const val ZONE = "Europe/Kyiv"
     }
 }
+// 01.10.2026 Archive T2 occurrence read model cursor by Me4Hik END

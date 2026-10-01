@@ -241,11 +241,11 @@
     <string name="archive_question_answer_count">Ответов: %1$d</string>
     <string name="archive_question_rejected_count">Отклонений: %1$d</string>
     <string name="archive_question_missed_count">Пропусков: %1$d</string>
-    <string name="archive_question_deferred_count">Отложений: %1$d</string>
+    <!-- 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik - removed archive_question_deferred_count -->
     <string name="archive_cycle_label">Цикл %1$d</string>
     <string name="archive_rejected_label">Отклонён</string>
     <string name="archive_missed_label">Пропущен</string>
-    <string name="archive_deferred_label">Отложен на %1$d мин</string>
+    <!-- 01.10.2026 Archive T4 occurrence defer line cursor by Me4Hik - removed archive_deferred_label; see plurals -->
     <string name="archive_answer_deleted_body">Ответ удалён</string>
     <!-- 07.08.2026 Stage 16 Archive By Question cursor by Me4Hik END -->
     <!-- 07.08.2026 Stage 18 Delete Answer cursor by Me4Hik START - строки удаления Answer -->
