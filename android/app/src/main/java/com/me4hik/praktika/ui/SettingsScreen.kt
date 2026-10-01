@@ -78,6 +78,7 @@ import com.me4hik.praktika.ui.settings.SettingsUiState
 import com.me4hik.praktika.ui.tour.LocalTourController
 import com.me4hik.praktika.ui.tour.TourSessionState
 import com.me4hik.praktika.ui.tour.TourTargetId
+import com.me4hik.praktika.ui.tour.isTourScheduleInteractive
 import com.me4hik.praktika.ui.tour.notifyActivation
 import com.me4hik.praktika.ui.tour.tourTarget
 import com.me4hik.praktika.ui.theme.AccentViolet
@@ -258,6 +259,7 @@ private fun SettingsContentScreen(
         tourController?.session ?: remember { MutableStateFlow(TourSessionState()) }
         ).collectAsStateWithLifecycle()
     val tourActive = tourController != null && tourSession.isActive
+    val scheduleTourInteractive = isTourScheduleInteractive(tourActive, tourSession.currentStep)
 
     // 07.08.2026 Stage 24 Final Design cursor by Me4Hik START - settings glass layout
     Box(modifier = Modifier.fillMaxSize()) {
@@ -313,9 +315,9 @@ private fun SettingsContentScreen(
                         }
                         SettingsScheduleSlotRow(
                             slot = slot,
-                            enabled = !tourActive,
+                            enabled = !tourActive || scheduleTourInteractive,
                             onClick = {
-                                if (!tourActive) {
+                                if (!tourActive || scheduleTourInteractive) {
                                     pickerSlotIndex = slot.slotIndex
                                 }
                             },
@@ -597,6 +599,14 @@ private fun SettingsContentScreen(
             onConfirm = { minutes ->
                 onSlotTimeChange(pickerSlotIndex, minutes)
                 pickerSlotIndex = -1
+                if (isTourScheduleInteractive(
+                        tourActive = tourController != null &&
+                            tourController.session.value.isActive,
+                        step = tourController?.session?.value?.currentStep,
+                    )
+                ) {
+                    tourController.notifyActivation(TourTargetId.SETTINGS_SCHEDULE)
+                }
             },
         )
     }

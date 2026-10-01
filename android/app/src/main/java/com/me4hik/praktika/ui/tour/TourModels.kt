@@ -98,3 +98,10 @@ data class TourRunResult(
     val exitStepId: String?,
     val completedTour: Boolean,
 )
+
+/** Schedule slots stay editable only on the interactive schedule tour step. */
+fun isTourScheduleInteractive(tourActive: Boolean, step: TourStep?): Boolean {
+    if (!tourActive) return true
+    return step?.id == TourStepId.SCHEDULE_INFO &&
+        step.targetId == TourTargetId.SETTINGS_SCHEDULE
+}

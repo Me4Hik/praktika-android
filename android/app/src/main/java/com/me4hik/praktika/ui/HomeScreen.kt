@@ -95,63 +95,69 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .tourTarget(TourTargetId.HOME_STATUS),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .tourTarget(TourTargetId.HOME_OVERVIEW),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                HomeStatusTitle(content = content)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .tourTarget(TourTargetId.HOME_STATUS),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    HomeStatusTitle(content = content)
 
-                MetadataText(
-                    text = stringResource(
-                        R.string.practice_question_position,
-                        content.occurrence.cyclePosition,
-                    ),
-                    modifier = Modifier.testTag(PracticeTestTags.HOME_POSITION),
-                )
+                    MetadataText(
+                        text = stringResource(
+                            R.string.practice_question_position,
+                            content.occurrence.cyclePosition,
+                        ),
+                        modifier = Modifier.testTag(PracticeTestTags.HOME_POSITION),
+                    )
 
-                when (content) {
-                    is MainContentUiState.Scheduled -> {
-                        HomeScheduledContent(content = content)
+                    when (content) {
+                        is MainContentUiState.Scheduled -> {
+                            HomeScheduledContent(content = content)
+                        }
+                        is MainContentUiState.Available -> {
+                            HomeAvailableContent(
+                                content = content,
+                                onOpenQuestion = onOpenQuestion,
+                            )
+                        }
+                        is MainContentUiState.PausedScheduled -> {
+                            HomePausedScheduledContent(content = content)
+                        }
+                        is MainContentUiState.PausedAvailable -> {
+                            HomePausedAvailableContent(content = content)
+                        }
                     }
-                    is MainContentUiState.Available -> {
-                        HomeAvailableContent(
-                            content = content,
-                            onOpenQuestion = onOpenQuestion,
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    PracticeSurface(contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
+                        PracticeGlassActionRow(
+                            title = stringResource(R.string.practice_archive),
+                            icon = Icons.Outlined.Archive,
+                            onClick = onOpenArchive,
+                            modifier = Modifier
+                                .testTag(PracticeTestTags.HOME_ARCHIVE)
+                                .tourTarget(TourTargetId.HOME_ARCHIVE),
                         )
                     }
-                    is MainContentUiState.PausedScheduled -> {
-                        HomePausedScheduledContent(content = content)
+                    PracticeSurface(contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
+                        PracticeGlassActionRow(
+                            title = stringResource(R.string.practice_settings),
+                            icon = Icons.Outlined.Settings,
+                            onClick = onOpenSettings,
+                            modifier = Modifier
+                                .testTag(PracticeTestTags.HOME_SETTINGS)
+                                .tourTarget(TourTargetId.HOME_SETTINGS),
+                        )
                     }
-                    is MainContentUiState.PausedAvailable -> {
-                        HomePausedAvailableContent(content = content)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                PracticeSurface(contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
-                    PracticeGlassActionRow(
-                        title = stringResource(R.string.practice_archive),
-                        icon = Icons.Outlined.Archive,
-                        onClick = onOpenArchive,
-                        modifier = Modifier
-                            .testTag(PracticeTestTags.HOME_ARCHIVE)
-                            .tourTarget(TourTargetId.HOME_ARCHIVE),
-                    )
-                }
-                PracticeSurface(contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
-                    PracticeGlassActionRow(
-                        title = stringResource(R.string.practice_settings),
-                        icon = Icons.Outlined.Settings,
-                        onClick = onOpenSettings,
-                        modifier = Modifier
-                            .testTag(PracticeTestTags.HOME_SETTINGS)
-                            .tourTarget(TourTargetId.HOME_SETTINGS),
-                    )
                 }
             }
         }

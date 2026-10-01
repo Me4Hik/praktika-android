@@ -1,12 +1,19 @@
 package com.me4hik.praktika.ui.tour
 
+import androidx.test.core.app.ApplicationProvider
+import com.me4hik.praktika.R
 import com.me4hik.praktika.navigation.Routes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class ExperimentalCoreTourV1Test {
 
     private val definition = ExperimentalCoreTourV1.definition
@@ -33,7 +40,7 @@ class ExperimentalCoreTourV1Test {
             TourStepId.SHARE_INFO to TourStepType.SHOW_ONLY,
             TourStepId.BACK_FROM_ARCHIVE to TourStepType.NAV_BACK,
             TourStepId.CLICK_SETTINGS to TourStepType.TARGET_CLICK,
-            TourStepId.SCHEDULE_INFO to TourStepType.SHOW_ONLY,
+            TourStepId.SCHEDULE_INFO to TourStepType.USER_CHOICE,
             TourStepId.CHOOSE_WORDING to TourStepType.USER_CHOICE,
             TourStepId.PAUSE_INFO to TourStepType.SHOW_ONLY,
             TourStepId.BACKUP_INFO to TourStepType.SHOW_ONLY,
@@ -118,16 +125,37 @@ class ExperimentalCoreTourV1Test {
     }
 
     @Test
-    fun coreDefinition_mutationStepsAreOnlyWordingSoundDefer() {
+    fun coreDefinition_goHomeUsesOverviewTarget() {
+        val step = definition.steps.first { it.id == TourStepId.GO_HOME }
+        assertEquals(TourTargetId.HOME_OVERVIEW, step.targetId)
+        assertEquals(TourStepType.SHOW_ONLY, step.type)
+    }
+
+    @Test
+    fun coreDefinition_startIntroCopyAvoidsHighlightJargon() {
+        val tip = ApplicationProvider.getApplicationContext<android.content.Context>()
+            .getString(R.string.tour_step_start_intro)
+        assertTrue(tip.contains("Здравствуйте"))
+        assertTrue(tip.contains("Выделенные"))
+        assertFalse(tip.contains("Подсвеченное"))
+        assertFalse(tip.contains("Выйти"))
+    }
+
+    @Test
+    fun coreDefinition_mutationStepsIncludeScheduleWordingSoundDefer() {
         val mutating = definition.steps.filter { it.type == TourStepType.USER_CHOICE }
         assertEquals(
             listOf(
+                TourStepId.SCHEDULE_INFO,
                 TourStepId.CHOOSE_WORDING,
                 TourStepId.CHOOSE_SOUND,
                 TourStepId.CHOOSE_DEFER,
             ),
             mutating.map { it.id },
         )
+        val schedule = definition.steps.first { it.id == TourStepId.SCHEDULE_INFO }
+        assertEquals(TourCompletion.TargetActivation, schedule.completion)
+        assertEquals(TourTargetId.SETTINGS_SCHEDULE, schedule.targetId)
     }
 
     @Test
@@ -140,7 +168,7 @@ class ExperimentalCoreTourV1Test {
         assertNotNull(byId.getValue(TourStepId.EXPORT_INFO).targetId)
         assertNotNull(byId.getValue(TourStepId.SHARE_INFO).targetId)
         assertNotNull(byId.getValue(TourStepId.SYSTEM_NOTIFICATIONS_INFO).targetId)
-        assertTrue(byId.getValue(TourStepId.SCHEDULE_INFO).type == TourStepType.SHOW_ONLY)
+        assertEquals(TourStepType.USER_CHOICE, byId.getValue(TourStepId.SCHEDULE_INFO).type)
         assertTrue(byId.getValue(TourStepId.EXPORT_INFO).type == TourStepType.SHOW_ONLY)
         assertFalse(byId.getValue(TourStepId.CHOOSE_WORDING).type == TourStepType.SHOW_ONLY)
     }

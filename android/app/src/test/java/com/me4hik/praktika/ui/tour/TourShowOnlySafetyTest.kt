@@ -90,6 +90,7 @@ class TourShowOnlySafetyTest {
             .getString(step.tipResId)
         assertTrue(tip.contains("состояни"))
         assertTrue(tip.contains("пауз"))
+        assertTrue(tip.contains("Ответить"))
         assertFalse(tip.contains("до какого времени он доступен"))
     }
 

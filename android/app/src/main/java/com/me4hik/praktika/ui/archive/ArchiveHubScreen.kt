@@ -87,8 +87,7 @@ fun ArchiveHubScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .testTag(ArchiveTestTags.HUB_SCREEN)
-            .tourTarget(TourTargetId.ARCHIVE_HUB),
+            .testTag(ArchiveTestTags.HUB_SCREEN),
     ) {
         PracticeBackground(style = PracticeBackgroundStyle.Archive)
         Column(
@@ -129,7 +128,8 @@ fun ArchiveHubScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 16.dp)
+                    .tourTarget(TourTargetId.ARCHIVE_HUB),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 PracticeSurface(contentPadding = PaddingValues(4.dp)) {

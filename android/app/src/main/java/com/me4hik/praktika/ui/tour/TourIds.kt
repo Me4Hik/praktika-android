@@ -31,6 +31,7 @@ enum class TourStepId {
 }
 
 enum class TourTargetId {
+    HOME_OVERVIEW,
     HOME_STATUS,
     HOME_ARCHIVE,
     HOME_SETTINGS,

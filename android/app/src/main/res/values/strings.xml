@@ -396,9 +396,9 @@
     <string name="tour_skip">Пропустить</string>
     <string name="tour_exit">Выйти</string>
     <string name="tour_next">Далее</string>
-    <string name="tour_step_start_intro">Короткое обучение. Подсвеченное можно нажать. Всегда есть Пропустить и Выйти.</string>
+    <string name="tour_step_start_intro">Здравствуйте. Этот раздел поможет быстро настроить Практику под себя и разобраться с основными возможностями. Выделенные элементы можно нажимать, а ненужные шаги — пропускать.</string>
     <string name="tour_step_home_intro">Это главный экран: здесь видно состояние практики и основные разделы.</string>
-    <string name="tour_step_home_status">Здесь видно текущее состояние практики: доступен ли вопрос сейчас, когда будет следующий или включена пауза.</string>
+    <string name="tour_step_home_status">Здесь видно текущее состояние Практики. Если вопрос доступен — появятся вопрос и кнопка «Ответить». Если ещё рано — время следующего вопроса. На паузе здесь будет видно состояние паузы.</string>
     <string name="tour_step_click_archive">Откройте Архив ответов.</string>
     <string name="tour_step_archive_hub">Отсюда можно открыть ответы по дням, вопросы, аналитику и экспорт.</string>
     <string name="tour_step_click_archive_days">Заглянем в Архив по дням.</string>
@@ -409,7 +409,7 @@
     <string name="tour_step_share_info">Здесь экспортом можно поделиться. В обучении системное окно отправки не открываем.</string>
     <string name="tour_step_back_from_archive">Вернитесь на главный экран.</string>
     <string name="tour_step_click_settings">Откройте Настройки.</string>
-    <string name="tour_step_schedule_info">Здесь задаются три времени вопросов. Сейчас расписание не меняем.</string>
+    <string name="tour_step_schedule_info">Нажмите «Изменить» у одного из времён. При необходимости выберите другое время и подтвердите — оно сохранится.</string>
     <string name="tour_step_choose_wording">Выберите, как будут звучать вопросы. Этот выбор сохранится.</string>
     <string name="tour_step_pause_info">Здесь практику можно поставить на паузу. Сейчас её не включаем.</string>
     <string name="tour_step_backup_info">Здесь находится резервная копия данных. В обучении ничего сохранять или восстанавливать не будем.</string>

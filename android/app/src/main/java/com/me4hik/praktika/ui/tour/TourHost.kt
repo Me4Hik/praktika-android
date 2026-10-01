@@ -14,8 +14,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -164,13 +166,20 @@ private fun TourOverlay(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val heightPx = constraints.maxHeight.toFloat()
+        val density = LocalDensity.current
+        val estimatedChromePx = with(density) {
+            TourChromePlacement.DEFAULT_ESTIMATED_CHROME_HEIGHT_DP.dp.toPx()
+        }
+        val placeBelow = TourChromePlacement.placeBelow(
+            holeInWindow = holeInWindow,
+            overlayHeightPx = heightPx,
+            estimatedChromeHeightPx = estimatedChromePx,
+        )
         TourSpotlightLayer(
             holeInWindow = holeInWindow,
             blockHole = blockHole,
             modifier = Modifier.fillMaxSize(),
         )
-        val placeBelow = holeInWindow == null ||
-            holeInWindow.bottom < heightPx * 0.55f
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = if (placeBelow) Alignment.BottomCenter else Alignment.TopCenter,
@@ -180,8 +189,7 @@ private fun TourOverlay(
                 stepOrdinal = session.stepOrdinal,
                 stepCount = session.stepCount,
                 showNext = step.completion == TourCompletion.ManualAdvance,
-                holeInWindow = holeInWindow,
-                overlayHeightPx = heightPx,
+                placeBelow = placeBelow,
                 onSkip = onSkip,
                 onExit = onExit,
                 onNext = onNext,

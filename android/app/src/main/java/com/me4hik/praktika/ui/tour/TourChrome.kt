@@ -13,7 +13,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -28,16 +27,12 @@ fun TourChrome(
     stepOrdinal: Int,
     stepCount: Int,
     showNext: Boolean,
-    holeInWindow: Rect?,
-    overlayHeightPx: Float,
+    placeBelow: Boolean,
     onSkip: () -> Unit,
     onExit: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val placeBelow = holeInWindow == null ||
-        holeInWindow.bottom < overlayHeightPx * 0.55f
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -55,9 +50,8 @@ fun TourChrome(
             )
             .testTag(TourOverlayTestTags.CHROME),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = if (placeBelow) Alignment.CenterHorizontally else Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Spacer logic handled by parent Alignment; chrome card:
         Column(
             modifier = Modifier
                 .fillMaxWidth()
