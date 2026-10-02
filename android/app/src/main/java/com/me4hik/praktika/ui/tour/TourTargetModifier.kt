@@ -13,9 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -38,6 +41,9 @@ fun Modifier.tourTarget(id: TourTargetId): Modifier = composed {
     val requester = remember(id) { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     var lastCoordinates by remember(id) { mutableStateOf<LayoutCoordinates?>(null) }
+    val density = LocalDensity.current
+    val topInsetDp = LocalTourChromeTopInsetDp.current
+    val topInsetPx = with(density) { topInsetDp.dp.toPx() }
 
     DisposableEffect(id, registry) {
         onDispose { registry.remove(id) }
@@ -55,17 +61,32 @@ fun Modifier.tourTarget(id: TourTargetId): Modifier = composed {
         }
     }
 
+    suspend fun bringBelowChrome(coords: LayoutCoordinates?) {
+        if (coords == null || !coords.isAttached) {
+            runCatching { requester.bringIntoView() }
+            return
+        }
+        val size = coords.size
+        // Expand request upward by chrome inset so the target settles below fixed-top chrome.
+        val rect = Rect(
+            left = 0f,
+            top = -topInsetPx,
+            right = size.width.toFloat(),
+            bottom = size.height.toFloat(),
+        )
+        runCatching { requester.bringIntoView(rect) }
+    }
+
     // Re-publish after registry.clear() (generation bump) or new tour run.
     LaunchedEffect(generation, session.runId, id) {
         val coords = lastCoordinates ?: return@LaunchedEffect
         publishBoundsFrom(coords)
     }
 
-    LaunchedEffect(isActiveTarget, shouldBring) {
+    LaunchedEffect(isActiveTarget, shouldBring, topInsetPx) {
         if (!isActiveTarget) return@LaunchedEffect
         if (shouldBring) {
-            runCatching { requester.bringIntoView() }
-            // Wait one Compose frame so scroll settle is reflected in layout.
+            bringBelowChrome(lastCoordinates)
             withFrameNanos { }
             val coords = lastCoordinates
             if (coords != null) {
@@ -88,7 +109,7 @@ fun Modifier.tourTarget(id: TourTargetId): Modifier = composed {
                     controller?.notifyTargetAvailable(id)
                     if (shouldBring) {
                         scope.launch {
-                            runCatching { requester.bringIntoView() }
+                            bringBelowChrome(coordinates)
                             withFrameNanos { }
                             val settled = lastCoordinates
                             if (settled != null && settled.isAttached) {

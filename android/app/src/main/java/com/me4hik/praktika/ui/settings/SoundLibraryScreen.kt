@@ -37,6 +37,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -55,6 +57,7 @@ import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.tour.LocalTourController
 import com.me4hik.praktika.ui.tour.SoundLibraryTourNoVisibleBuiltinEffect
 import com.me4hik.praktika.ui.tour.TourEndStopsPreviewEffect
+import com.me4hik.praktika.ui.tour.TourSessionState
 import com.me4hik.praktika.ui.tour.TourTargetId
 import com.me4hik.praktika.ui.tour.notifyActivation
 import com.me4hik.praktika.ui.tour.tourTarget
@@ -85,6 +88,13 @@ fun SoundLibraryScreen(
     )
 
     val tourController = LocalTourController.current
+    val tourSession by (
+        tourController?.session
+            ?: remember { MutableStateFlow(TourSessionState()) }
+        ).collectAsStateWithLifecycle()
+    val chooseAnySound =
+        tourSession.isActive &&
+            tourSession.currentStep?.targetId == TourTargetId.SOUND_LIBRARY_ANY_ITEM
     val firstBuiltinIndex = firstVisibleBuiltinIndex(uiState.items)
     val hideInfoOnRestore = useRestoreHiddenTourTarget(uiState.items, uiState.hiddenCount)
 
@@ -172,7 +182,15 @@ fun SoundLibraryScreen(
             PracticeSurface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1f)
+                    .then(
+                        if (chooseAnySound) {
+                            // Spotlight the whole list area — any row is valid, not index 0 only.
+                            Modifier.tourTarget(TourTargetId.SOUND_LIBRARY_ANY_ITEM)
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
                 LazyColumn(
                     modifier = Modifier
@@ -184,10 +202,13 @@ fun SoundLibraryScreen(
                         key = { _, item -> item.asset.id },
                     ) { index, item ->
                         val isTrainingBuiltin =
-                            firstBuiltinIndex >= 0 && index == firstBuiltinIndex
+                            !chooseAnySound &&
+                                firstBuiltinIndex >= 0 &&
+                                index == firstBuiltinIndex
                         SoundLibraryRow(
                             item = item,
                             isTrainingBuiltin = isTrainingBuiltin,
+                            isAnySoundSelectable = chooseAnySound,
                             attachHideRestoreTourTarget = isTrainingBuiltin && !hideInfoOnRestore,
                             isPreviewing = uiState.currentlyPreviewingId == item.asset.id,
                             previewPositionMs = uiState.previewPositionMs,
@@ -210,6 +231,7 @@ fun SoundLibraryScreen(
 private fun SoundLibraryRow(
     item: SoundLibraryItemUi,
     isTrainingBuiltin: Boolean,
+    isAnySoundSelectable: Boolean = false,
     attachHideRestoreTourTarget: Boolean,
     isPreviewing: Boolean,
     previewPositionMs: Long,
@@ -241,10 +263,15 @@ private fun SoundLibraryRow(
                 selected = item.selected,
                 onClick = {
                     onSelect()
-                    if (isTrainingBuiltin) {
-                        tourController.notifyActivation(
-                            TourTargetId.SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_ITEM,
-                        )
+                    when {
+                        isAnySoundSelectable -> {
+                            tourController.notifyActivation(TourTargetId.SOUND_LIBRARY_ANY_ITEM)
+                        }
+                        isTrainingBuiltin -> {
+                            tourController.notifyActivation(
+                                TourTargetId.SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_ITEM,
+                            )
+                        }
                     }
                 },
                 role = Role.RadioButton,

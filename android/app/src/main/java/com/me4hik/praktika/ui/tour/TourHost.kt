@@ -22,7 +22,6 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.me4hik.praktika.navigation.Routes
-import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun TourHost(
@@ -49,14 +48,18 @@ fun TourHost(
     }
 
     LaunchedEffect(navController, tourController) {
-        navController.currentBackStackEntryFlow.collectLatest { entry ->
+        navController.currentBackStackEntryFlow.collect { entry ->
             tourController.onRouteChanged(entry.destination.route)
         }
     }
 
+    // collect (not collectLatest): ordered composite nav must not drop mid-sequence.
+    // generation stamp drops commands from superseded transitions.
     LaunchedEffect(tourController) {
-        tourController.navCommands.collectLatest { action ->
-            when (action) {
+        tourController.navCommands.collect { command ->
+            val liveGeneration = tourController.session.value.navGeneration
+            if (command.generation < liveGeneration) return@collect
+            when (command.action) {
                 TourNavAction.NONE -> Unit
                 TourNavAction.POP_TO_HOME -> {
                     val popped = navController.popBackStack(Routes.HOME, inclusive = false)
@@ -91,11 +94,7 @@ fun TourHost(
                     }
                 }
                 TourNavAction.NAVIGATE_NOTIFICATIONS -> {
-                    if (navController.currentDestination?.route != Routes.SETTINGS_NOTIFICATIONS) {
-                        navController.navigate(Routes.SETTINGS_NOTIFICATIONS) {
-                            launchSingleTop = true
-                        }
-                    }
+                    ensureSettingsParentThenNotifications(navController)
                 }
                 TourNavAction.NAVIGATE_SOUND_LIBRARY -> {
                     if (navController.currentDestination?.route != Routes.SOUND_LIBRARY) {
@@ -108,7 +107,6 @@ fun TourHost(
         }
     }
 
-    // Sole system-back owner while tour is active; always restore on dispose / inactive.
     DisposableEffect(navController, active) {
         navController.enableOnBackPressed(!active)
         onDispose {
@@ -119,18 +117,27 @@ fun TourHost(
     CompositionLocalProvider(
         LocalTourController provides tourController,
         LocalTourTargetRegistry provides registry,
+        LocalTourChromeTopInsetDp provides TourChromePlacement.TOP_TARGET_INSET_DP,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             content()
             if (active) {
                 val step = session.currentStep
-                val hole = step?.targetId?.let { targets[it] }
+                val hole = if (session.actionReady) {
+                    step?.targetId?.let { targets[it] }
+                } else {
+                    null
+                }
                 TourOverlay(
                     session = session,
                     holeInWindow = hole,
                     onSkip = tourController::onSkip,
                     onExit = { tourController.onExit(session.currentStep?.id) },
                     onNext = tourController::onNext,
+                    onDone = tourController::onFinishTour,
+                    onFinish = tourController::onFinishTour,
+                    onGateContinue = tourController::onGateContinueOptional,
+                    onGateFinish = tourController::onGateFinish,
                     modifier = Modifier
                         .fillMaxSize()
                         .zIndex(10f)
@@ -138,7 +145,6 @@ fun TourHost(
                 )
             }
         }
-        // After NavHost (content) so LIFO dispatcher priority favors Tour over Nav.
         BackHandler(enabled = active) {
             val step = latestSession.currentStep
             if (step?.type == TourStepType.NAV_BACK) {
@@ -150,6 +156,29 @@ fun TourHost(
     }
 }
 
+/**
+ * Never open `settings/notifications` without `settings` on the back stack
+ * (Notifications composable requires getBackStackEntry(SETTINGS)).
+ */
+internal fun ensureSettingsParentThenNotifications(navController: NavHostController) {
+    val route = navController.currentDestination?.route
+    if (route == Routes.SETTINGS_NOTIFICATIONS) return
+    val hasSettings = runCatching {
+        navController.getBackStackEntry(Routes.SETTINGS)
+        true
+    }.getOrDefault(false)
+    if (!hasSettings) {
+        navController.navigate(Routes.SETTINGS) {
+            launchSingleTop = true
+        }
+    }
+    if (navController.currentDestination?.route != Routes.SETTINGS_NOTIFICATIONS) {
+        navController.navigate(Routes.SETTINGS_NOTIFICATIONS) {
+            launchSingleTop = true
+        }
+    }
+}
+
 @Composable
 private fun TourOverlay(
     session: TourSessionState,
@@ -157,12 +186,23 @@ private fun TourOverlay(
     onSkip: () -> Unit,
     onExit: () -> Unit,
     onNext: () -> Unit,
+    onDone: () -> Unit,
+    onFinish: () -> Unit,
+    onGateContinue: () -> Unit,
+    onGateFinish: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val step = session.currentStep ?: return
-    val blockHole = step.type == TourStepType.SHOW_ONLY && step.targetId != null
+    val phase = step.uiPhase()
+    val blockHole = step.type == TourStepType.SHOW_ONLY && step.targetId != null && session.actionReady
     val tipResId = session.effectiveTipResId ?: step.tipResId
     val tip = stringResource(tipResId)
+    val cue = session.showActionCue && holeInWindow != null
+    val isCompletion = phase == TourUiPhase.COMPLETION
+    val showNext = step.completion == TourCompletion.ManualAdvance && !isCompletion
+    val showDone = isCompletion
+    val showManualAdvanceCue =
+        session.actionReady && step.showsManualAdvanceCue() && (showNext || showDone)
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val heightPx = constraints.maxHeight.toFloat()
@@ -170,6 +210,7 @@ private fun TourOverlay(
         val estimatedChromePx = with(density) {
             TourChromePlacement.DEFAULT_ESTIMATED_CHROME_HEIGHT_DP.dp.toPx()
         }
+        // TOP ALWAYS — placeBelow is permanently false.
         val placeBelow = TourChromePlacement.placeBelow(
             holeInWindow = holeInWindow,
             overlayHeightPx = heightPx,
@@ -178,6 +219,7 @@ private fun TourOverlay(
         TourSpotlightLayer(
             holeInWindow = holeInWindow,
             blockHole = blockHole,
+            showActionCue = cue,
             modifier = Modifier.fillMaxSize(),
         )
         Box(
@@ -186,23 +228,32 @@ private fun TourOverlay(
         ) {
             TourChrome(
                 tip = tip,
-                stepOrdinal = session.stepOrdinal,
-                stepCount = session.stepCount,
-                showNext = step.completion == TourCompletion.ManualAdvance,
+                progressDisplay = session.progressDisplay,
                 placeBelow = placeBelow,
+                showSkip = step.showsChromeSkip(),
+                showNext = showNext,
+                showDone = showDone,
+                showFinish = false,
+                showExit = !isCompletion,
+                showManualAdvanceCue = showManualAdvanceCue,
+                showGateContinue = phase == TourUiPhase.GATE && session.allActionTasksTerminal(),
+                showGateFinish = phase == TourUiPhase.GATE && session.allActionTasksTerminal(),
                 onSkip = onSkip,
                 onExit = onExit,
                 onNext = onNext,
+                onDone = {
+                    // FINAL ManualAdvance: record step + finish via onNext last-step path.
+                    if (isCompletion) onNext() else onDone()
+                },
+                onFinish = onFinish,
+                onGateContinue = onGateContinue,
+                onGateFinish = onGateFinish,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
     }
 }
 
-/**
- * Stops sound preview when an active tour ends while Sound Library stays composed.
- * Must be called from [com.me4hik.praktika.ui.settings.SoundLibraryScreen] with the real stop hook.
- */
 @Composable
 fun TourEndStopsPreviewEffect(
     onStopPreview: () -> Unit,

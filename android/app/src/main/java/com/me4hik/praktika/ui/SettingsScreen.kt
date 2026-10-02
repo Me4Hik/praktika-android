@@ -432,6 +432,7 @@ private fun SettingsContentScreen(
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.tourTarget(TourTargetId.SETTINGS_PAUSE_BACKUP),
             ) {
                 PracticeSectionHeader(
                     title = stringResource(R.string.settings_practice_section),
@@ -480,20 +481,20 @@ private fun SettingsContentScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-            }
 
-            // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
-            Box(modifier = Modifier.tourTarget(TourTargetId.SETTINGS_BACKUP)) {
-                SettingsBackupSection(
-                    backup = content.backup,
-                    onSetup = { if (!tourActive) onBackupSetup() },
-                    onBackupNow = { if (!tourActive) onBackupNow() },
-                    onChangeFolder = { if (!tourActive) onBackupChangeFolder() },
-                    onReconnect = { if (!tourActive) onBackupReconnect() },
-                    onDisable = { if (!tourActive) onBackupDisable() },
-                )
+                // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
+                Box(modifier = Modifier.tourTarget(TourTargetId.SETTINGS_BACKUP)) {
+                    SettingsBackupSection(
+                        backup = content.backup,
+                        onSetup = { if (!tourActive) onBackupSetup() },
+                        onBackupNow = { if (!tourActive) onBackupNow() },
+                        onChangeFolder = { if (!tourActive) onBackupChangeFolder() },
+                        onReconnect = { if (!tourActive) onBackupReconnect() },
+                        onDisable = { if (!tourActive) onBackupDisable() },
+                    )
+                }
+                // 10.08.2026 Post-release fixes cursor by Me4Hik END
             }
-            // 10.08.2026 Post-release fixes cursor by Me4Hik END
 
             PracticeSurface {
                 PracticeGlassActionRow(

@@ -43,6 +43,7 @@ import com.me4hik.praktika.ui.components.PracticeHeroAccent
 import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.components.PracticeTopBar
 import com.me4hik.praktika.ui.tour.LocalTourController
+import com.me4hik.praktika.ui.tour.TourChromePlacement
 import com.me4hik.praktika.ui.tour.TourSessionState
 import com.me4hik.praktika.ui.tour.TourTargetId
 import com.me4hik.praktika.ui.tour.notifyActivation
@@ -124,6 +125,16 @@ fun ArchiveHubScreen(
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
             Spacer(modifier = Modifier.height(12.dp))
+            // Tour-only inset: push OPEN_DAYS below fixed-top chrome without making hub always scrollable.
+            val openDaysTourActive =
+                tourActive && tourSession.currentStep?.targetId == TourTargetId.ARCHIVE_OPEN_DAYS
+            if (openDaysTourActive) {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(TourChromePlacement.TOP_TARGET_INSET_DP.dp),
+                )
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

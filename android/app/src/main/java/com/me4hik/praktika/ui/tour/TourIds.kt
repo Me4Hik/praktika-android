@@ -2,6 +2,7 @@ package com.me4hik.praktika.ui.tour
 
 enum class TourStepId {
     START_INTRO,
+    // Legacy ids kept for result formatting / older tests; not in active definition.
     GO_HOME,
     HOME_STATUS,
     CLICK_ARCHIVE,
@@ -28,6 +29,23 @@ enum class TourStepId {
     CHOOSE_DEFER,
     SYSTEM_NOTIFICATIONS_INFO,
     FINISHED,
+    // Action-tour phases
+    PHASE_GATE,
+    OVERVIEW_HOME,
+    OVERVIEW_ARCHIVE,
+    OVERVIEW_EXPORT_SHARE,
+    OVERVIEW_PAUSE_BACKUP,
+    /** Retained for historical run-result IDs; not in active core definition. */
+    OVERVIEW_NOTIFICATIONS,
+    TOUR_COMPLETION,
+}
+
+enum class TourTaskId {
+    ARCHIVE_DAYS,
+    SCHEDULE,
+    WORDING,
+    SOUND,
+    DEFER,
 }
 
 enum class TourTargetId {
@@ -51,8 +69,12 @@ enum class TourTargetId {
     NOTIFICATIONS_SOUND_LIBRARY,
     SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_PLAY,
     SOUND_LIBRARY_FIRST_VISIBLE_BUILTIN_ITEM,
+    /** Any selectable sound row may complete the choose-sound step. */
+    SOUND_LIBRARY_ANY_ITEM,
     SOUND_HIDE_RESTORE_INFO,
     SOUND_LIBRARY_BACK,
     NOTIFICATIONS_DEFER,
     NOTIFICATIONS_SYSTEM_SETTINGS,
+    /** Combined pause + backup region for overview highlight. */
+    SETTINGS_PAUSE_BACKUP,
 }
