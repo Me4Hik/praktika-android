@@ -42,10 +42,13 @@ class TourResultFormattingTest {
     fun coreTour_exitNumbersMatchStepOrder() {
         val def = ExperimentalCoreTourV1.definition
         assertEquals(1, exitStepNumberInDefinition("START_INTRO", def))
-        assertEquals(4, exitStepNumberInDefinition("CLICK_ARCHIVE", def))
-        assertEquals(18, exitStepNumberInDefinition("CLICK_NOTIFICATIONS", def))
-        assertEquals(21, exitStepNumberInDefinition("PREVIEW_SOUND", def))
-        assertEquals(27, exitStepNumberInDefinition("FINISHED", def))
+        assertEquals(2, exitStepNumberInDefinition("CLICK_ARCHIVE", def))
+        assertEquals(8, exitStepNumberInDefinition("CLICK_NOTIFICATIONS", def))
+        assertEquals(10, exitStepNumberInDefinition("CHOOSE_SOUND", def))
+        assertEquals(12, exitStepNumberInDefinition("PHASE_GATE", def))
+        assertEquals(16, exitStepNumberInDefinition("OVERVIEW_PAUSE_BACKUP", def))
+        assertEquals(17, exitStepNumberInDefinition("TOUR_COMPLETION", def))
+        assertEquals(0, exitStepNumberInDefinition("OVERVIEW_NOTIFICATIONS", def))
     }
 
     @Test
@@ -58,12 +61,12 @@ class TourResultFormattingTest {
             endedAtEpochMs = 2L,
             completedStepIds = emptyList(),
             skippedStepIds = listOf("START_INTRO"),
-            exitStepId = "PREVIEW_SOUND",
+            exitStepId = "CHOOSE_SOUND",
             completedTour = false,
         )
         val summary = formatTourResultSummary(context, result, def)
-        assertTrue(summary.contains("21"))
-        assertTrue(summary.contains(context.getString(com.me4hik.praktika.R.string.tour_title_preview_sound)))
+        assertTrue(summary.contains("10"))
+        assertTrue(summary.contains(context.getString(com.me4hik.praktika.R.string.tour_title_task_sound)))
         assertTrue(summary.contains("пропущено: 1"))
     }
 }

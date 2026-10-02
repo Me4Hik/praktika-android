@@ -81,17 +81,18 @@ class TourShowOnlySafetyTest {
     }
 
     @Test
-    fun homeStatus_tipIsUniversal_notAvailableOnly() {
+    fun overviewHome_tipMentionsStatusAndSections() {
         val step = ExperimentalCoreTourV1.definition.steps
-            .first { it.id == TourStepId.HOME_STATUS }
-        assertEquals(R.string.tour_step_home_status, step.tipResId)
-        assertEquals(TourTargetId.HOME_STATUS, step.targetId)
+            .first { it.id == TourStepId.OVERVIEW_HOME }
+        assertEquals(R.string.tour_overview_home, step.tipResId)
+        assertEquals(TourTargetId.HOME_OVERVIEW, step.targetId)
         val tip = ApplicationProvider.getApplicationContext<android.content.Context>()
             .getString(step.tipResId)
         assertTrue(tip.contains("состояни"))
-        assertTrue(tip.contains("пауз"))
-        assertTrue(tip.contains("Ответить"))
-        assertFalse(tip.contains("до какого времени он доступен"))
+        assertFalse(tip.contains("пауз"))
+        assertFalse(tip.contains("время следующего"))
+        assertTrue(tip.contains("Архив"))
+        assertTrue(tip.contains("Настройки"))
     }
 
     @Test
