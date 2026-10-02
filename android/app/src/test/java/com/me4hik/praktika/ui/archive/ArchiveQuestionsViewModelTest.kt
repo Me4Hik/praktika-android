@@ -57,10 +57,34 @@ class ArchiveQuestionsViewModelTest {
         val questionOne = content.questions.first { it.questionId == 1 }
         assertEquals(2, questionOne.answerCount)
         assertEquals("Q1 new", questionOne.questionText)
+        assertEquals(1, questionOne.cyclePosition)
         val questionTwo = content.questions.first { it.questionId == 2 }
         assertEquals(1, questionTwo.missedCount)
         assertEquals(0, questionTwo.answerCount)
+        assertEquals(2, questionTwo.cyclePosition)
     }
+
+    // 03.10.2026 Archive fixed numbering cursor by Me4Hik START - list order + leading source contract
+    @Test
+    fun listOrderedByCyclePosition_activityDoesNotReorder_leadingSourceIsCyclePosition() = runTest {
+        repository.emitHistory(
+            listOf(
+                sampleMissedUnit(1, 1_000L, questionId = 3),
+                sampleAnsweredUnit(2, 9_999L, questionId = 15, answerId = 20, questionText = "Q15 latest"),
+                sampleRejectedUnit(3, 2_000L, questionId = 8),
+            ),
+        )
+        val viewModel = ArchiveQuestionsViewModel(repository)
+        dispatcher.scheduler.advanceUntilIdle()
+        val content = viewModel.uiState.value as ArchiveQuestionsUiState.Content
+        assertEquals(listOf(3, 8, 15), content.questions.map { it.questionId })
+        // Leading source for Screen is cyclePosition (gaps; not row ranks 1,2,3).
+        assertEquals(listOf(3, 8, 15), content.questions.map { it.cyclePosition })
+        assertTrue(content.questions.map { it.cyclePosition } != listOf(1, 2, 3))
+        assertEquals(9_999L, content.questions.first { it.questionId == 15 }.latestEventAtEpochMillis)
+        assertEquals("Q15 latest", content.questions.first { it.questionId == 15 }.questionText)
+    }
+    // 03.10.2026 Archive fixed numbering cursor by Me4Hik END
 
     @Test
     fun answeredWithNestedDefers_listShowsOnlyAnswerCount() = runTest {

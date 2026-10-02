@@ -1,12 +1,15 @@
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - Compose helpers архива
 package com.me4hik.praktika.ui.archive
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -189,6 +192,38 @@ object ArchiveComposeTestSupport {
             .assert(hasAnyDescendant(hasText(text, substring = substring)))
             .assertIsDisplayed()
     }
+
+    // 03.10.2026 Archive fixed numbering cursor by Me4Hik START - order + leading helpers
+    fun archiveQuestionItemOrder(composeRule: ComposeContentTestRule): List<Int> {
+        val prefix = ArchiveTestTags.QUESTION_ITEM_PREFIX
+        return composeRule
+            .onNodeWithTag(ArchiveTestTags.QUESTIONS_LIST)
+            .onChildren()
+            .fetchSemanticsNodes()
+            .mapNotNull { node ->
+                val tag = node.config.getOrNull(SemanticsProperties.TestTag) ?: return@mapNotNull null
+                if (!tag.startsWith(prefix)) {
+                    return@mapNotNull null
+                }
+                tag.removePrefix(prefix).toIntOrNull()
+            }
+    }
+
+    fun assertArchiveQuestionLeadingNumber(
+        composeRule: ComposeContentTestRule,
+        questionId: Int,
+        expectedLeading: Int,
+    ) {
+        // Leading is the only exact digit token when title has no bare numbers and
+        // supporting uses "Ответов: N" (not equal to cyclePosition for this fixture).
+        assertArchiveQuestionItemContainsText(
+            composeRule = composeRule,
+            questionId = questionId,
+            text = expectedLeading.toString(),
+            substring = false,
+        )
+    }
+    // 03.10.2026 Archive fixed numbering cursor by Me4Hik END
 
     fun waitForArchiveQuestionHistoryScreen(composeRule: ComposeContentTestRule) {
         composeRule.waitUntil(timeoutMillis = 15_000) {

@@ -82,8 +82,9 @@ class ArchiveHistoryQuestionGroupingTest {
         assertEquals(3_000L, summary.latestEventAtEpochMillis)
     }
 
+    // 03.10.2026 Archive fixed numbering cursor by Me4Hik START - cyclePosition ASC contract
     @Test
-    fun latestActivitySortDescending() {
+    fun sortsByCyclePositionAscending_ignoresActivityTimestamps() {
         val summaries = ArchiveHistoryQuestionGrouping.summarize(
             listOf(
                 sampleMissedUnit(1, 1_000L, questionId = 2),
@@ -91,20 +92,37 @@ class ArchiveHistoryQuestionGroupingTest {
                 sampleRejectedUnit(3, 2_000L, questionId = 3),
             ),
         )
-        assertEquals(listOf(1, 3, 2), summaries.map { it.questionId })
+        assertEquals(listOf(1, 2, 3), summaries.map { it.questionId })
+        assertEquals(listOf(1, 2, 3), summaries.map { it.cyclePosition })
     }
 
     @Test
-    fun tieBreaksByQuestionIdAscending() {
+    fun newerActivityOnHigherCyclePositionDoesNotReorderList() {
         val summaries = ArchiveHistoryQuestionGrouping.summarize(
             listOf(
-                sampleMissedUnit(1, 5_000L, questionId = 9),
-                sampleRejectedUnit(2, 5_000L, questionId = 4),
-                sampleAnsweredUnit(3, 5_000L, questionId = 7, answerId = 3),
+                sampleMissedUnit(1, 1_000L, questionId = 3),
+                sampleAnsweredUnit(2, 9_999L, questionId = 15, answerId = 2),
+                sampleRejectedUnit(3, 2_000L, questionId = 8),
+            ),
+        )
+        assertEquals(listOf(3, 8, 15), summaries.map { it.questionId })
+        assertEquals(listOf(3, 8, 15), summaries.map { it.cyclePosition })
+        assertEquals(9_999L, summaries.first { it.questionId == 15 }.latestEventAtEpochMillis)
+    }
+
+    @Test
+    fun tieBreaksEqualCyclePositionByQuestionIdAscending() {
+        val summaries = ArchiveHistoryQuestionGrouping.summarize(
+            listOf(
+                sampleMissedUnit(1, 5_000L, questionId = 9, cyclePosition = 4),
+                sampleRejectedUnit(2, 5_000L, questionId = 4, cyclePosition = 4),
+                sampleAnsweredUnit(3, 5_000L, questionId = 7, answerId = 3, cyclePosition = 4),
             ),
         )
         assertEquals(listOf(4, 7, 9), summaries.map { it.questionId })
+        assertEquals(listOf(4, 4, 4), summaries.map { it.cyclePosition })
     }
+    // 03.10.2026 Archive fixed numbering cursor by Me4Hik END
 
     @Test
     fun deletedAnswerCountsAsAnswer() {

@@ -48,10 +48,12 @@ object ArchiveHistoryQuestionGrouping {
                     missedCount = missedCount,
                 )
             }
+            // 03.10.2026 Archive fixed numbering cursor by Me4Hik START - list order = cyclePosition ASC
             .sortedWith(
-                compareByDescending<ArchiveQuestionHistorySummary> { it.latestEventAtEpochMillis }
+                compareBy<ArchiveQuestionHistorySummary> { it.cyclePosition }
                     .thenBy { it.questionId },
             )
+            // 03.10.2026 Archive fixed numbering cursor by Me4Hik END
     }
 }
 // 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik END

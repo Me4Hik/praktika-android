@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.CircularProgressIndicator
@@ -123,7 +123,7 @@ fun ArchiveQuestionsScreen(
                                 icon = Icons.Outlined.HelpOutline,
                             )
                         }
-                        itemsIndexed(uiState.questions, key = { _, item -> item.questionId }) { index, questionItem ->
+                        items(uiState.questions, key = { it.questionId }) { questionItem ->
                             // 01.10.2026 Archive T3 summary terminal counts cursor by Me4Hik START - no Deferred segment
                             val summarySegments = ArchiveQuestionSummaryFormatter.nonzeroSegments(
                                 answerCount = questionItem.answerCount,
@@ -157,13 +157,15 @@ fun ArchiveQuestionsScreen(
                                 title = questionItem.questionText,
                                 titleStyle = HomeQuestionSerifStyle,
                                 supporting = supporting,
+                                // 03.10.2026 Archive fixed numbering cursor by Me4Hik START - leading = cyclePosition
                                 leading = {
                                     Text(
-                                        text = "${index + 1}",
+                                        text = "${questionItem.cyclePosition}",
                                         style = MaterialTheme.typography.labelLarge,
                                         color = TextQuestionSoft.copy(alpha = 0.55f),
                                     )
                                 },
+                                // 03.10.2026 Archive fixed numbering cursor by Me4Hik END
                                 onClick = { onQuestionSelected(questionItem.questionId) },
                                 modifier = Modifier.testTag(
                                     "${ArchiveTestTags.QUESTION_ITEM_PREFIX}${questionItem.questionId}",
