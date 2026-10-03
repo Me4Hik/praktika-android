@@ -58,7 +58,7 @@ class Stage21ShareBlackviewSmokeInstrumentedTest {
         val appPackage = InstrumentationRegistry.getInstrumentation().targetContext.packageName
         composeRule.waitUntil(timeoutMillis = 20_000) {
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ARCHIVE) ||
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
@@ -83,7 +83,7 @@ class Stage21ShareBlackviewSmokeInstrumentedTest {
         val appPackage = InstrumentationRegistry.getInstrumentation().targetContext.packageName
         composeRule.waitUntil(timeoutMillis = 20_000) {
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ARCHIVE) ||
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)

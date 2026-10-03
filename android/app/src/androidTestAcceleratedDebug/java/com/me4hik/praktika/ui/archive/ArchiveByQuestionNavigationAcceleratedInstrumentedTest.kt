@@ -166,7 +166,7 @@ class ArchiveByQuestionNavigationAcceleratedInstrumentedTest {
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
     }
 
     @Test

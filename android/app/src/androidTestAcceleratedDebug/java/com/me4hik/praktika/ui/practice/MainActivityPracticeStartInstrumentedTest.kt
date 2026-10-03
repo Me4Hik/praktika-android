@@ -80,12 +80,13 @@ class MainActivityPracticeStartInstrumentedTest {
             assertTrue(runtime.database.practiceStateDao().get()!!.isPracticeStarted)
             assertEquals(1, runtime.database.questionOccurrenceDao().count())
 
+            // 03.10.2026 Home question label cursor by Me4Hik START - start lands on Scheduled Home
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
             }
-
-            composeRule.onNodeWithText("Вопрос 1 из 21").assertIsDisplayed()
-            composeRule.onNodeWithTag(PracticeTestTags.HOME_PLANNED_TIME).assertIsDisplayed()
+            PracticeComposeTestSupport.assertHomePlannedTimeDisplayed(composeRule)
+            PracticeComposeTestSupport.assertHomePositionAbsent(composeRule)
+            // 03.10.2026 Home question label cursor by Me4Hik END
             composeRule.onAllNodesWithTag(PracticeTestTags.FATAL_ERROR)
                 .fetchSemanticsNodes()
                 .isEmpty()
@@ -120,8 +121,9 @@ class MainActivityPracticeStartInstrumentedTest {
             val runtime = PraktikaRuntimeHolder.get(context)
             runtime.cycleRepository.startPractice()
 
+            // 03.10.2026 Home question label cursor by Me4Hik START
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
             }
 
             val occurrenceCountBefore = runtime.database.questionOccurrenceDao().count()
@@ -134,10 +136,11 @@ class MainActivityPracticeStartInstrumentedTest {
             composeRule.waitForIdle()
 
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
             }
 
-            composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+            PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+            // 03.10.2026 Home question label cursor by Me4Hik END
             composeRule.onAllNodesWithTag(PracticeTestTags.ONBOARDING_START)
                 .fetchSemanticsNodes()
                 .isEmpty()

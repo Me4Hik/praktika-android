@@ -107,13 +107,20 @@ fun HomeScreen(
                 ) {
                     HomeStatusTitle(content = content)
 
-                    MetadataText(
-                        text = stringResource(
-                            R.string.practice_question_position,
-                            content.occurrence.cyclePosition,
-                        ),
-                        modifier = Modifier.testTag(PracticeTestTags.HOME_POSITION),
-                    )
+                    // 03.10.2026 Home question label cursor by Me4Hik START - position only when active
+                    val showQuestionPosition =
+                        content is MainContentUiState.Available ||
+                            content is MainContentUiState.PausedAvailable
+                    if (showQuestionPosition) {
+                        MetadataText(
+                            text = stringResource(
+                                R.string.practice_question_position,
+                                content.occurrence.cyclePosition,
+                            ),
+                            modifier = Modifier.testTag(PracticeTestTags.HOME_POSITION),
+                        )
+                    }
+                    // 03.10.2026 Home question label cursor by Me4Hik END
 
                     when (content) {
                         is MainContentUiState.Scheduled -> {

@@ -87,12 +87,13 @@ class MainActivityStage11BlackviewE2EInstrumentedTest {
 
             OnboardingComposeTestSupport.startPractice(composeRule)
 
+            // 03.10.2026 Home question label cursor by Me4Hik START - Scheduled Home after start
             composeRule.waitUntil(timeoutMillis = 20_000) {
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
             }
-
-            composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
-            composeRule.onNodeWithText("Вопрос 1 из 21").assertIsDisplayed()
+            PracticeComposeTestSupport.assertHomePlannedTimeDisplayed(composeRule)
+            PracticeComposeTestSupport.assertHomePositionAbsent(composeRule)
+            // 03.10.2026 Home question label cursor by Me4Hik END
             composeRule.onAllNodesWithTag(PracticeTestTags.ONBOARDING_START)
                 .fetchSemanticsNodes()
                 .isEmpty()

@@ -85,7 +85,7 @@ class Stage17RepeatAnswerNavigationAcceleratedInstrumentedTest {
         ArchiveComposeTestSupport.assertQuestionHistoryCycleLabelDisplayed(composeRule, cycleNumber = 1)
         ArchiveComposeTestSupport.assertQuestionHistoryCycleLabelDisplayed(composeRule, cycleNumber = 2)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
         assertTrue(composeRule.onAllNodesWithTag(PracticeTestTags.ANSWER_INPUT).fetchSemanticsNodes().isEmpty())
     }
 

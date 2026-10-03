@@ -80,7 +80,7 @@ class MainActivityStage12BlackviewE2EInstrumentedTest {
         OnboardingComposeTestSupport.startPractice(composeRule)
 
         composeRule.waitUntil(timeoutMillis = 20_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
         composeRule.onNodeWithTag(PracticeTestTags.HOME_NOTIFICATION_CARD).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.HOME_NOTIFICATION_ACTION).performClick()

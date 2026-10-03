@@ -380,7 +380,7 @@ object Stage12NotificationTapProofSupport {
         PracticeComposeTestSupport.ensureTestActivityResumed(composeRule)
         composeRule.waitForIdle()
         composeRule.waitUntil(timeoutMillis = 30_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION) ||
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule) ||
                 PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ANSWER)
         }
         return setup

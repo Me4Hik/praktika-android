@@ -70,13 +70,14 @@ class Stage23ProductionIntegratedJourneyInstrumentedTest {
         }
 
         composeRule.waitUntil(timeoutMillis = 25_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION) ||
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ARCHIVE)
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule) || PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ARCHIVE)
         }
         assertFalse(
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.ONBOARDING_START),
         )
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
 
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)
@@ -114,7 +115,7 @@ class Stage23ProductionIntegratedJourneyInstrumentedTest {
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
 
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
 
         PracticeComposeTestSupport.clickHomeSettings(composeRule)
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCREEN).assertIsDisplayed()

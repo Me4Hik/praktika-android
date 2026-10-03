@@ -128,11 +128,15 @@ class MainActivityAnswerRecreationInstrumentedTest {
             composeRule.onNodeWithTag(PracticeTestTags.ANSWER_SAVE).performClick()
             composeRule.waitForIdle()
 
+            // 03.10.2026 Home question label cursor by Me4Hik START - after save Home is Scheduled
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
             }
-            composeRule.onNodeWithText("Вопрос 2 из 21").assertIsDisplayed()
+            PracticeComposeTestSupport.assertHomePlannedTimeDisplayed(composeRule)
+            PracticeComposeTestSupport.assertHomePositionAbsent(composeRule)
+            composeRule.onNodeWithText("Следующий вопрос:").assertIsDisplayed()
             composeRule.onNodeWithText("Ответ сохранён").assertIsDisplayed()
+            // 03.10.2026 Home question label cursor by Me4Hik END
 
             val savedOccurrence = runtime.database.questionOccurrenceDao().getById(occurrenceId)!!
             val answer = runtime.database.answerDao().getByOccurrenceId(occurrenceId)!!

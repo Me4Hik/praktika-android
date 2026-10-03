@@ -137,7 +137,9 @@ class SettingsNavigationProductionInstrumentedTest {
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_BACK).performClick()
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_DISCARD).performClick()
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
         runBlocking {
             val slots = harness.runtime.database.scheduleSlotDao().getAllOrderedByTime()
             assertEquals(660, slots.first { it.slotIndex == 1 }.timeOfDayMinutes)
@@ -156,7 +158,9 @@ class SettingsNavigationProductionInstrumentedTest {
         SettingsComposeTestSupport.waitForScheduleAutosaveIdle(composeRule)
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_BACK).performClick()
         composeRule.onNodeWithTag(SettingsTestTags.SETTINGS_DIRTY_DIALOG).assertDoesNotExist()
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
     }
 
     private fun setDirtySettingsNavigationContent(

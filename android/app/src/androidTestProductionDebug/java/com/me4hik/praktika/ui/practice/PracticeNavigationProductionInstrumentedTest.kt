@@ -74,8 +74,10 @@ class PracticeNavigationProductionInstrumentedTest {
             startPractice()
         }
         PracticeComposeTestSupport.waitForHome(composeRule)
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START - Scheduled: planned yes, position no
         composeRule.onNodeWithTag(PracticeTestTags.HOME_PLANNED_TIME).assertIsDisplayed()
+        PracticeComposeTestSupport.assertHomePositionAbsent(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
         assertFalse(
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_QUESTION_TEXT),
         )
@@ -91,7 +93,9 @@ class PracticeNavigationProductionInstrumentedTest {
             assertEquals(1, harness.database.questionOccurrenceDao().count())
         }
         PracticeComposeTestSupport.waitForHome(composeRule)
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
     }
 
     @Test
@@ -120,6 +124,9 @@ class PracticeNavigationProductionInstrumentedTest {
         }
         composeRule.onNodeWithTag(PracticeTestTags.HOME_QUESTION_TEXT).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.HOME_ANSWER).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START - Available keeps position label
+        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
     }
 
     @Test
@@ -202,7 +209,9 @@ class PracticeNavigationProductionInstrumentedTest {
         PracticeComposeTestSupport.clickHomeAnswer(composeRule)
         PracticeComposeTestSupport.clickQuestionSkip(composeRule)
         composeRule.waitForIdle()
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
         runBlocking {
             val first = harness.database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
             assertEquals(QuestionOccurrenceStatus.SKIPPED_BY_USER, first.status)
@@ -243,12 +252,16 @@ class PracticeNavigationProductionInstrumentedTest {
         PracticeComposeTestSupport.clickHomeArchive(composeRule)
         composeRule.onNodeWithTag(ArchiveTestTags.DATES_SCREEN).assertIsDisplayed()
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
 
         PracticeComposeTestSupport.clickHomeSettings(composeRule)
         composeRule.onNodeWithText("Настройки").assertIsDisplayed()
         PracticeComposeTestSupport.navigateBackFromSettings(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
     }
 
     @Test

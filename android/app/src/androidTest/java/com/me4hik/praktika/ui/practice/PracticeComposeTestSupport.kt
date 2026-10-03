@@ -3,6 +3,7 @@
 package com.me4hik.praktika.ui.practice
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
@@ -56,8 +57,12 @@ object PracticeComposeTestSupport {
                 }
                 val loading = composeRule.onAllNodesWithTag(PracticeTestTags.LOADING).fetchSemanticsNodes()
                 val onboarding = composeRule.onAllNodesWithTag(PracticeTestTags.ONBOARDING_START).fetchSemanticsNodes()
-                val home = composeRule.onAllNodesWithTag(PracticeTestTags.HOME_POSITION).fetchSemanticsNodes()
-                loading.isEmpty() && (onboarding.isNotEmpty() || home.isNotEmpty())
+                // 03.10.2026 Home question label cursor by Me4Hik START - Scheduled Home has no HOME_POSITION
+                val homePosition = composeRule.onAllNodesWithTag(PracticeTestTags.HOME_POSITION).fetchSemanticsNodes()
+                val homePlanned = composeRule.onAllNodesWithTag(PracticeTestTags.HOME_PLANNED_TIME).fetchSemanticsNodes()
+                val home = homePosition.isNotEmpty() || homePlanned.isNotEmpty()
+                // 03.10.2026 Home question label cursor by Me4Hik END
+                loading.isEmpty() && (onboarding.isNotEmpty() || home)
             } catch (_: IllegalStateException) {
                 false
             }
@@ -69,17 +74,56 @@ object PracticeComposeTestSupport {
     ) {
         composeRule.waitUntil(timeoutMillis = 10_000) {
             hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION) ||
-                hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
+                hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME) ||
+                hasNodeWithTag(composeRule, PracticeTestTags.HOME_QUESTION_TEXT) ||
+                hasNodeWithTag(composeRule, PracticeTestTags.HOME_ANSWER)
         }
     }
 
     // 06.08.2026 Stage 12 Connected Navigation Fix cursor by Me4Hik START - scroll + async navigation waits
+    // 03.10.2026 Home question label cursor by Me4Hik START - assert by Available vs Scheduled semantics
     fun waitForHomeDisplayed(
         composeRule: ComposeContentTestRule,
     ) {
         waitForHome(composeRule)
-        assertHomePositionDisplayed(composeRule)
+        assertHomeStartedContentDisplayed(composeRule)
     }
+
+    /**
+     * Confirms Started Home by concrete state semantics:
+     * - Available / PausedAvailable → [HOME_POSITION] present
+     * - Scheduled / PausedScheduled → [HOME_PLANNED_TIME] present and [HOME_POSITION] absent
+     */
+    fun assertHomeStartedContentDisplayed(
+        composeRule: ComposeContentTestRule,
+    ) {
+        val hasPlanned = hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME)
+        val hasPosition = hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+        val hasActiveQuestion =
+            hasNodeWithTag(composeRule, PracticeTestTags.HOME_QUESTION_TEXT) ||
+                hasNodeWithTag(composeRule, PracticeTestTags.HOME_ANSWER)
+        when {
+            hasPlanned -> {
+                assertHomePlannedTimeDisplayed(composeRule)
+                assertHomePositionAbsent(composeRule)
+            }
+            hasActiveQuestion || hasPosition -> {
+                assertHomePositionDisplayed(composeRule)
+            }
+            else -> {
+                throw AssertionError(
+                    "Home started content not recognized: expected planned-time or active question tags",
+                )
+            }
+        }
+    }
+
+    fun assertHomePositionAbsent(
+        composeRule: ComposeContentTestRule,
+    ) {
+        composeRule.onAllNodesWithTag(PracticeTestTags.HOME_POSITION).assertCountEquals(0)
+    }
+    // 03.10.2026 Home question label cursor by Me4Hik END
 
     fun waitForQuestion(
         composeRule: ComposeContentTestRule,
@@ -216,6 +260,15 @@ object PracticeComposeTestSupport {
             false
         }
     }
+
+    // 03.10.2026 Home question label cursor by Me4Hik START - Home ready without requiring HOME_POSITION
+    fun hasHomeStartedContent(composeRule: ComposeContentTestRule): Boolean {
+        return hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION) ||
+            hasNodeWithTag(composeRule, PracticeTestTags.HOME_PLANNED_TIME) ||
+            hasNodeWithTag(composeRule, PracticeTestTags.HOME_QUESTION_TEXT) ||
+            hasNodeWithTag(composeRule, PracticeTestTags.HOME_ANSWER)
+    }
+    // 03.10.2026 Home question label cursor by Me4Hik END
 
     fun hasNodeWithText(
         composeRule: ComposeContentTestRule,

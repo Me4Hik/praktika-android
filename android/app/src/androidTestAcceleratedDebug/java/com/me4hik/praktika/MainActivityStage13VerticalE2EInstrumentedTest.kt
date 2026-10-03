@@ -106,7 +106,7 @@ class MainActivityStage13VerticalE2EInstrumentedTest {
         OnboardingComposeTestSupport.startPractice(composeRule)
 
         composeRule.waitUntil(timeoutMillis = 20_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
         runBlocking {
             val practiceState = runtime.database.practiceStateDao().get()!!
@@ -206,7 +206,7 @@ class MainActivityStage13VerticalE2EInstrumentedTest {
         runCatching { PracticeComposeTestSupport.ensureTestActivityResumed(composeRule) }
         composeRule.waitForIdle()
         composeRule.waitUntil(timeoutMillis = 15_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION) ||
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule) ||
                 !PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.ONBOARDING_START)
         }
 
@@ -241,7 +241,7 @@ class MainActivityStage13VerticalE2EInstrumentedTest {
         PracticeComposeTestSupport.clickHomeAnswer(composeRule)
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_SKIP).performClick()
         composeRule.waitUntil(timeoutMillis = 10_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
 
         runBlocking {
@@ -387,7 +387,7 @@ class MainActivityStage13VerticalE2EInstrumentedTest {
         composeRule.onNodeWithTag(PracticeTestTags.ANSWER_SAVE).assertIsEnabled().performClick()
         composeRule.waitForIdle()
         composeRule.waitUntil(timeoutMillis = 15_000) {
-            PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+            PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
         composeRule.onNodeWithText("Ответ сохранён").assertIsDisplayed()
     }

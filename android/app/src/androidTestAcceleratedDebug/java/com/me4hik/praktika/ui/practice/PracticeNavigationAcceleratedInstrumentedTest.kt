@@ -87,7 +87,10 @@ class PracticeNavigationAcceleratedInstrumentedTest {
                 .fetchSemanticsNodes()
                 .isEmpty(),
         )
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START - default start is Scheduled
+        PracticeComposeTestSupport.assertHomePlannedTimeDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomePositionAbsent(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
     }
 
     @Test
@@ -100,7 +103,9 @@ class PracticeNavigationAcceleratedInstrumentedTest {
         PracticeComposeTestSupport.clickHomeAnswer(composeRule)
         PracticeComposeTestSupport.clickQuestionSkip(composeRule)
         composeRule.waitForIdle()
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik START - after skip next is Scheduled
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
         runBlocking {
             assertEquals(
                 QuestionOccurrenceStatus.SKIPPED_BY_USER,
@@ -131,12 +136,16 @@ class PracticeNavigationAcceleratedInstrumentedTest {
         PracticeComposeTestSupport.clickHomeArchive(composeRule)
         composeRule.onNodeWithTag(com.me4hik.praktika.ui.archive.ArchiveTestTags.DATES_SCREEN).assertIsDisplayed()
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
 
         PracticeComposeTestSupport.clickHomeSettings(composeRule)
         composeRule.onNodeWithText("Настройки").assertIsDisplayed()
         PracticeComposeTestSupport.navigateBackFromSettings(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
     }
 
     // 06.08.2026 Stage 11 Onboarding cursor by Me4Hik START - resume before harness setup

@@ -88,7 +88,7 @@ class Stage20CsvExportBlackviewSmokeInstrumentedTest {
         }
         composeRule.waitUntil(timeoutMillis = 20_000) {
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ARCHIVE) ||
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)

@@ -110,7 +110,7 @@ class Stage17RepeatAnswerBlackviewSmokeInstrumentedTest {
         ArchiveComposeTestSupport.assertQuestionHistoryCycleLabelDisplayed(composeRule, smokeCycleOneNumber)
         ArchiveComposeTestSupport.assertQuestionHistoryCycleLabelDisplayed(composeRule, smokeCycleTwoNumber)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
         assertTrue(composeRule.onAllNodesWithTag(PracticeTestTags.ANSWER_INPUT).fetchSemanticsNodes().isEmpty())
     }
 

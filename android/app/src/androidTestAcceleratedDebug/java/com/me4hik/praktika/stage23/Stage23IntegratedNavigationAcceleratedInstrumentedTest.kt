@@ -83,7 +83,9 @@ class Stage23IntegratedNavigationAcceleratedInstrumentedTest {
         })
 
         PracticeComposeTestSupport.waitForHome(composeRule)
-        composeRule.onNodeWithTag(PracticeTestTags.HOME_POSITION).assertIsDisplayed()
+        // 03.10.2026 Home question label cursor by Me4Hik START
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
+        // 03.10.2026 Home question label cursor by Me4Hik END
 
         ArchiveComposeTestSupport.openArchiveFromHome(composeRule)
         ArchiveComposeTestSupport.waitForArchiveDatesContent(composeRule)

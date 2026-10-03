@@ -94,7 +94,7 @@ class Stage18DeleteAnswerBlackviewSmokeInstrumentedTest {
 
         composeRule.waitUntil(timeoutMillis = 20_000) {
             PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_ARCHIVE) ||
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
         }
 
         val seededHistory = runtime.archiveReadRepository.observeEntriesForQuestion(1).first()
@@ -162,7 +162,7 @@ class Stage18DeleteAnswerBlackviewSmokeInstrumentedTest {
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
         ArchiveComposeTestSupport.waitForArchiveHubScreen(composeRule)
         ArchiveComposeTestSupport.clickArchiveBack(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
     }
 
     private suspend fun seedQuestionAnswer(

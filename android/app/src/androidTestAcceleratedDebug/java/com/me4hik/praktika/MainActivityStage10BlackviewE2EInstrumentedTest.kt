@@ -186,7 +186,7 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
             composeRule.onNodeWithTag(PracticeTestTags.HOME_ANSWER).performClick()
             composeRule.onNodeWithTag(PracticeTestTags.QUESTION_SKIP).performClick()
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                PracticeComposeTestSupport.hasNodeWithTag(composeRule, PracticeTestTags.HOME_POSITION)
+                PracticeComposeTestSupport.hasHomeStartedContent(composeRule)
             }
 
             val skipped = runtime.database.questionOccurrenceDao().getByCycleAndPosition(1, 1)!!
@@ -248,7 +248,7 @@ class MainActivityStage10BlackviewE2EInstrumentedTest {
             !PracticeComposeTestSupport.hasNodeWithTag(composeRule, SettingsTestTags.SETTINGS_SCREEN)
         }
         PracticeComposeTestSupport.waitForHome(composeRule)
-        PracticeComposeTestSupport.assertHomePositionDisplayed(composeRule)
+        PracticeComposeTestSupport.assertHomeStartedContentDisplayed(composeRule)
         // 06.08.2026 Stage 12 Connected Navigation Fix cursor by Me4Hik END
     }
 
