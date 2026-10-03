@@ -20,6 +20,9 @@ object BackupPayloadSemanticComparator {
             deferEvents = payload.deferEvents.sortedWith(
                 com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV2.DEFER_EVENT_ORDER,
             ),
+            moodCheckIns = payload.moodCheckIns.sortedWith(
+                com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV3.MOOD_CHECK_IN_ORDER,
+            ),
         )
     }
 

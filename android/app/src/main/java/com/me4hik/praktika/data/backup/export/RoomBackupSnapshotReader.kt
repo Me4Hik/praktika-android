@@ -15,6 +15,7 @@ class RoomBackupSnapshotReader(
                 occurrences = database.questionOccurrenceDao().getAllOrderedByPlannedAt(),
                 answers = database.answerDao().getAllOrderedByCreatedAt(),
                 deferEvents = database.deferEventDao().getAllOrdered(),
+                moodCheckIns = database.moodCheckInDao().getAllOrdered(),
             )
         }
     }

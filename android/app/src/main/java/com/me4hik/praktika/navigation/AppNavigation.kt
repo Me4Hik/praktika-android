@@ -660,6 +660,7 @@ fun AppNavigation(
                     }
                     val answerViewModel: AnswerViewModel = viewModel(factory = factory)
                     val answerUiState by answerViewModel.uiState.collectAsStateWithLifecycle()
+                    val answerMoodUiState by answerViewModel.moodCheckInUiState.collectAsStateWithLifecycle()
 
                     LaunchedEffect(answerViewModel) {
                         answerViewModel.navigation.collect { event ->
@@ -704,6 +705,9 @@ fun AppNavigation(
                             navController.popBackStack(Routes.HOME, inclusive = false)
                         },
                         onRetry = answerViewModel::retryRead,
+                        moodUiState = answerMoodUiState,
+                        onMoodEntryClick = answerViewModel::onMoodEntryClicked,
+                        onMoodLevelSelected = answerViewModel::onMoodLevelSelected,
                     )
                 }
             }

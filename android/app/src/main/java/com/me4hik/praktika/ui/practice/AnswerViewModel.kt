@@ -10,7 +10,10 @@ import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedException
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedReason
 import com.me4hik.praktika.data.cycle.CycleCorruptionException
 import com.me4hik.praktika.data.cycle.CycleNotStartedException
+import com.me4hik.praktika.data.model.MoodLevel
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.mood.MoodCheckInRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.read.AnswerOccurrenceReadModel
 import com.me4hik.praktika.data.read.AnswerReadRepository
 import com.me4hik.praktika.data.read.AnswerReadResult
@@ -26,8 +29,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -36,16 +41,21 @@ class AnswerViewModel(
     private val occurrenceId: Long,
     private val readRepository: AnswerReadRepository,
     private val saveAnswerCommand: SaveAnswerCommand,
+    private val moodCheckInRepository: MoodCheckInRepository,
+    private val questionWordingPreferenceRepository: QuestionWordingPreferenceRepository,
     private val savedStateHandle: SavedStateHandle,
     private val commandDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
     private val readGeneration = MutableStateFlow(0)
     private val navigationEvents = MutableSharedFlow<AnswerNavigationEvent>(extraBufferCapacity = 1)
+    private val moodUiState = MutableStateFlow(AnswerMoodUiState())
     private var isSaving = false
 
     private val _uiState = MutableStateFlow<AnswerUiState>(AnswerUiState.Loading)
     val uiState: StateFlow<AnswerUiState> = _uiState.asStateFlow()
+
+    val moodCheckInUiState: StateFlow<AnswerMoodUiState> = moodUiState.asStateFlow()
 
     val navigation: SharedFlow<AnswerNavigationEvent> = navigationEvents.asSharedFlow()
 
@@ -56,6 +66,55 @@ class AnswerViewModel(
                 .collect { state ->
                     _uiState.value = state
                 }
+        }
+        viewModelScope.launch {
+            combine(
+                moodCheckInRepository.observeLevel(occurrenceId),
+                questionWordingPreferenceRepository.wordingMode,
+            ) { level, wordingMode ->
+                level to wordingMode
+            }.collect { (level, wordingMode) ->
+                moodUiState.update { current ->
+                    current.copy(
+                        selectedLevel = level,
+                        wordingMode = wordingMode,
+                    )
+                }
+            }
+        }
+    }
+
+    fun onMoodEntryClicked() {
+        if (moodUiState.value.isSaving) {
+            return
+        }
+        moodUiState.update { it.copy(isExpanded = !it.isExpanded) }
+    }
+
+    fun onMoodLevelSelected(level: MoodLevel) {
+        if (moodUiState.value.isSaving) {
+            return
+        }
+        moodUiState.update {
+            it.copy(
+                isSaving = true,
+                isExpanded = false,
+                selectedLevel = level,
+            )
+        }
+        viewModelScope.launch {
+            try {
+                withContext(commandDispatcher) {
+                    moodCheckInRepository.upsertForOccurrence(occurrenceId, level)
+                }
+            } catch (exception: CancellationException) {
+                moodUiState.update { it.copy(isSaving = false) }
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Mood check-in save failed", exception)
+            } finally {
+                moodUiState.update { it.copy(isSaving = false) }
+            }
         }
     }
 

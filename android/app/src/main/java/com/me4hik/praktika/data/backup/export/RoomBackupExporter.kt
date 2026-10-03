@@ -3,13 +3,16 @@
 package com.me4hik.praktika.data.backup.export
 
 import com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV2
+import com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV3
 import com.me4hik.praktika.data.backup.model.BackupAnswer
 import com.me4hik.praktika.data.backup.model.BackupDeferEvent
+import com.me4hik.praktika.data.backup.model.BackupMoodCheckIn
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
 import com.me4hik.praktika.data.backup.model.PraktikaBackupPayload
 import com.me4hik.praktika.data.local.entity.DeferEventEntity
+import com.me4hik.praktika.data.local.entity.MoodCheckInEntity
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
 import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
@@ -63,12 +66,20 @@ class RoomBackupExporter(
             deferEvents += mapped
         }
 
+        val moodCheckIns = mutableListOf<BackupMoodCheckIn>()
+        snapshot.moodCheckIns.forEach { event ->
+            val mapped = mapMoodCheckIn(event, occurrenceStableKeys, snapshot.occurrences)
+                ?: return BackupExportResult.DatabaseUnsafe(BackupDatabaseUnsafeReason.ORPHAN_MOOD_CHECK_IN_REFERENCE)
+            moodCheckIns += mapped
+        }
+
         val payload = PraktikaBackupPayload(
             practiceState = mapPracticeState(practiceState),
             scheduleSlots = mapScheduleSlots(snapshot.scheduleSlots),
             occurrences = mapOccurrences(snapshot.occurrences),
             answers = sortAnswers(answers),
             deferEvents = deferEvents.sortedWith(BackupIntegrityEncoderV2.DEFER_EVENT_ORDER),
+            moodCheckIns = moodCheckIns.sortedWith(BackupIntegrityEncoderV3.MOOD_CHECK_IN_ORDER),
         )
 
         val unsafeReason = BackupExportDomainValidator.validate(payload)
@@ -96,6 +107,27 @@ class RoomBackupExporter(
             occurredAtEpochMillis = event.occurredAtEpochMillis,
             deferredUntilEpochMillis = event.deferredUntilEpochMillis,
             durationMinutes = event.durationMinutes,
+            zoneId = event.zoneId,
+        )
+    }
+
+    private fun mapMoodCheckIn(
+        event: MoodCheckInEntity,
+        occurrenceStableKeys: Map<Long, Pair<Int, Int>>,
+        occurrences: List<QuestionOccurrenceEntity>,
+    ): BackupMoodCheckIn? {
+        val stableKey = occurrenceStableKeys[event.occurrenceId] ?: return null
+        val occurrence = occurrences.firstOrNull { it.id == event.occurrenceId } ?: return null
+        if (event.questionId != occurrence.questionId) {
+            return null
+        }
+        return BackupMoodCheckIn(
+            cycleNumber = stableKey.first,
+            cyclePosition = stableKey.second,
+            questionId = event.questionId,
+            level = event.level.name,
+            createdAtEpochMillis = event.createdAtEpochMillis,
+            updatedAtEpochMillis = event.updatedAtEpochMillis,
             zoneId = event.zoneId,
         )
     }

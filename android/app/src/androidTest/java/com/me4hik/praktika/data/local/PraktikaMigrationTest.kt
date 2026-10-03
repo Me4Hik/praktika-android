@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.me4hik.praktika.data.local.migration.MIGRATION_1_2
 import com.me4hik.praktika.data.local.migration.MIGRATION_2_3
 import com.me4hik.praktika.data.local.migration.MIGRATION_3_4
+import com.me4hik.praktika.data.local.migration.MIGRATION_4_5
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -168,6 +169,54 @@ class PraktikaMigrationTest {
 
     @Test
     @Throws(IOException::class)
+    fun migrate4To5_createsEmptyMoodCheckInsWithoutDataLoss() {
+        helper.createDatabase(TEST_DB, 4).apply {
+            execSQL(
+                "INSERT INTO questions (id, cyclePosition, text, isActive) VALUES (1, 1, 'Keep me', 1)",
+            )
+            execSQL("INSERT INTO schedule_slots (slotIndex, timeOfDayMinutes) VALUES (1, 660)")
+            execSQL(
+                """
+                INSERT INTO question_occurrences (
+                    questionId,
+                    questionTextSnapshot,
+                    cycleNumber,
+                    cyclePosition,
+                    scheduleSlotIndex,
+                    plannedAtEpochMillis,
+                    availableUntilEpochMillis,
+                    openedAtEpochMillis,
+                    completedAtEpochMillis,
+                    deferredUntilEpochMillis,
+                    status,
+                    zoneId
+                ) VALUES (1, 'Keep me', 1, 1, 1, 1000, 2000, 1500, NULL, NULL, 'AVAILABLE', 'UTC')
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO answers (occurrenceId, text, createdAtEpochMillis)
+                VALUES (1, 'existing answer', 1600)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 5, true, MIGRATION_4_5).apply {
+            query("SELECT text FROM answers WHERE occurrenceId = 1").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("existing answer", cursor.getString(0))
+            }
+            query("SELECT COUNT(*) FROM mood_checkins").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+            close()
+        }
+    }
+
+    @Test
+    @Throws(IOException::class)
     fun migrateFromVersion1RequiresExplicitMigration() {
         helper.createDatabase(TEST_DB, 1).close()
 
@@ -179,11 +228,11 @@ class PraktikaMigrationTest {
             PraktikaDatabase::class.java,
             databasePath,
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
         migratedDatabase.openHelper.writableDatabase.use { db ->
-            assertEquals(4, db.version)
+            assertEquals(5, db.version)
         }
         migratedDatabase.close()
     }

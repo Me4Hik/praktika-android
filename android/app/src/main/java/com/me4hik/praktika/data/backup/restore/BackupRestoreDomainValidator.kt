@@ -5,12 +5,14 @@ package com.me4hik.praktika.data.backup.restore
 import com.me4hik.praktika.data.backup.BackupConstants
 import com.me4hik.praktika.data.backup.model.BackupAnswer
 import com.me4hik.praktika.data.backup.model.BackupDeferEvent
+import com.me4hik.praktika.data.backup.model.BackupMoodCheckIn
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
 import com.me4hik.praktika.data.backup.model.PraktikaBackupEnvelope
 import com.me4hik.praktika.data.backup.model.PraktikaBackupPayload
 import com.me4hik.praktika.data.cycle.CycleCursor
+import com.me4hik.praktika.data.model.MoodLevel
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.seed.SeedDataValidator
@@ -28,6 +30,11 @@ class BackupRestoreDomainValidator {
         ) {
             return BackupRestoreDomainFailureReason.DEFER_EVENTS_NOT_ALLOWED_FOR_SCHEMA
         }
+        if (envelope.backupSchemaVersion < BackupConstants.BACKUP_SCHEMA_VERSION_V3 &&
+            envelope.payload.moodCheckIns.isNotEmpty()
+        ) {
+            return BackupRestoreDomainFailureReason.MOOD_CHECK_INS_NOT_ALLOWED_FOR_SCHEMA
+        }
         if (envelope.sourceSeedVersion != envelope.payload.practiceState.seedVersion) {
             return BackupRestoreDomainFailureReason.SOURCE_SEED_PAYLOAD_MISMATCH
         }
@@ -40,6 +47,7 @@ class BackupRestoreDomainValidator {
         validateOccurrences(payload.occurrences)?.let { return it }
         validateAnswers(payload.answers, payload.occurrences)?.let { return it }
         validateDeferEvents(payload.deferEvents, payload.occurrences)?.let { return it }
+        validateMoodCheckIns(payload.moodCheckIns, payload.occurrences)?.let { return it }
         return null
     }
 
@@ -243,6 +251,38 @@ class BackupRestoreDomainValidator {
             }
             if (event.deferredUntilEpochMillis < event.occurredAtEpochMillis) {
                 return BackupRestoreDomainFailureReason.INVALID_DEFER_TIMESTAMP
+            }
+            if (!isValidZoneId(event.zoneId)) {
+                return BackupRestoreDomainFailureReason.INVALID_ZONE
+            }
+        }
+        return null
+    }
+
+    private fun validateMoodCheckIns(
+        moodCheckIns: List<BackupMoodCheckIn>,
+        occurrences: List<BackupOccurrence>,
+    ): BackupRestoreDomainFailureReason? {
+        val occurrenceByKey = occurrences.associateBy { it.cycleNumber to it.cyclePosition }
+        val seenKeys = mutableSetOf<Pair<Int, Int>>()
+        moodCheckIns.forEach { event ->
+            val key = event.cycleNumber to event.cyclePosition
+            if (!seenKeys.add(key)) {
+                return BackupRestoreDomainFailureReason.DUPLICATE_MOOD_CHECK_IN_KEY
+            }
+            val occurrence = occurrenceByKey[key]
+                ?: return BackupRestoreDomainFailureReason.ORPHAN_MOOD_CHECK_IN_REFERENCE
+            if (event.questionId != occurrence.questionId) {
+                return BackupRestoreDomainFailureReason.MOOD_QUESTION_ID_MISMATCH
+            }
+            if (runCatching { MoodLevel.fromStorage(event.level) }.isFailure) {
+                return BackupRestoreDomainFailureReason.INVALID_MOOD_LEVEL
+            }
+            if (event.createdAtEpochMillis <= 0L || event.updatedAtEpochMillis <= 0L) {
+                return BackupRestoreDomainFailureReason.INVALID_MOOD_TIMESTAMP
+            }
+            if (event.updatedAtEpochMillis < event.createdAtEpochMillis) {
+                return BackupRestoreDomainFailureReason.INVALID_MOOD_TIMESTAMP
             }
             if (!isValidZoneId(event.zoneId)) {
                 return BackupRestoreDomainFailureReason.INVALID_ZONE

@@ -54,6 +54,12 @@ class QuestionCenteredClusterComposeTest {
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_TEXT).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_HERO_ORB).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_ANSWER).assertIsDisplayed()
+        assertEquals(
+            0,
+            composeRule.onAllNodesWithTag(PracticeTestTags.ANSWER_MOOD_ENTRY)
+                .fetchSemanticsNodes()
+                .size,
+        )
 
         val tolerancePx = with(composeRule.density) { 2.dp.toPx() }
         val answer = boundsPx(PracticeTestTags.QUESTION_ANSWER)
@@ -96,6 +102,12 @@ class QuestionCenteredClusterComposeTest {
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_HERO_ORB).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_ANSWER).assertIsDisplayed()
         composeRule.onNodeWithText("Вопрос 3 из 21").assertIsDisplayed()
+        assertEquals(
+            0,
+            composeRule.onAllNodesWithTag(PracticeTestTags.ANSWER_MOOD_ENTRY)
+                .fetchSemanticsNodes()
+                .size,
+        )
 
         val tolerancePx = with(composeRule.density) { 2.dp.toPx() }
         val answer = boundsPx(PracticeTestTags.QUESTION_ANSWER)
@@ -119,6 +131,12 @@ class QuestionCenteredClusterComposeTest {
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_TEXT).assertIsDisplayed()
         composeRule.onNodeWithText("Вопрос 3 из 21").assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_HERO_ORB).assertIsDisplayed()
+        assertEquals(
+            0,
+            composeRule.onAllNodesWithTag(PracticeTestTags.ANSWER_MOOD_ENTRY)
+                .fetchSemanticsNodes()
+                .size,
+        )
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_ANSWER).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_DEFER).assertIsDisplayed()
         composeRule.onNodeWithTag(PracticeTestTags.QUESTION_SKIP).assertIsDisplayed()
@@ -129,6 +147,8 @@ class QuestionCenteredClusterComposeTest {
         val orbClipped = boundsPx(PracticeTestTags.QUESTION_HERO_ORB)
         val orbUnclipped = unclippedBoundsPx(PracticeTestTags.QUESTION_HERO_ORB)
         val answer = boundsPx(PracticeTestTags.QUESTION_ANSWER)
+        val defer = boundsPx(PracticeTestTags.QUESTION_DEFER)
+        val skip = boundsPx(PracticeTestTags.QUESTION_SKIP)
 
         assertTrue(
             "orb must keep full unclipped height (not scroll-clipped)",
@@ -153,8 +173,16 @@ class QuestionCenteredClusterComposeTest {
             content.height > cluster.height / 3f + tolerancePx,
         )
         assertTrue(
-            "actions must stay below centered cluster",
+            "answer must stay below centered cluster",
             answer.top + tolerancePx >= cluster.bottom,
+        )
+        assertTrue(
+            "defer must stay below answer",
+            defer.top + tolerancePx >= answer.bottom,
+        )
+        assertTrue(
+            "skip must stay below defer",
+            skip.top + tolerancePx >= defer.bottom,
         )
         assertTrue(
             "actions must not overlap orb",

@@ -10,12 +10,14 @@ import androidx.room.TypeConverters
 import com.me4hik.praktika.data.local.converter.RoomConverters
 import com.me4hik.praktika.data.local.dao.AnswerDao
 import com.me4hik.praktika.data.local.dao.DeferEventDao
+import com.me4hik.praktika.data.local.dao.MoodCheckInDao
 import com.me4hik.praktika.data.local.dao.PracticeStateDao
 import com.me4hik.praktika.data.local.dao.QuestionDao
 import com.me4hik.praktika.data.local.dao.QuestionOccurrenceDao
 import com.me4hik.praktika.data.local.dao.ScheduleSlotDao
 import com.me4hik.praktika.data.local.entity.AnswerEntity
 import com.me4hik.praktika.data.local.entity.DeferEventEntity
+import com.me4hik.praktika.data.local.entity.MoodCheckInEntity
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
 import com.me4hik.praktika.data.local.entity.QuestionEntity
 import com.me4hik.praktika.data.local.entity.QuestionOccurrenceEntity
@@ -23,6 +25,7 @@ import com.me4hik.praktika.data.local.entity.ScheduleSlotEntity
 import com.me4hik.praktika.data.local.migration.MIGRATION_1_2
 import com.me4hik.praktika.data.local.migration.MIGRATION_2_3
 import com.me4hik.praktika.data.local.migration.MIGRATION_3_4
+import com.me4hik.praktika.data.local.migration.MIGRATION_4_5
 
 @Database(
     entities = [
@@ -32,8 +35,9 @@ import com.me4hik.praktika.data.local.migration.MIGRATION_3_4
         AnswerEntity::class,
         PracticeStateEntity::class,
         DeferEventEntity::class,
+        MoodCheckInEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -49,6 +53,8 @@ abstract class PraktikaDatabase : RoomDatabase() {
     abstract fun practiceStateDao(): PracticeStateDao
 
     abstract fun deferEventDao(): DeferEventDao
+
+    abstract fun moodCheckInDao(): MoodCheckInDao
 
     companion object {
         const val DATABASE_NAME = "praktika.db"
@@ -76,7 +82,7 @@ abstract class PraktikaDatabase : RoomDatabase() {
                     PraktikaDatabase::class.java,
                     databaseName,
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also {
                         instance = it

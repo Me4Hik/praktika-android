@@ -1,6 +1,9 @@
 // 05.08.2026 Answer Save cursor by Me4Hik START - UI state экрана ответа
 package com.me4hik.praktika.ui.practice
 
+import com.me4hik.praktika.data.model.MoodLevel
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+
 sealed interface AnswerUiState {
     data object Loading : AnswerUiState
 
@@ -65,4 +68,11 @@ sealed interface AnswerNavigationEvent {
 object AnswerSavedStateKeys {
     const val DRAFT_TEXT = "draft_text"
 }
+
+data class AnswerMoodUiState(
+    val selectedLevel: MoodLevel? = null,
+    val wordingMode: QuestionWordingMode = QuestionWordingMode.DEFAULT,
+    val isExpanded: Boolean = false,
+    val isSaving: Boolean = false,
+)
 // 05.08.2026 Answer Save cursor by Me4Hik END

@@ -12,6 +12,7 @@ object BackupIntegrityEncoders {
         return when (schemaVersion) {
             1 -> BackupIntegrityEncoderV1
             2 -> BackupIntegrityEncoderV2
+            3 -> BackupIntegrityEncoderV3
             else -> null
         }
     }

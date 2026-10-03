@@ -5,6 +5,7 @@ import androidx.lifecycle.AbstractSavedStateViewModelFactory
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.savedstate.SavedStateRegistryOwner
+import com.me4hik.praktika.data.mood.RoomMoodCheckInRepository
 import com.me4hik.praktika.data.read.RoomAnswerReadRepository
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.runtime.PraktikaRuntime
@@ -34,6 +35,11 @@ class AnswerViewModelFactory(
                 occurrenceId = occurrenceId,
                 readRepository = RoomAnswerReadRepository(runtime.database),
                 saveAnswerCommand = saveCommand,
+                moodCheckInRepository = RoomMoodCheckInRepository(
+                    database = runtime.database,
+                    timeProvider = runtime.timeProvider,
+                ),
+                questionWordingPreferenceRepository = runtime.questionWordingPreferenceRepository,
                 savedStateHandle = handle,
             ) as T
         }

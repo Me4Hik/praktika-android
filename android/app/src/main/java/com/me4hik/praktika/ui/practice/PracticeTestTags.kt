@@ -3,6 +3,8 @@
 // 06.08.2026 Stage 11 Onboarding cursor by Me4Hik START - tags onboarding schedule/start
 package com.me4hik.praktika.ui.practice
 
+import com.me4hik.praktika.data.model.MoodLevel
+
 object PracticeTestTags {
     const val LOADING = "practice_loading"
     const val FATAL_ERROR = "practice_fatal_error"
@@ -52,7 +54,13 @@ object PracticeTestTags {
     const val ANSWER_LOADING = "answer_loading"
     const val ANSWER_QUESTION_TEXT = "answer_question_text"
     const val ANSWER_INPUT = "answer_input"
+    const val ANSWER_MOOD_ENTRY = "answer_mood_entry"
+    const val ANSWER_MOOD_PICKER = "answer_mood_picker"
     const val ANSWER_SAVE = "answer_save_button"
+
+    fun moodOption(level: MoodLevel): String {
+        return "answer_mood_option_${level.name}"
+    }
     const val ANSWER_SAVE_PROGRESS = "answer_save_progress"
     const val ANSWER_SAVE_ERROR = "answer_save_error"
     const val ANSWER_BLOCKED = "answer_blocked"

@@ -5,12 +5,14 @@ package com.me4hik.praktika.data.backup.codec
 
 import com.me4hik.praktika.data.backup.model.BackupAnswer
 import com.me4hik.praktika.data.backup.model.BackupDeferEvent
+import com.me4hik.praktika.data.backup.model.BackupMoodCheckIn
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
 import com.me4hik.praktika.data.backup.model.PraktikaBackupEnvelope
 import com.me4hik.praktika.data.backup.BackupConstants
 import com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV2
+import com.me4hik.praktika.data.backup.integrity.BackupIntegrityEncoderV3
 import java.nio.charset.StandardCharsets
 
 object BackupJsonEncoder {
@@ -28,7 +30,9 @@ object BackupJsonEncoder {
             compareBy({ it.cycleNumber }, { it.cyclePosition }),
         )
         val deferEvents = payload.deferEvents.sortedWith(BackupIntegrityEncoderV2.DEFER_EVENT_ORDER)
+        val moodCheckIns = payload.moodCheckIns.sortedWith(BackupIntegrityEncoderV3.MOOD_CHECK_IN_ORDER)
         val includeDeferEvents = envelope.backupSchemaVersion >= BackupConstants.BACKUP_SCHEMA_VERSION_V2
+        val includeMoodCheckIns = envelope.backupSchemaVersion >= BackupConstants.BACKUP_SCHEMA_VERSION_V3
 
         val writer = OrderedJsonWriter()
         writer.beginObject()
@@ -54,7 +58,9 @@ object BackupJsonEncoder {
                 occurrences = occurrences,
                 answers = answers,
                 deferEvents = deferEvents,
+                moodCheckIns = moodCheckIns,
                 includeDeferEvents = includeDeferEvents,
+                includeMoodCheckIns = includeMoodCheckIns,
             ),
         )
         writer.endObject()
@@ -67,7 +73,9 @@ object BackupJsonEncoder {
         occurrences: List<BackupOccurrence>,
         answers: List<BackupAnswer>,
         deferEvents: List<BackupDeferEvent>,
+        moodCheckIns: List<BackupMoodCheckIn>,
         includeDeferEvents: Boolean,
+        includeMoodCheckIns: Boolean,
     ): String {
         val writer = OrderedJsonWriter()
         writer.beginObject()
@@ -82,6 +90,10 @@ object BackupJsonEncoder {
         if (includeDeferEvents) {
             writer.key("deferEvents")
             writer.rawNestedJson(encodeDeferEvents(deferEvents))
+        }
+        if (includeMoodCheckIns) {
+            writer.key("moodCheckIns")
+            writer.rawNestedJson(encodeMoodCheckIns(moodCheckIns))
         }
         writer.endObject()
         return writer.toJsonString()
@@ -205,6 +217,33 @@ object BackupJsonEncoder {
             eventWriter.value(event.deferredUntilEpochMillis)
             eventWriter.key("durationMinutes")
             eventWriter.value(event.durationMinutes)
+            eventWriter.key("zoneId")
+            eventWriter.value(event.zoneId)
+            eventWriter.endObject()
+            writer.rawNestedJson(eventWriter.toJsonString())
+        }
+        writer.endArray()
+        return writer.toJsonString()
+    }
+
+    private fun encodeMoodCheckIns(events: List<BackupMoodCheckIn>): String {
+        val writer = OrderedJsonWriter()
+        writer.beginArray()
+        events.forEach { event ->
+            val eventWriter = OrderedJsonWriter()
+            eventWriter.beginObject()
+            eventWriter.key("cycleNumber")
+            eventWriter.value(event.cycleNumber)
+            eventWriter.key("cyclePosition")
+            eventWriter.value(event.cyclePosition)
+            eventWriter.key("questionId")
+            eventWriter.value(event.questionId)
+            eventWriter.key("level")
+            eventWriter.value(event.level)
+            eventWriter.key("createdAtEpochMillis")
+            eventWriter.value(event.createdAtEpochMillis)
+            eventWriter.key("updatedAtEpochMillis")
+            eventWriter.value(event.updatedAtEpochMillis)
             eventWriter.key("zoneId")
             eventWriter.value(event.zoneId)
             eventWriter.endObject()

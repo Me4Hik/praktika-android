@@ -32,6 +32,8 @@
     <string name="question_skip">Пропустить</string>
     <string name="question_defer">Отложить</string>
     <string name="question_deferred_for_minutes">Отложено на %d минут</string>
+    <string name="answer_mood_add">Указать настроение</string>
+    <string name="answer_mood_selected">%1$s %2$s</string>
     <string name="question_back_home">На главный экран</string>
     <string name="question_blocked_not_found_title">Вопрос не найден</string>
     <string name="question_blocked_not_found_message">Этот показ вопроса больше недоступен.</string>

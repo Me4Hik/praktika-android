@@ -4,8 +4,9 @@ package com.me4hik.praktika.data.backup
 object BackupConstants {
     const val BACKUP_SCHEMA_VERSION_V1 = 1
     const val BACKUP_SCHEMA_VERSION_V2 = 2
+    const val BACKUP_SCHEMA_VERSION_V3 = 3
     const val MIN_SUPPORTED_SCHEMA_VERSION = 1
-    const val MAX_SUPPORTED_SCHEMA_VERSION = 2
+    const val MAX_SUPPORTED_SCHEMA_VERSION = 3
 
     const val MAX_BACKUP_BYTES = 10 * 1024 * 1024 // 10 MiB
 

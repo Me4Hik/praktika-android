@@ -8,6 +8,7 @@ class PraktikaBackupPayload(
     val occurrences: List<BackupOccurrence>,
     val answers: List<BackupAnswer>,
     val deferEvents: List<BackupDeferEvent> = emptyList(),
+    val moodCheckIns: List<BackupMoodCheckIn> = emptyList(),
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -16,7 +17,8 @@ class PraktikaBackupPayload(
             scheduleSlots == other.scheduleSlots &&
             occurrences == other.occurrences &&
             answers == other.answers &&
-            deferEvents == other.deferEvents
+            deferEvents == other.deferEvents &&
+            moodCheckIns == other.moodCheckIns
     }
 
     override fun hashCode(): Int {
@@ -25,11 +27,13 @@ class PraktikaBackupPayload(
         result = 31 * result + occurrences.hashCode()
         result = 31 * result + answers.hashCode()
         result = 31 * result + deferEvents.hashCode()
+        result = 31 * result + moodCheckIns.hashCode()
         return result
     }
 
     override fun toString(): String {
-        return "PraktikaBackupPayload(slots=${scheduleSlots.size}, occurrences=${occurrences.size}, answers=${answers.size}, deferEvents=${deferEvents.size})"
+        return "PraktikaBackupPayload(slots=${scheduleSlots.size}, occurrences=${occurrences.size}, " +
+            "answers=${answers.size}, deferEvents=${deferEvents.size}, moodCheckIns=${moodCheckIns.size})"
     }
 }
 // 11.08.2026 DATA VAULT Stage 1 cursor by Me4Hik END

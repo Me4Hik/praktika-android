@@ -5,7 +5,10 @@ import androidx.lifecycle.SavedStateHandle
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedException
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedReason
 import com.me4hik.praktika.data.cycle.CycleCorruptionException
+import com.me4hik.praktika.data.model.MoodLevel
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.mood.MoodCopyResolver
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.data.read.AnswerReadResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +22,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -28,6 +32,9 @@ class AnswerViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var readRepository: AnswerViewModelTestSupport.FakeAnswerReadRepository
     private lateinit var saveCommand: AnswerViewModelTestSupport.RecordingSaveAnswerCommand
+    private lateinit var moodCheckInRepository: AnswerViewModelTestSupport.FakeMoodCheckInRepository
+    private lateinit var wordingPreferenceRepository:
+        AnswerViewModelTestSupport.FakeQuestionWordingPreferenceRepository
     private lateinit var savedStateHandle: SavedStateHandle
     private lateinit var viewModel: AnswerViewModel
 
@@ -36,6 +43,8 @@ class AnswerViewModelTest {
         Dispatchers.setMain(testDispatcher)
         readRepository = AnswerViewModelTestSupport.FakeAnswerReadRepository()
         saveCommand = AnswerViewModelTestSupport.RecordingSaveAnswerCommand()
+        moodCheckInRepository = AnswerViewModelTestSupport.FakeMoodCheckInRepository()
+        wordingPreferenceRepository = AnswerViewModelTestSupport.FakeQuestionWordingPreferenceRepository()
         savedStateHandle = SavedStateHandle()
     }
 
@@ -49,6 +58,8 @@ class AnswerViewModelTest {
             occurrenceId = AnswerViewModelTestSupport.OCCURRENCE_ID,
             readRepository = readRepository,
             saveAnswerCommand = saveCommand,
+            moodCheckInRepository = moodCheckInRepository,
+            questionWordingPreferenceRepository = wordingPreferenceRepository,
             savedStateHandle = savedStateHandle,
             commandDispatcher = testDispatcher,
         )
@@ -336,5 +347,127 @@ class AnswerViewModelTest {
         assertEquals(7, readRepository.lastPriorCheckQuestionId)
     }
     // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik END
+
+    @Test
+    fun moodInitialNullAndCollapsed() = runTest {
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        val mood = viewModel.moodCheckInUiState.value
+        assertNull(mood.selectedLevel)
+        assertFalse(mood.isExpanded)
+        assertEquals(QuestionWordingMode.MASCULINE, mood.wordingMode)
+    }
+
+    @Test
+    fun existingMoodLoadedCollapsed() = runTest {
+        moodCheckInRepository = AnswerViewModelTestSupport.FakeMoodCheckInRepository(
+            initialLevel = MoodLevel.GOOD,
+        )
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        val mood = viewModel.moodCheckInUiState.value
+        assertEquals(MoodLevel.GOOD, mood.selectedLevel)
+        assertFalse(mood.isExpanded)
+    }
+
+    @Test
+    fun moodExpandCollapseToggle() = runTest {
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onMoodEntryClicked()
+        assertTrue(viewModel.moodCheckInUiState.value.isExpanded)
+        viewModel.onMoodEntryClicked()
+        assertFalse(viewModel.moodCheckInUiState.value.isExpanded)
+    }
+
+    @Test
+    fun moodSelectUpsertsImmediatelyAndCollapses() = runTest {
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onMoodEntryClicked()
+        viewModel.onMoodLevelSelected(MoodLevel.GREAT)
+        advanceUntilIdle()
+        assertEquals(1, moodCheckInRepository.upsertInvocations)
+        assertEquals(MoodLevel.GREAT, moodCheckInRepository.lastUpsertLevel)
+        assertEquals(MoodLevel.GREAT, viewModel.moodCheckInUiState.value.selectedLevel)
+        assertFalse(viewModel.moodCheckInUiState.value.isExpanded)
+    }
+
+    @Test
+    fun moodReplaceKeepsAnswerDraftIntact() = runTest {
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onDraftChanged("My answer")
+        viewModel.onMoodLevelSelected(MoodLevel.LOW)
+        advanceUntilIdle()
+        viewModel.onMoodLevelSelected(MoodLevel.GREAT)
+        advanceUntilIdle()
+        assertEquals(2, moodCheckInRepository.upsertInvocations)
+        assertEquals(MoodLevel.GREAT, viewModel.moodCheckInUiState.value.selectedLevel)
+        val state = viewModel.uiState.value as AnswerUiState.Interactive
+        assertEquals("My answer", state.draftText)
+        assertTrue(state.canSave)
+    }
+
+    @Test
+    fun wordingChangeDoesNotChangeMoodLevelButChangesCopy() = runTest {
+        moodCheckInRepository = AnswerViewModelTestSupport.FakeMoodCheckInRepository(
+            initialLevel = MoodLevel.GREAT,
+        )
+        wordingPreferenceRepository =
+            AnswerViewModelTestSupport.FakeQuestionWordingPreferenceRepository(
+                initialMode = QuestionWordingMode.MASCULINE,
+            )
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        assertEquals(
+            "Наполнен",
+            MoodCopyResolver.resolve(MoodLevel.GREAT, viewModel.moodCheckInUiState.value.wordingMode).title,
+        )
+        wordingPreferenceRepository.emit(QuestionWordingMode.FEMININE)
+        advanceUntilIdle()
+        val mood = viewModel.moodCheckInUiState.value
+        assertEquals(MoodLevel.GREAT, mood.selectedLevel)
+        assertEquals(QuestionWordingMode.FEMININE, mood.wordingMode)
+        assertEquals(
+            "Наполнена",
+            MoodCopyResolver.resolve(MoodLevel.GREAT, mood.wordingMode).title,
+        )
+    }
+
+    @Test
+    fun moodSaveFailureDoesNotBlockAnswerSave() = runTest {
+        moodCheckInRepository.upsertException = RuntimeException("mood fail")
+        readRepository.emit(
+            AnswerReadResult.Found(AnswerViewModelTestSupport.availableSnapshot()),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onDraftChanged("Still save")
+        viewModel.onMoodLevelSelected(MoodLevel.NEUTRAL)
+        advanceUntilIdle()
+        viewModel.saveAnswer()
+        advanceUntilIdle()
+        assertEquals(1, saveCommand.invocations)
+        assertEquals("Still save", saveCommand.lastText)
+    }
 }
 // 05.08.2026 Answer Save cursor by Me4Hik END

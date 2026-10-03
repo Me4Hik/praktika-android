@@ -3,6 +3,7 @@
 // 05.08.2026 Answer Save cursor by Me4Hik START - полноценный экран ввода и сохранения
 package com.me4hik.praktika.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.me4hik.praktika.R
+import com.me4hik.praktika.data.model.MoodLevel
+import com.me4hik.praktika.data.mood.MoodCopyResolver
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
 import com.me4hik.praktika.ui.components.PracticeHeroAccent
@@ -43,11 +46,14 @@ import com.me4hik.praktika.ui.components.PracticeSurface
 import com.me4hik.praktika.ui.components.PracticeWritingSurface
 import com.me4hik.praktika.ui.practice.AnswerBlockedReason
 import com.me4hik.praktika.ui.practice.AnswerFatalError
+import com.me4hik.praktika.ui.practice.AnswerMoodUiState
 import com.me4hik.praktika.ui.practice.AnswerSaveError
 import com.me4hik.praktika.ui.practice.AnswerUiState
 import com.me4hik.praktika.ui.practice.PracticeTestTags
+import com.me4hik.praktika.ui.question.MoodCheckInPicker
 import com.me4hik.praktika.ui.theme.AccentViolet
 import com.me4hik.praktika.ui.theme.HomeQuestionSerifStyle
+import com.me4hik.praktika.ui.theme.TextMuted
 import com.me4hik.praktika.ui.theme.TextPrimary
 import com.me4hik.praktika.ui.theme.TextQuestionSoft
 import com.me4hik.praktika.ui.theme.TextSecondary
@@ -61,6 +67,9 @@ fun AnswerScreen(
     onBack: () -> Unit,
     onBackHome: () -> Unit,
     onRetry: () -> Unit,
+    moodUiState: AnswerMoodUiState = AnswerMoodUiState(),
+    onMoodEntryClick: () -> Unit = {},
+    onMoodLevelSelected: (MoodLevel) -> Unit = {},
 ) {
     // 07.08.2026 Stage 24 Final Design cursor by Me4Hik START - Answer editorial glass layout
     Box(modifier = Modifier.fillMaxSize()) {
@@ -75,9 +84,12 @@ fun AnswerScreen(
                 AnswerUiState.Loading -> AnswerLoadingContent()
                 is AnswerUiState.Interactive -> AnswerInteractiveContent(
                     uiState = uiState,
+                    moodUiState = moodUiState,
                     onDraftChanged = onDraftChanged,
                     onSave = onSave,
                     onBack = onBack,
+                    onMoodEntryClick = onMoodEntryClick,
+                    onMoodLevelSelected = onMoodLevelSelected,
                 )
                 is AnswerUiState.Blocked -> AnswerBlockedContent(
                     uiState = uiState,
@@ -156,10 +168,14 @@ private fun AnswerLoadingContent() {
 @Composable
 private fun AnswerInteractiveContent(
     uiState: AnswerUiState.Interactive,
+    moodUiState: AnswerMoodUiState,
     onDraftChanged: (String) -> Unit,
     onSave: () -> Unit,
     onBack: () -> Unit,
+    onMoodEntryClick: () -> Unit,
+    onMoodLevelSelected: (MoodLevel) -> Unit,
 ) {
+    val moodEnabled = !uiState.isSaving && !moodUiState.isSaving
     Column(modifier = Modifier.fillMaxSize()) {
         AnswerTopBar(
             onBack = onBack,
@@ -194,6 +210,12 @@ private fun AnswerInteractiveContent(
                 enabled = !uiState.isSaving,
                 testTag = PracticeTestTags.ANSWER_INPUT,
             )
+            AnswerMoodSection(
+                moodUiState = moodUiState,
+                enabled = moodEnabled,
+                onEntryClick = onMoodEntryClick,
+                onLevelSelected = onMoodLevelSelected,
+            )
             uiState.saveError?.let { error ->
                 Text(
                     text = saveErrorMessage(error),
@@ -216,6 +238,47 @@ private fun AnswerInteractiveContent(
                 showProgress = uiState.isSaving,
                 progressTestTag = PracticeTestTags.ANSWER_SAVE_PROGRESS,
                 modifier = Modifier.testTag(PracticeTestTags.ANSWER_SAVE),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnswerMoodSection(
+    moodUiState: AnswerMoodUiState,
+    enabled: Boolean,
+    onEntryClick: () -> Unit,
+    onLevelSelected: (MoodLevel) -> Unit,
+) {
+    val selectedLevel = moodUiState.selectedLevel
+    val label = if (selectedLevel == null) {
+        stringResource(R.string.answer_mood_add)
+    } else {
+        val copy = MoodCopyResolver.resolve(selectedLevel, moodUiState.wordingMode)
+        stringResource(R.string.answer_mood_selected, copy.emoji, copy.title)
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        TextButton(
+            onClick = onEntryClick,
+            enabled = enabled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(PracticeTestTags.ANSWER_MOOD_ENTRY),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = TextMuted.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center,
+            )
+        }
+        AnimatedVisibility(visible = moodUiState.isExpanded) {
+            MoodCheckInPicker(
+                wordingMode = moodUiState.wordingMode,
+                selectedLevel = selectedLevel,
+                enabled = enabled,
+                onLevelSelected = onLevelSelected,
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
     }

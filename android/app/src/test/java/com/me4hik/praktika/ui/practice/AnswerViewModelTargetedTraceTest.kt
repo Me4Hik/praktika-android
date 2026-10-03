@@ -51,6 +51,9 @@ class AnswerViewModelTargetedTraceTest {
             occurrenceId = AnswerViewModelTestSupport.OCCURRENCE_ID,
             readRepository = readRepository,
             saveAnswerCommand = saveCommand,
+            moodCheckInRepository = AnswerViewModelTestSupport.FakeMoodCheckInRepository(),
+            questionWordingPreferenceRepository =
+                AnswerViewModelTestSupport.FakeQuestionWordingPreferenceRepository(),
             savedStateHandle = savedStateHandle,
             commandDispatcher = testDispatcher,
         )

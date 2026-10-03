@@ -4,14 +4,21 @@ package com.me4hik.praktika.ui.practice
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedException
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedReason
 import com.me4hik.praktika.data.cycle.CycleResult
+import com.me4hik.praktika.data.model.MoodLevel
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.mood.MoodCheckInRepository
+import com.me4hik.praktika.data.preferences.QuestionWordingMode
+import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.read.AnswerOccurrenceReadModel
 import com.me4hik.praktika.data.read.AnswerReadRepository
 import com.me4hik.praktika.data.read.AnswerReadResult
 import com.me4hik.praktika.data.read.AnswerReadSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 internal object AnswerViewModelTestSupport {
     const val OCCURRENCE_ID = 10L
@@ -111,6 +118,61 @@ internal object AnswerViewModelTestSupport {
             lastText = answerText
             exception?.let { throw it }
             return CycleResult.AnswerSaved
+        }
+    }
+
+    class FakeMoodCheckInRepository(
+        initialLevel: MoodLevel? = null,
+    ) : MoodCheckInRepository {
+        private val levelsByOccurrenceId = MutableStateFlow(
+            buildMap {
+                if (initialLevel != null) {
+                    put(OCCURRENCE_ID, initialLevel)
+                }
+            },
+        )
+        var upsertInvocations = 0
+        var lastUpsertLevel: MoodLevel? = null
+        var upsertException: Exception? = null
+
+        override fun observeLevel(occurrenceId: Long): Flow<MoodLevel?> {
+            return levelsByOccurrenceId.map { it[occurrenceId] }
+        }
+
+        override suspend fun upsertForOccurrence(
+            occurrenceId: Long,
+            level: MoodLevel,
+        ): MoodLevel {
+            upsertInvocations += 1
+            lastUpsertLevel = level
+            upsertException?.let { throw it }
+            levelsByOccurrenceId.update { current ->
+                current + (occurrenceId to level)
+            }
+            return level
+        }
+
+        fun setLevel(level: MoodLevel?) {
+            levelsByOccurrenceId.value = if (level == null) {
+                emptyMap()
+            } else {
+                mapOf(OCCURRENCE_ID to level)
+            }
+        }
+    }
+
+    class FakeQuestionWordingPreferenceRepository(
+        initialMode: QuestionWordingMode = QuestionWordingMode.DEFAULT,
+    ) : QuestionWordingPreferenceRepository {
+        private val state = MutableStateFlow(initialMode)
+        override val wordingMode: Flow<QuestionWordingMode> = state
+
+        override suspend fun setWordingMode(mode: QuestionWordingMode) {
+            state.value = mode
+        }
+
+        fun emit(mode: QuestionWordingMode) {
+            state.value = mode
         }
     }
 }

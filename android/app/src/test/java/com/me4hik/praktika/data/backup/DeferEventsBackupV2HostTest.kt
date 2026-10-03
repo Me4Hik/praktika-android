@@ -88,7 +88,7 @@ class DeferEventsBackupV2HostTest {
         assertEquals(1, exported.deferEvents.single().cyclePosition)
 
         val envelope = assembleV2(exported)
-        assertEquals(BackupConstants.BACKUP_SCHEMA_VERSION_V2, envelope.backupSchemaVersion)
+        assertEquals(BackupConstants.BACKUP_SCHEMA_VERSION_V3, envelope.backupSchemaVersion)
         assertEquals(BackupRestoreResult.Success, RoomBackupRestorer(targetDatabase).restore(envelope))
 
         val restoredOccurrence = targetDatabase.questionOccurrenceDao()

@@ -4,6 +4,7 @@ package com.me4hik.praktika.data.backup.codec
 import com.me4hik.praktika.data.backup.BackupConstants
 import com.me4hik.praktika.data.backup.model.BackupAnswer
 import com.me4hik.praktika.data.backup.model.BackupDeferEvent
+import com.me4hik.praktika.data.backup.model.BackupMoodCheckIn
 import com.me4hik.praktika.data.backup.model.BackupOccurrence
 import com.me4hik.praktika.data.backup.model.BackupPracticeState
 import com.me4hik.praktika.data.backup.model.BackupScheduleSlot
@@ -38,6 +39,8 @@ object BackupJsonDecoder {
     )
 
     private val PAYLOAD_KEYS_V2 = PAYLOAD_KEYS_V1 + "deferEvents"
+
+    private val PAYLOAD_KEYS_V3 = PAYLOAD_KEYS_V2 + "moodCheckIns"
 
     private val PRACTICE_STATE_KEYS = setOf(
         "isPracticeStarted",
@@ -89,6 +92,16 @@ object BackupJsonDecoder {
         "zoneId",
     )
 
+    private val MOOD_CHECK_IN_KEYS = setOf(
+        "cycleNumber",
+        "cyclePosition",
+        "questionId",
+        "level",
+        "createdAtEpochMillis",
+        "updatedAtEpochMillis",
+        "zoneId",
+    )
+
     private val ALLOWED_STATUS_NAMES = QuestionOccurrenceStatus.entries
         .map { it.name }
         .toSet()
@@ -133,6 +146,7 @@ object BackupJsonDecoder {
         val payloadKeys = when (backupSchemaVersion) {
             BackupConstants.BACKUP_SCHEMA_VERSION_V1 -> PAYLOAD_KEYS_V1
             BackupConstants.BACKUP_SCHEMA_VERSION_V2 -> PAYLOAD_KEYS_V2
+            BackupConstants.BACKUP_SCHEMA_VERSION_V3 -> PAYLOAD_KEYS_V3
             else -> PAYLOAD_KEYS_V1
         }
         keyFailure(payloadObject, payloadKeys, "payload")?.let { return it }
@@ -150,9 +164,19 @@ object BackupJsonDecoder {
         val answers = decodeAnswers(answersArray) ?: return latestFailure()
 
         val deferEvents = when (backupSchemaVersion) {
-            BackupConstants.BACKUP_SCHEMA_VERSION_V2 -> {
+            BackupConstants.BACKUP_SCHEMA_VERSION_V2,
+            BackupConstants.BACKUP_SCHEMA_VERSION_V3,
+            -> {
                 val deferEventsArray = readArray(payloadObject, "deferEvents", "payload") ?: return latestFailure()
                 decodeDeferEvents(deferEventsArray) ?: return latestFailure()
+            }
+            else -> emptyList()
+        }
+
+        val moodCheckIns = when (backupSchemaVersion) {
+            BackupConstants.BACKUP_SCHEMA_VERSION_V3 -> {
+                val moodArray = readArray(payloadObject, "moodCheckIns", "payload") ?: return latestFailure()
+                decodeMoodCheckIns(moodArray) ?: return latestFailure()
             }
             else -> emptyList()
         }
@@ -171,6 +195,7 @@ object BackupJsonDecoder {
                 occurrences = occurrences,
                 answers = answers,
                 deferEvents = deferEvents,
+                moodCheckIns = moodCheckIns,
             ),
         )
 
@@ -302,6 +327,31 @@ object BackupJsonDecoder {
                 occurredAtEpochMillis = occurredAtEpochMillis,
                 deferredUntilEpochMillis = deferredUntilEpochMillis,
                 durationMinutes = durationMinutes,
+                zoneId = zoneId,
+            )
+        }
+        return result
+    }
+
+    private fun decodeMoodCheckIns(array: JSONArray): List<BackupMoodCheckIn>? {
+        val result = mutableListOf<BackupMoodCheckIn>()
+        for (index in 0 until array.length()) {
+            val item = readArrayObject(array, index, "moodCheckIns[$index]") ?: return null
+            keyFailure(item, MOOD_CHECK_IN_KEYS, "moodCheckIns[$index]")?.let { return null }
+            val cycleNumber = readInt(item, "cycleNumber", "moodCheckIns[$index]") ?: return null
+            val cyclePosition = readInt(item, "cyclePosition", "moodCheckIns[$index]") ?: return null
+            val questionId = readInt(item, "questionId", "moodCheckIns[$index]") ?: return null
+            val level = readNonNullString(item, "level", "moodCheckIns[$index]") ?: return null
+            val createdAtEpochMillis = readLong(item, "createdAtEpochMillis", "moodCheckIns[$index]") ?: return null
+            val updatedAtEpochMillis = readLong(item, "updatedAtEpochMillis", "moodCheckIns[$index]") ?: return null
+            val zoneId = readNonNullString(item, "zoneId", "moodCheckIns[$index]") ?: return null
+            result += BackupMoodCheckIn(
+                cycleNumber = cycleNumber,
+                cyclePosition = cyclePosition,
+                questionId = questionId,
+                level = level,
+                createdAtEpochMillis = createdAtEpochMillis,
+                updatedAtEpochMillis = updatedAtEpochMillis,
                 zoneId = zoneId,
             )
         }
