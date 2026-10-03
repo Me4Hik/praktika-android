@@ -18,6 +18,7 @@ class QuestionLayoutTokensTest {
 
     @Test
     fun boundary559_isCompact() {
+        assertEquals(QuestionWidthBucket.Compact, questionWidthBucketFor(559))
         val tokens = questionLayoutTokensFor(559)
         assertEquals(QuestionWidthBucket.Compact, tokens.widthBucket)
         assertFalse(tokens.useCenteredCluster)
@@ -25,6 +26,7 @@ class QuestionLayoutTokensTest {
 
     @Test
     fun boundary560_isFullMedium() {
+        assertEquals(QuestionWidthBucket.Medium, questionWidthBucketFor(560))
         assertFullMedium(questionLayoutTokensFor(560))
     }
 
@@ -45,11 +47,13 @@ class QuestionLayoutTokensTest {
 
     @Test
     fun boundary839_isMedium() {
+        assertEquals(QuestionWidthBucket.Medium, questionWidthBucketFor(839))
         assertFullMedium(questionLayoutTokensFor(839))
     }
 
     @Test
     fun boundary840_isExpanded() {
+        assertEquals(QuestionWidthBucket.Expanded, questionWidthBucketFor(840))
         val tokens = questionLayoutTokensFor(840)
         assertEquals(QuestionWidthBucket.Expanded, tokens.widthBucket)
         assertTrue(tokens.useCenteredCluster)

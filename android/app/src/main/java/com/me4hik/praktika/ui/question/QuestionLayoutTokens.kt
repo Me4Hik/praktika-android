@@ -42,14 +42,19 @@ fun rememberQuestionLayoutTokens(): QuestionLayoutTokens {
     }
 }
 
-internal fun questionLayoutTokensFor(
-    widthDp: Int,
-): QuestionLayoutTokens {
-    val widthBucket = when {
+/** Shared Compact/Medium/Expanded thresholds for Question layout and diagnostics. */
+fun questionWidthBucketFor(widthDp: Int): QuestionWidthBucket {
+    return when {
         widthDp >= 840 -> QuestionWidthBucket.Expanded
         widthDp >= 560 -> QuestionWidthBucket.Medium
         else -> QuestionWidthBucket.Compact
     }
+}
+
+internal fun questionLayoutTokensFor(
+    widthDp: Int,
+): QuestionLayoutTokens {
+    val widthBucket = questionWidthBucketFor(widthDp)
     val useCenteredCluster = widthBucket != QuestionWidthBucket.Compact
 
     return when (widthBucket) {

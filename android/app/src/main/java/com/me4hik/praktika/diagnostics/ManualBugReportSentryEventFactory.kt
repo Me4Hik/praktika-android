@@ -26,6 +26,9 @@ internal object ManualBugReportSentryEventFactory {
                 ?.let { installId -> setTag("install_id", installId) }
             contexts["bug_report"] = buildBugReportContext(snapshot, testerComment)
             contexts["diagnostic_summary"] = buildDiagnosticSummaryContext(snapshot)
+            buildDeviceWindowContext(snapshot)?.let { deviceWindow ->
+                contexts["device_window"] = deviceWindow
+            }
             setExtra("diagnostic_snapshot", snapshot.toString())
         }
     }
@@ -62,7 +65,13 @@ internal object ManualBugReportSentryEventFactory {
             put("version_code", snapshot.optInt("versionCode"))
             put("version_name", snapshot.optString("versionName"))
             put("package_name", snapshot.optString("packageName"))
+            if (snapshot.has("deviceManufacturer")) {
+                put("device_manufacturer", snapshot.optString("deviceManufacturer"))
+            }
             put("device_model", snapshot.optString("deviceModel"))
+            if (snapshot.has("androidRelease")) {
+                put("android_release", snapshot.optString("androidRelease"))
+            }
             put("android_sdk", snapshot.optInt("androidSdk"))
             put("timezone", snapshot.optString("timezone"))
             put("runtime_mode", snapshot.optString("runtimeMode"))
@@ -73,7 +82,55 @@ internal object ManualBugReportSentryEventFactory {
             if (snapshot.has("occurrenceId")) {
                 put("occurrence_id", snapshot.optLong("occurrenceId"))
             }
+            if (snapshot.has("questionWidthBucket")) {
+                put("question_width_bucket", snapshot.optString("questionWidthBucket"))
+            }
         }
+    }
+
+    private fun buildDeviceWindowContext(snapshot: JSONObject): Map<String, Any>? {
+        val context = buildMap {
+            putIfPresentString(snapshot, "deviceManufacturer", "device_manufacturer")
+            putIfPresentString(snapshot, "androidRelease", "android_release")
+            putIfPresentNumber(snapshot, "windowWidthPx", "window_width_px")
+            putIfPresentNumber(snapshot, "windowHeightPx", "window_height_px")
+            putIfPresentNumber(snapshot, "screenWidthDp", "screen_width_dp")
+            putIfPresentNumber(snapshot, "screenHeightDp", "screen_height_dp")
+            putIfPresentNumber(snapshot, "smallestScreenWidthDp", "smallest_screen_width_dp")
+            putIfPresentNumber(snapshot, "density", "density")
+            putIfPresentNumber(snapshot, "densityDpi", "density_dpi")
+            putIfPresentNumber(snapshot, "fontScale", "font_scale")
+            if (snapshot.has("orientation")) {
+                put("orientation", snapshot.optString("orientation"))
+            }
+            putIfPresentNumber(snapshot, "insetStatusBarsDp", "inset_status_bars_dp")
+            putIfPresentNumber(snapshot, "insetNavigationBarsDp", "inset_navigation_bars_dp")
+            putIfPresentNumber(snapshot, "insetTappableElementDp", "inset_tappable_element_dp")
+            putIfPresentNumber(snapshot, "insetSystemGesturesDp", "inset_system_gestures_dp")
+            putIfPresentString(snapshot, "questionWidthBucket", "question_width_bucket")
+        }
+        return context.takeIf { it.isNotEmpty() }
+    }
+
+    private fun MutableMap<String, Any>.putIfPresentString(
+        snapshot: JSONObject,
+        sourceKey: String,
+        targetKey: String,
+    ) {
+        if (snapshot.has(sourceKey)) {
+            put(targetKey, snapshot.optString(sourceKey))
+        }
+    }
+
+    private fun MutableMap<String, Any>.putIfPresentNumber(
+        snapshot: JSONObject,
+        sourceKey: String,
+        targetKey: String,
+    ) {
+        if (!snapshot.has(sourceKey)) {
+            return
+        }
+        put(targetKey, snapshot.get(sourceKey))
     }
 }
 // 10.08.2026 Post-release fixes cursor by Me4Hik END
