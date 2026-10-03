@@ -147,7 +147,7 @@ private fun QuestionPhoneCluster(
     tokens: QuestionLayoutTokens,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier.testTag(PracticeTestTags.QUESTION_PHONE_CLUSTER)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -178,6 +178,7 @@ private fun QuestionPhoneCluster(
             contentAlignment = Alignment.TopCenter,
         ) {
             QuestionHeroOrb(
+                modifier = Modifier.testTag(PracticeTestTags.QUESTION_HERO_ORB),
                 minHeight = tokens.orbMinHeight,
                 maxHeight = tokens.orbMaxHeight,
                 widthFraction = tokens.orbWidthFraction,
@@ -193,8 +194,10 @@ private fun QuestionCenteredCluster(
     tokens: QuestionLayoutTokens,
     modifier: Modifier = Modifier,
 ) {
+    // Tablet-02: content is wrap-height; only spacers share leftover space.
+    // Competing weight(1f) on content previously capped it at ~1/3 and clipped the orb.
     Column(
-        modifier = modifier,
+        modifier = modifier.testTag(PracticeTestTags.QUESTION_CENTERED_CLUSTER),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.weight(1f))
@@ -203,8 +206,8 @@ private fun QuestionCenteredCluster(
                 .then(contentMaxWidthModifier(tokens.contentMaxWidth))
                 .fillMaxWidth()
                 .padding(horizontal = tokens.horizontalPadding)
-                .weight(1f, fill = false)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .testTag(PracticeTestTags.QUESTION_CENTERED_CONTENT),
         ) {
             Spacer(modifier = Modifier.height(tokens.clusterTopPadding))
             MetadataText(
@@ -227,6 +230,7 @@ private fun QuestionCenteredCluster(
                 contentAlignment = Alignment.Center,
             ) {
                 QuestionHeroOrb(
+                    modifier = Modifier.testTag(PracticeTestTags.QUESTION_HERO_ORB),
                     minHeight = tokens.orbMinHeight,
                     maxHeight = tokens.orbMaxHeight,
                     widthFraction = tokens.orbWidthFraction,
