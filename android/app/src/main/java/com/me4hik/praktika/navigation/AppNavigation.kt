@@ -405,6 +405,9 @@ fun AppNavigation(
     val saveConfirmationMessage = stringResource(R.string.answer_saved_confirmation)
     // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik START - snackbar action label
     val viewHistoryActionLabel = stringResource(R.string.answer_view_history_action)
+    // 03.10.2026 Snackbar one-row compact cursor by Me4Hik START - compact action label
+    val viewHistoryActionLabelCompact = stringResource(R.string.answer_view_history_action_compact)
+    // 03.10.2026 Snackbar one-row compact cursor by Me4Hik END
     // 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik END
     val settingsPracticePausedMessage = stringResource(R.string.settings_practice_paused)
     val settingsPracticeResumedMessage = stringResource(R.string.settings_practice_resumed)
@@ -426,6 +429,7 @@ fun AppNavigation(
                 val result = snackbarHostState.showPracticeActionSnackbar(
                     message = saveConfirmationMessage,
                     actionLabel = viewHistoryActionLabel,
+                    compactActionLabel = viewHistoryActionLabelCompact,
                 )
                 pendingSaveConfirmation = null
                 if (result == SnackbarResult.ActionPerformed) {

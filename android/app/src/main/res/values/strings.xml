@@ -52,6 +52,9 @@
     <string name="answer_saved_confirmation">Ответ сохранён</string>
     <!-- 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik START - snackbar history action -->
     <string name="answer_view_history_action">Посмотреть историю</string>
+    <!-- 03.10.2026 Snackbar one-row compact cursor by Me4Hik START - compact action label -->
+    <string name="answer_view_history_action_compact">Смотреть</string>
+    <!-- 03.10.2026 Snackbar one-row compact cursor by Me4Hik END -->
     <!-- 07.08.2026 Stage 17 Repeat Answer History Offer cursor by Me4Hik END -->
     <string name="answer_error_blank">Введите текст ответа.</string>
     <string name="answer_error_save_failed">Не удалось сохранить ответ. Попробуйте ещё раз.</string>

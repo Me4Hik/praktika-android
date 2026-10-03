@@ -7,6 +7,12 @@
             android:name="com.me4hik.praktika.ui.practice.PracticeComposeTestActivity"
             android:exported="true"
             android:theme="@style/Theme.Praktika" />
+        <!-- 03.10.2026 Snackbar one-row compact cursor by Me4Hik START - debug visual harness -->
+        <activity
+            android:name="com.me4hik.praktika.ui.components.PracticeSnackbarVisualHarnessActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Praktika" />
+        <!-- 03.10.2026 Snackbar one-row compact cursor by Me4Hik END -->
     </application>
 
 </manifest>
