@@ -108,6 +108,9 @@
     <string name="settings_practice_resumed">Практика продолжена</string>
     <string name="settings_about_section">О приложении</string>
     <string name="settings_about_version">Версия %1$s</string>
+    <!-- 03.10.2026 Settings version visibility cursor by Me4Hik START -->
+    <string name="settings_about_build">Сборка %1$d</string>
+    <!-- 03.10.2026 Settings version visibility cursor by Me4Hik END -->
     <string name="settings_dirty_back_title">Сохранить изменения?</string>
     <string name="settings_dirty_back_message">Расписание изменено, но не сохранено.</string>
     <string name="settings_stay">Остаться</string>

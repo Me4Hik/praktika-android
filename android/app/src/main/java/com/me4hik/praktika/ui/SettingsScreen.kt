@@ -543,6 +543,8 @@ private fun SettingsContentScreen(
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = TextPrimary,
                             )
+                            // 03.10.2026 Settings version visibility cursor by Me4Hik START
+                            // About: marketing versionName + installable versionCode as separate lines
                             Text(
                                 text = stringResource(
                                     R.string.settings_about_version,
@@ -550,7 +552,18 @@ private fun SettingsContentScreen(
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextSecondary,
+                                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_ABOUT_VERSION),
                             )
+                            Text(
+                                text = stringResource(
+                                    R.string.settings_about_build,
+                                    BuildConfig.VERSION_CODE,
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary,
+                                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_ABOUT_BUILD),
+                            )
+                            // 03.10.2026 Settings version visibility cursor by Me4Hik END
                         }
                     }
                 }

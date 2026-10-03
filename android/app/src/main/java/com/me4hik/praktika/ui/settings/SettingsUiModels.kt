@@ -123,6 +123,10 @@ object SettingsTestTags {
     const val SETTINGS_PAUSE_RESUME = "settings_pause_resume"
     const val SETTINGS_PAUSE_PROGRESS = "settings_pause_progress"
     const val SETTINGS_ABOUT = "settings_about"
+    // 03.10.2026 Settings version visibility cursor by Me4Hik START
+    const val SETTINGS_ABOUT_VERSION = "settings_about_version"
+    const val SETTINGS_ABOUT_BUILD = "settings_about_build"
+    // 03.10.2026 Settings version visibility cursor by Me4Hik END
     const val SETTINGS_BACK = "settings_back"
     const val SETTINGS_DIRTY_DIALOG = "settings_dirty_dialog"
     const val SETTINGS_DISCARD = "settings_discard"
