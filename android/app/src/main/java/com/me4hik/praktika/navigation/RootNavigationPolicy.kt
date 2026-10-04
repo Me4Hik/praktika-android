@@ -23,6 +23,7 @@ object RootNavigationPolicy {
             Routes.SETTINGS,
             Routes.SETTINGS_NOTIFICATIONS,
             Routes.SOUND_LIBRARY,
+            Routes.ANALYTICS_DIAGNOSTICS,
             -> true
             else -> currentRoute?.startsWith("question/") == true ||
                 currentRoute?.startsWith("answer/") == true ||

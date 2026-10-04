@@ -13,6 +13,10 @@ import com.me4hik.praktika.data.backup.validate.BackupFormatValidationResult
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.CycleResult
 import com.me4hik.praktika.data.local.PraktikaDatabase
+import com.me4hik.praktika.measurement.AnalyticsTracker
+import com.me4hik.praktika.measurement.NoOpAnalyticsTracker
+import com.me4hik.praktika.measurement.ProductAnalyticsEvents
+import com.me4hik.praktika.measurement.SafeAnalyticsParams
 import com.me4hik.praktika.notification.NotificationSyncReason
 import com.me4hik.praktika.notification.PracticeNotificationCoordinator
 import kotlin.coroutines.cancellation.CancellationException
@@ -28,6 +32,8 @@ class BackupRestoreCoordinator(
     private val notificationCoordinator: PracticeNotificationCoordinator? = null,
     private val postRestoreVerifier: PostRestoreDataVerifier = NoOpPostRestoreDataVerifier,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val analyticsTracker: AnalyticsTracker = NoOpAnalyticsTracker,
+    private val restoreAnalyticsSource: String = SafeAnalyticsParams.Sources.RESTORE,
     private val reconcileAction: suspend () -> CycleResult = {
         requireNotNull(cycleRepository) { "cycleRepository required for default reconcileAction" }
             .syncEnvironmentAndReconcile()
@@ -120,10 +126,17 @@ class BackupRestoreCoordinator(
     ): BackupRestoreCoordinatorResult {
         return try {
             when (val restoreResult = restorer.restore(prepared.envelope)) {
-                BackupRestoreResult.Success -> handleRestoreSuccess(
-                    preview = prepared.preview,
-                    restoredEnvelope = prepared.envelope,
-                )
+                BackupRestoreResult.Success -> {
+                    runCatching {
+                        analyticsTracker.track(
+                            ProductAnalyticsEvents.backupRestored(restoreAnalyticsSource),
+                        )
+                    }
+                    handleRestoreSuccess(
+                        preview = prepared.preview,
+                        restoredEnvelope = prepared.envelope,
+                    )
+                }
 
                 else -> BackupRestoreCoordinatorResult.RestoreCoreFailure(restoreResult)
             }

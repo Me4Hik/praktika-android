@@ -400,6 +400,16 @@
     <string name="settings_sound_label">Sound on</string>
     <string name="settings_sound_section">Notification sound</string>
     <string name="settings_start_interactive_tour">Interactive tour (test)</string>
+    <string name="settings_open_analytics_diagnostics">Analytics Diagnostics</string>
+    <string name="analytics_diagnostics_title">Analytics Diagnostics</string>
+    <string name="analytics_diagnostics_providers">Providers</string>
+    <string name="analytics_diagnostics_provider_debug_active">Debug: active</string>
+    <string name="analytics_diagnostics_provider_firebase_not_configured">Firebase: not configured</string>
+    <string name="analytics_diagnostics_provider_meta_not_configured">Meta: not configured</string>
+    <string name="analytics_diagnostics_send_test">Send test event</string>
+    <string name="analytics_diagnostics_clear">Clear</string>
+    <string name="analytics_diagnostics_recent_events">Recent events</string>
+    <string name="analytics_diagnostics_event_meta">params: %1$s · providers: %2$s · %3$s</string>
     <string name="settings_stay">Stay</string>
     <string name="settings_tester_section">For testing</string>
     <string name="settings_time_picker_cancel">Cancel</string>

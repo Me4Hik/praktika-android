@@ -27,6 +27,7 @@ import com.me4hik.praktika.notification.PracticeNotificationCoordinator
 import com.me4hik.praktika.notification.PracticeNotificationPresenter
 import com.me4hik.praktika.notification.PlatformAlarmScheduler
 import com.me4hik.praktika.data.backup.write.BackupIoSessionGate
+import com.me4hik.praktika.measurement.MeasurementRuntimeFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,6 +55,7 @@ object TestPraktikaRuntimeBuilder {
         permissionRepository: NotificationPermissionPolicy? = null,
     ): PraktikaRuntime {
         val appContext = context.applicationContext
+        val measurement = MeasurementRuntimeFactory.createPhase1()
         val backupCoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val backupIoSessionGate = BackupIoSessionGate()
         val backupWriteStateRepository =
@@ -83,6 +85,7 @@ object TestPraktikaRuntimeBuilder {
             setupCoordinator = backupFolderSetupCoordinator,
             sharedIoGate = backupIoSessionGate,
             backupScope = backupCoroutineScope,
+            analyticsTracker = measurement.tracker,
         )
         val cycleRepository = CycleRepository(
             database,
@@ -92,6 +95,8 @@ object TestPraktikaRuntimeBuilder {
             wordingModeSource = QuestionWordingModeSource {
                 questionWordingPreferenceRepository.wordingMode.first()
             },
+            analyticsTracker = measurement.tracker,
+            analyticsFlavor = mode.name.lowercase(),
         )
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
@@ -119,6 +124,7 @@ object TestPraktikaRuntimeBuilder {
             notificationPresenter = notificationPresenter,
             openRequestStore = openRequestStore,
             timeProvider = timeProvider,
+            analyticsTracker = measurement.tracker,
         )
         val syncRequester = NotificationSyncRequester { reason ->
             coordinator.sync(reason)
@@ -128,6 +134,8 @@ object TestPraktikaRuntimeBuilder {
             databaseName = databaseName,
             database = database,
             timeProvider = timeProvider,
+            analyticsTracker = measurement.tracker,
+            debugAnalyticsProvider = measurement.debugProvider,
             cycleRepository = cycleRepository,
             foregroundDriver = foregroundDriver,
             scheduleReadRepository = scheduleReadRepository,

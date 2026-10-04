@@ -33,6 +33,8 @@ class PracticeNotificationCoordinator(
     private val notificationPresenter: PracticeNotificationPresenter,
     private val openRequestStore: NotificationOpenRequestStore,
     private val timeProvider: TimeProvider,
+    private val analyticsTracker: com.me4hik.praktika.measurement.AnalyticsTracker =
+        com.me4hik.praktika.measurement.NoOpAnalyticsTracker,
 ) {
     private val mutex = Mutex()
     private var scheduledAlarms: List<BoundaryAlarmPlan> = emptyList()
@@ -244,11 +246,21 @@ class PracticeNotificationCoordinator(
                 )
                 // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik END
                 if (decision is NotificationTapDecision.Open) {
-                    cycleRepository.markOccurrenceOpened(decision.occurrenceId)
+                    cycleRepository.markOccurrenceOpened(
+                        expectedOccurrenceId = decision.occurrenceId,
+                        openSource = com.me4hik.praktika.measurement.SafeAnalyticsParams.Sources.NOTIFICATION,
+                    )
                     notificationPresenter.cancelCurrentPracticeNotification()
                     openRequestStore.publish(NotificationOpenRequest(decision.occurrenceId))
-                    val openedAtAfter = cycleRepository.getOccurrenceById(decision.occurrenceId)
-                        ?.openedAtEpochMillis
+                    val openedOccurrence = cycleRepository.getOccurrenceById(decision.occurrenceId)
+                    val openedAtAfter = openedOccurrence?.openedAtEpochMillis
+                    runCatching {
+                        analyticsTracker.track(
+                            com.me4hik.praktika.measurement.ProductAnalyticsEvents.notificationOpened(
+                                questionId = openedOccurrence?.questionId,
+                            ),
+                        )
+                    }
                     // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik START - navigation publish diagnostic log
                     Log.i(
                         NOTIFICATION_TAP_TAG,

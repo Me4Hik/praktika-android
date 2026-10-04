@@ -18,6 +18,10 @@ import com.me4hik.praktika.data.preferences.QuestionDisplayTextResolver
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.data.preferences.QuestionWordingModeSource
 import com.me4hik.praktika.data.seed.SeedDataValidator
+import com.me4hik.praktika.measurement.AnalyticsTracker
+import com.me4hik.praktika.measurement.NoOpAnalyticsTracker
+import com.me4hik.praktika.measurement.ProductAnalyticsEvents
+import com.me4hik.praktika.measurement.SafeAnalyticsParams
 import java.util.concurrent.Callable
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.runBlocking
@@ -35,6 +39,8 @@ class CycleRepository(
     private val wordingModeSource: QuestionWordingModeSource = QuestionWordingModeSource {
         QuestionWordingMode.DEFAULT
     },
+    private val analyticsTracker: AnalyticsTracker = NoOpAnalyticsTracker,
+    private val analyticsFlavor: String = "",
 ) {
     private val appContext = appContext.applicationContext
     private val mutex = Mutex()
@@ -170,6 +176,7 @@ class CycleRepository(
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C PRACTICE_STARTED
         if (result is CycleResult.PracticeStarted) {
             requestMutationBackup(BackupRequestReason.PRACTICE_STARTED)
+            trackAnalytics(ProductAnalyticsEvents.practiceStarted(analyticsFlavor))
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         result
@@ -204,7 +211,10 @@ class CycleRepository(
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
     }
 
-    suspend fun markOccurrenceOpened(expectedOccurrenceId: Long): Boolean = withCycleMutex {
+    suspend fun markOccurrenceOpened(
+        expectedOccurrenceId: Long,
+        openSource: String = SafeAnalyticsParams.Sources.HOME,
+    ): Boolean = withCycleMutex {
         val changed = runCycleTransaction {
             val now = timeProvider.nowEpochMillis()
             database.questionOccurrenceDao().markOpenedIfNull(expectedOccurrenceId, now) == 1
@@ -212,6 +222,8 @@ class CycleRepository(
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C open occurrence backup
         if (changed) {
             requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+            val questionId = database.questionOccurrenceDao().getById(expectedOccurrenceId)?.questionId
+            trackAnalytics(ProductAnalyticsEvents.questionOpened(questionId, openSource))
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         changed
@@ -333,24 +345,31 @@ class CycleRepository(
     }
 
     suspend fun skipAvailableByUser(): CycleResult = withCycleMutex {
+        val questionIdHint = database.questionOccurrenceDao()
+            .getIncompleteOrdered()
+            .singleOrNull()
+            ?.questionId
         val result = runCycleTransaction {
             skipAvailableByUserInternal(expectedOccurrenceId = null)
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C skip backup
         if (result is CycleResult.SkipCompleted) {
             requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+            trackAnalytics(ProductAnalyticsEvents.questionSkipped(questionIdHint))
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         result
     }
 
     suspend fun skipAvailableByUser(expectedOccurrenceId: Long): CycleResult = withCycleMutex {
+        val questionIdHint = database.questionOccurrenceDao().getById(expectedOccurrenceId)?.questionId
         val result = runCycleTransaction {
             skipAvailableByUserInternal(expectedOccurrenceId = expectedOccurrenceId)
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C skip backup
         if (result is CycleResult.SkipCompleted) {
             requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+            trackAnalytics(ProductAnalyticsEvents.questionSkipped(questionIdHint))
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         result
@@ -360,6 +379,7 @@ class CycleRepository(
         expectedOccurrenceId: Long,
         durationMinutes: Int,
     ): CycleResult = withCycleMutex {
+        val questionIdHint = database.questionOccurrenceDao().getById(expectedOccurrenceId)?.questionId
         val result = runCycleTransaction {
             deferAvailableOccurrenceInternal(
                 expectedOccurrenceId = expectedOccurrenceId,
@@ -368,6 +388,12 @@ class CycleRepository(
         }
         if (result is CycleResult.DeferCompleted) {
             requestMutationBackup(BackupRequestReason.PRACTICE_STATE_CHANGED)
+            trackAnalytics(
+                ProductAnalyticsEvents.questionDeferred(
+                    questionId = questionIdHint,
+                    durationMinutes = result.durationMinutes,
+                ),
+            )
         }
         result
     }
@@ -377,6 +403,7 @@ class CycleRepository(
         expectedOccurrenceId: Long,
         answerText: String,
     ): CycleResult = withCycleMutex {
+        val questionIdHint = database.questionOccurrenceDao().getById(expectedOccurrenceId)?.questionId
         val result = runCycleTransaction {
             saveAnswerInternal(
                 expectedOccurrenceId = expectedOccurrenceId,
@@ -386,6 +413,7 @@ class CycleRepository(
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C ANSWER_SAVED
         if (result is CycleResult.AnswerSaved) {
             requestMutationBackup(BackupRequestReason.ANSWER_SAVED)
+            trackAnalytics(ProductAnalyticsEvents.answerSaved(questionIdHint))
         }
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         result
@@ -611,6 +639,14 @@ class CycleRepository(
             throw e
         } catch (_: Exception) {
             // Ordinary backup enqueue failure must not undo committed mutation.
+        }
+    }
+
+    private fun trackAnalytics(event: com.me4hik.praktika.measurement.AnalyticsEvent) {
+        try {
+            analyticsTracker.track(event)
+        } catch (_: Exception) {
+            // Measurement must never break product flow.
         }
     }
     // 10.08.2026 Post-release fixes cursor by Me4Hik END

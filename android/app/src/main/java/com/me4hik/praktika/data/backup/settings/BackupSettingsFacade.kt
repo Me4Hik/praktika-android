@@ -14,6 +14,9 @@ import com.me4hik.praktika.data.backup.write.BackupRequestReason
 import com.me4hik.praktika.data.backup.write.BackupTreeUriSanitizer
 import com.me4hik.praktika.data.backup.write.BackupWriteStateRepository
 import com.me4hik.praktika.data.backup.write.ReconnectResult
+import com.me4hik.praktika.measurement.AnalyticsTracker
+import com.me4hik.praktika.measurement.NoOpAnalyticsTracker
+import com.me4hik.praktika.measurement.ProductAnalyticsEvents
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +37,7 @@ class BackupSettingsFacade(
     private val ioGate: BackupIoSessionGate,
     private val reconnectAccess: BackupReconnectAccess,
     private val backupScope: CoroutineScope,
+    private val analyticsTracker: AnalyticsTracker = NoOpAnalyticsTracker,
 ) {
     private val setupBookkeeping = Mutex()
     private var retainedInspectionToken: Long? = null
@@ -212,7 +216,11 @@ class BackupSettingsFacade(
             reason = BackupRequestReason.MANUAL,
             trigger = BackupAttemptTrigger.MANUAL,
         )
-        return BackupNowResultMapper.map(result)
+        val mapped = BackupNowResultMapper.map(result)
+        if (mapped == BackupNowResult.Written) {
+            runCatching { analyticsTracker.track(ProductAnalyticsEvents.backupCreated()) }
+        }
+        return mapped
     }
 
     suspend fun disableAutomaticBackup(): BackupSettingsDisableResult {

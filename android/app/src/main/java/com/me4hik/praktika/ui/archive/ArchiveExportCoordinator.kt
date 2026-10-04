@@ -26,6 +26,7 @@ sealed interface ArchiveExportState {
     data object Preparing : ArchiveExportState
     data class AwaitingDestination(
         val document: ExportDocument,
+        val format: ExportFormat,
     ) : ArchiveExportState
     data object Writing : ArchiveExportState
 }
@@ -46,6 +47,8 @@ class ArchiveExportCoordinator(
     private val documentWriter: ExportDocumentWriter,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val analyticsTracker: com.me4hik.praktika.measurement.AnalyticsTracker =
+        com.me4hik.praktika.measurement.NoOpAnalyticsTracker,
 ) {
     private val _state = MutableStateFlow<ArchiveExportState>(ArchiveExportState.Idle)
     val state: StateFlow<ArchiveExportState> = _state.asStateFlow()
@@ -65,7 +68,10 @@ class ArchiveExportCoordinator(
                     eventsChannel.send(ArchiveExportUiEvent.NoAnswers)
                 }
                 is ArchiveExportPrepareResult.Ready -> {
-                    _state.value = ArchiveExportState.AwaitingDestination(result.document)
+                    _state.value = ArchiveExportState.AwaitingDestination(
+                        document = result.document,
+                        format = format,
+                    )
                     eventsChannel.send(
                         ArchiveExportUiEvent.RequestCreateDocument(
                             suggestedFileName = result.document.suggestedFileName,
@@ -84,7 +90,9 @@ class ArchiveExportCoordinator(
             }
             return
         }
-        val document = (_state.value as? ArchiveExportState.AwaitingDestination)?.document ?: return
+        val awaiting = _state.value as? ArchiveExportState.AwaitingDestination ?: return
+        val document = awaiting.document
+        val format = awaiting.format
         scope.launch {
             _state.value = ArchiveExportState.Writing
             try {
@@ -92,6 +100,13 @@ class ArchiveExportCoordinator(
                     documentWriter.write(uri, document.bytes)
                 }
                 _state.value = ArchiveExportState.Idle
+                runCatching {
+                    analyticsTracker.track(
+                        com.me4hik.praktika.measurement.ProductAnalyticsEvents.archiveExported(
+                            format = format.name.lowercase(),
+                        ),
+                    )
+                }
                 eventsChannel.send(ArchiveExportUiEvent.Success)
             } catch (_: Exception) {
                 _state.value = ArchiveExportState.Idle

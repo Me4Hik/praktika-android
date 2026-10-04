@@ -28,6 +28,8 @@ import com.me4hik.praktika.notification.NotificationSyncRequester
 import com.me4hik.praktika.notification.PracticeNotificationCoordinator
 import com.me4hik.praktika.data.backup.write.BackupIoSessionGate
 import com.me4hik.praktika.data.backup.write.AuthorizedBackupMutationRequestSink
+import com.me4hik.praktika.measurement.MeasurementRuntimeFactory
+import com.me4hik.praktika.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,6 +41,7 @@ object RuntimeFactory {
 
     fun create(context: Context): PraktikaRuntime {
         val appContext = context.applicationContext
+        val measurement = MeasurementRuntimeFactory.createPhase1()
         val database = PraktikaDatabase.getInstance(appContext, ACCELERATED_DATABASE_NAME)
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2B1 runtime backup graph
         val backupCoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -78,6 +81,7 @@ object RuntimeFactory {
             setupCoordinator = backupFolderSetupCoordinator,
             sharedIoGate = backupIoSessionGate,
             backupScope = backupCoroutineScope,
+            analyticsTracker = measurement.tracker,
         )
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
         val monotonic = AndroidMonotonicTimeSource(appContext)
@@ -106,6 +110,8 @@ object RuntimeFactory {
             wordingModeSource = QuestionWordingModeSource {
                 questionWordingPreferenceRepository.wordingMode.first()
             },
+            analyticsTracker = measurement.tracker,
+            analyticsFlavor = BuildConfig.FLAVOR,
         )
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
@@ -136,6 +142,7 @@ object RuntimeFactory {
             notificationPresenter = notificationPresenter,
             openRequestStore = openRequestStore,
             timeProvider = timeProvider,
+            analyticsTracker = measurement.tracker,
         )
         val syncRequester = NotificationSyncRequester { reason ->
             coordinator.sync(reason)
@@ -151,6 +158,8 @@ object RuntimeFactory {
             databaseName = ACCELERATED_DATABASE_NAME,
             database = database,
             timeProvider = timeProvider,
+            analyticsTracker = measurement.tracker,
+            debugAnalyticsProvider = measurement.debugProvider,
             cycleRepository = cycleRepository,
             foregroundDriver = foregroundDriver,
             scheduleReadRepository = scheduleReadRepository,

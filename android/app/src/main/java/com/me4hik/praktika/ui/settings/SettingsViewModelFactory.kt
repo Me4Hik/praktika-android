@@ -56,6 +56,7 @@ class SettingsViewModelFactory(
                 // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
                 backupSettingsActions = FacadeBackupSettingsActions(runtime.backupSettingsFacade),
                 // 10.08.2026 Post-release fixes cursor by Me4Hik END
+                analyticsTracker = runtime.analyticsTracker,
                 savedStateHandle = handle,
             ) as T
         }

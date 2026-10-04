@@ -10,6 +10,8 @@ import com.me4hik.praktika.data.backup.storage.DataStoreBackupTreeConfigReposito
 import com.me4hik.praktika.data.backup.write.AuthorizedBackupService
 import com.me4hik.praktika.data.backup.write.BackupIoSessionGate
 import com.me4hik.praktika.data.backup.write.BackupWriteStateRepository
+import com.me4hik.praktika.measurement.AnalyticsTracker
+import com.me4hik.praktika.measurement.NoOpAnalyticsTracker
 import kotlinx.coroutines.CoroutineScope
 
 internal object RuntimeBackupSettingsFacadeFactory {
@@ -20,6 +22,7 @@ internal object RuntimeBackupSettingsFacadeFactory {
         setupCoordinator: BackupFolderSetupCoordinator,
         sharedIoGate: BackupIoSessionGate,
         backupScope: CoroutineScope,
+        analyticsTracker: AnalyticsTracker = NoOpAnalyticsTracker,
     ): BackupSettingsFacade {
         val treeConfig = DataStoreBackupTreeConfigRepository(appContext)
         val folderConnection = BackupFolderConnection(
@@ -37,6 +40,7 @@ internal object RuntimeBackupSettingsFacadeFactory {
             ioGate = sharedIoGate,
             reconnectAccess = reconnectAccess,
             backupScope = backupScope,
+            analyticsTracker = analyticsTracker,
         )
     }
 }

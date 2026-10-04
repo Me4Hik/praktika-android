@@ -38,6 +38,7 @@ class AnswerViewModelFactory(
                 moodCheckInRepository = RoomMoodCheckInRepository(
                     database = runtime.database,
                     timeProvider = runtime.timeProvider,
+                    analyticsTracker = runtime.analyticsTracker,
                 ),
                 questionWordingPreferenceRepository = runtime.questionWordingPreferenceRepository,
                 savedStateHandle = handle,

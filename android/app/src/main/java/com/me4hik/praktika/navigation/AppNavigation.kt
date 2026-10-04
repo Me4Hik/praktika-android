@@ -309,6 +309,7 @@ fun AppNavigation(
             ),
             documentWriter = ContentResolverExportDocumentWriter(context.contentResolver),
             scope = coroutineScope,
+            analyticsTracker = runtime.analyticsTracker,
         )
     }
     var showPeriodExportDialog by remember { mutableStateOf(false) }
@@ -595,6 +596,12 @@ fun AppNavigation(
                                     runtime.languagePreferenceRepository.setLanguage(language)
                                     runtime.languagePreferenceRepository.markLanguageSelected()
                                 }
+                                runCatching {
+                                    runtime.analyticsTracker.track(
+                                        com.me4hik.praktika.measurement.ProductAnalyticsEvents
+                                            .languageSelected(language.tag),
+                                    )
+                                }
                                 val applyResult = withContext(Dispatchers.Main.immediate) {
                                     AppLocaleController.apply(language)
                                 }
@@ -820,7 +827,18 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(Routes.ARCHIVE) {
+            composable(Routes.ARCHIVE) { archiveBackStackEntry ->
+                LaunchedEffect(archiveBackStackEntry) {
+                    runCatching {
+                        com.me4hik.praktika.measurement.ArchiveOpenedTracking.trackOnce(
+                            savedStateHandle = archiveBackStackEntry.savedStateHandle,
+                        ) {
+                            runtime.analyticsTracker.track(
+                                com.me4hik.praktika.measurement.ProductAnalyticsEvents.archiveOpened(),
+                            )
+                        }
+                    }
+                }
                 ArchiveHubScreen(
                     onOpenDays = {
                         navController.navigate(Routes.ARCHIVE_DAYS) {
@@ -1194,6 +1212,21 @@ fun AppNavigation(
                     onStartInteractiveTour = {
                         tourController.start()
                     },
+                    onOpenAnalyticsDiagnostics = {
+                        navController.navigate(Routes.ANALYTICS_DIAGNOSTICS)
+                    },
+                )
+            }
+            composable(Routes.ANALYTICS_DIAGNOSTICS) {
+                val diagnosticsViewModel: com.me4hik.praktika.ui.measurement.AnalyticsDiagnosticsViewModel =
+                    viewModel(
+                        factory = com.me4hik.praktika.ui.measurement.AnalyticsDiagnosticsViewModelFactory(
+                            runtime,
+                        ),
+                    )
+                com.me4hik.praktika.ui.measurement.AnalyticsDiagnosticsScreen(
+                    viewModel = diagnosticsViewModel,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.SETTINGS_NOTIFICATIONS) { backStackEntry ->

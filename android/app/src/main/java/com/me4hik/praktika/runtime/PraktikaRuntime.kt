@@ -18,6 +18,8 @@ import com.me4hik.praktika.data.read.AnalyticsReadRepository
 import com.me4hik.praktika.data.read.ArchiveReadRepository
 import com.me4hik.praktika.data.read.PracticeReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadRepository
+import com.me4hik.praktika.measurement.AnalyticsTracker
+import com.me4hik.praktika.measurement.DebugAnalyticsProvider
 import com.me4hik.praktika.notification.ExactAlarmCapabilityPolicy
 import com.me4hik.praktika.notification.NotificationOpenRequestStore
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
@@ -31,6 +33,8 @@ data class PraktikaRuntime(
     val databaseName: String,
     val database: PraktikaDatabase,
     val timeProvider: TimeProvider,
+    val analyticsTracker: AnalyticsTracker,
+    val debugAnalyticsProvider: DebugAnalyticsProvider,
     val cycleRepository: CycleRepository,
     val foregroundDriver: RuntimeForegroundDriver,
     val scheduleReadRepository: ScheduleReadRepository,

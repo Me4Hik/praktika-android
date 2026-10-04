@@ -129,6 +129,7 @@ fun SettingsScreen(
     tourResultSummary: String? = null,
     onAboutVersionClick: () -> Unit = {},
     onStartInteractiveTour: () -> Unit = {},
+    onOpenAnalyticsDiagnostics: () -> Unit = {},
 ) {
     when (uiState) {
         SettingsUiState.Loading -> {
@@ -183,6 +184,7 @@ fun SettingsScreen(
                 tourResultSummary = tourResultSummary,
                 onAboutVersionClick = onAboutVersionClick,
                 onStartInteractiveTour = onStartInteractiveTour,
+                onOpenAnalyticsDiagnostics = onOpenAnalyticsDiagnostics,
             )
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
             SettingsBackupDialogs(
@@ -257,6 +259,7 @@ private fun SettingsContentScreen(
     tourResultSummary: String?,
     onAboutVersionClick: () -> Unit,
     onStartInteractiveTour: () -> Unit,
+    onOpenAnalyticsDiagnostics: () -> Unit,
 ) {
     var pickerSlotIndex by remember { mutableIntStateOf(-1) }
     val tourController = LocalTourController.current
@@ -651,6 +654,13 @@ private fun SettingsContentScreen(
                             onClick = onStartInteractiveTour,
                             showChevron = false,
                             modifier = Modifier.testTag(SettingsTestTags.SETTINGS_START_TOUR),
+                        )
+                        PracticeGlassActionRow(
+                            title = stringResource(R.string.settings_open_analytics_diagnostics),
+                            icon = Icons.Outlined.BugReport,
+                            onClick = onOpenAnalyticsDiagnostics,
+                            showChevron = true,
+                            modifier = Modifier.testTag(SettingsTestTags.SETTINGS_ANALYTICS_DIAGNOSTICS),
                         )
                         tourResultSummary?.let { summary ->
                             Text(

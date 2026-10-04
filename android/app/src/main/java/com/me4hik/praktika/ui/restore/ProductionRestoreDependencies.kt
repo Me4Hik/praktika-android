@@ -32,6 +32,7 @@ class ProductionRestoreDependencies private constructor(
                 restorer = RoomBackupRestorer(runtime.database),
                 cycleRepository = runtime.cycleRepository,
                 notificationCoordinator = runtime.notificationCoordinator,
+                analyticsTracker = runtime.analyticsTracker,
             )
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2B2-A shared gate + session
             val ioGate: BackupIoSessionGate = runtime.backupIoSessionGate

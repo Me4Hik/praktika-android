@@ -504,11 +504,14 @@ class Stage62B1RuntimeStartupWiringTest {
             override fun createRequestExactAlarmIntent(): Intent = Intent()
             override fun recordSettingsCta(source: String) = Unit
         }
+        val measurement = com.me4hik.praktika.measurement.MeasurementRuntimeFactory.createPhase1()
         runtimeRef = PraktikaRuntime(
             mode = RuntimeMode.PRODUCTION,
             databaseName = "stage62b1-test.db",
             database = database,
             timeProvider = timeProvider,
+            analyticsTracker = measurement.tracker,
+            debugAnalyticsProvider = measurement.debugProvider,
             cycleRepository = cycleRepository,
             foregroundDriver = object : RuntimeForegroundDriver {
                 override suspend fun runWhileForeground() = Unit

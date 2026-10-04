@@ -33,6 +33,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val SETTINGS_NOTIFICATIONS = "settings/notifications"
     const val SOUND_LIBRARY = "settings/sound"
+    const val ANALYTICS_DIAGNOSTICS = "settings/analytics_diagnostics"
 
     fun question(occurrenceId: Long): String = "question/$occurrenceId"
 

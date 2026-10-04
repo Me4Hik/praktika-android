@@ -26,6 +26,9 @@ import com.me4hik.praktika.data.read.ScheduleSlotReadModel
 import com.me4hik.praktika.diagnostics.BugReportSendResult
 import com.me4hik.praktika.diagnostics.DiagnosticReportSubmitter
 import com.me4hik.praktika.diagnostics.TargetedBugDiagnostics
+import com.me4hik.praktika.measurement.AnalyticsTracker
+import com.me4hik.praktika.measurement.NoOpAnalyticsTracker
+import com.me4hik.praktika.measurement.ProductAnalyticsEvents
 import com.me4hik.praktika.notification.NotificationPermissionPolicy
 import com.me4hik.praktika.notification.NotificationPermissionUiState
 import com.me4hik.praktika.notification.NotificationSyncReason
@@ -67,6 +70,7 @@ class SettingsViewModel(
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
     private val backupSettingsActions: BackupSettingsActions,
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+    private val analyticsTracker: AnalyticsTracker = NoOpAnalyticsTracker,
     private val commandDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
@@ -311,11 +315,20 @@ class SettingsViewModel(
             languageError = null,
         )
 
+        val previousLanguage = content.appLanguage
         viewModelScope.launch {
             try {
                 withContext(commandDispatcher) {
                     languagePreferenceRepository.setLanguage(language)
                     languagePreferenceRepository.markLanguageSelected()
+                }
+                runCatching {
+                    analyticsTracker.track(
+                        ProductAnalyticsEvents.languageChanged(
+                            language = language.tag,
+                            previousLanguage = previousLanguage.tag,
+                        ),
+                    )
                 }
                 // Persist + apply only. Snapshot/notification reconcile is bootstrap's job after recreate.
                 // Never treat work after setApplicationLocales as guaranteed (viewModelScope cancels).
