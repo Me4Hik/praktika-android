@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
     // 04.08.2026 DB Refactoring cursor by Me4Hik END
+    alias(libs.plugins.google.services) apply false
 }
 
 // 04.08.2026 DB Refactoring cursor by Me4Hik START - фикс Room schema export и kotlinx-serialization

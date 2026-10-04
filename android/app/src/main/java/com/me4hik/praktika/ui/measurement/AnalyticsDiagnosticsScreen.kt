@@ -81,7 +81,7 @@ fun AnalyticsDiagnosticsScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = stringResource(R.string.analytics_diagnostics_provider_firebase_not_configured),
+                text = stringResource(R.string.analytics_diagnostics_provider_firebase_active),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(

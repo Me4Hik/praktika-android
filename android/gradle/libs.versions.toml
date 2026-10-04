@@ -28,6 +28,8 @@ orgJson = "20240303"
 robolectric = "4.14.1"
 # 04.08.2026 Cycle Engine cursor by Me4Hik END
 # 04.08.2026 DB Refactoring cursor by Me4Hik END
+googleServices = "4.5.0"
+firebaseBom = "34.18.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -69,6 +71,8 @@ org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 # 04.08.2026 Cycle Engine cursor by Me4Hik END
 # 04.08.2026 DB Refactoring cursor by Me4Hik END
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -78,4 +82,5 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
 # 04.08.2026 DB Refactoring cursor by Me4Hik END
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 # 04.08.2026 Reminder App cursor by Me4Hik END

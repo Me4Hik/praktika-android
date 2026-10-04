@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
     // 04.08.2026 DB Refactoring cursor by Me4Hik END
+    alias(libs.plugins.google.services)
 }
 
 // 04.08.2026 DB Refactoring cursor by Me4Hik START - каталог экспорта Room schema
@@ -229,6 +230,9 @@ dependencies {
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Production diagnostic flight recorder
     implementation(libs.sentry.android)
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
 
     // 04.08.2026 Cycle Engine cursor by Me4Hik START - coreLibraryDesugaring для java.time на minSdk 24
     coreLibraryDesugaring(libs.desugar.jdk.libs)

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "129682844973",
+    "project_id": "praktika-5fe5a",
+    "storage_bucket": "praktika-5fe5a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:129682844973:android:0a4bf995a835a79cad77a4",
+        "android_client_info": {
+          "package_name": "com.me4hik.praktika"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJa0a1cmogq2gQ118NxQ98V6FZYWkiVoA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

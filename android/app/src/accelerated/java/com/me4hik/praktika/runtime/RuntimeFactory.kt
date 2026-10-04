@@ -41,7 +41,7 @@ object RuntimeFactory {
 
     fun create(context: Context): PraktikaRuntime {
         val appContext = context.applicationContext
-        val measurement = MeasurementRuntimeFactory.createPhase1()
+        val measurement = MeasurementRuntimeFactory.createPhase2(appContext)
         val database = PraktikaDatabase.getInstance(appContext, ACCELERATED_DATABASE_NAME)
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2B1 runtime backup graph
         val backupCoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
