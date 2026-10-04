@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Locale-07 imported UK plurals -->
+<resources>
+    <plurals name="archive_occurrence_deferred_count">
+        <item quantity="one">Відкладено %d раз</item>
+        <item quantity="few">Відкладено %d рази</item>
+        <item quantity="many">Відкладено %d разів</item>
+        <item quantity="other">Відкладено %d разів</item>
+    </plurals>
+</resources>

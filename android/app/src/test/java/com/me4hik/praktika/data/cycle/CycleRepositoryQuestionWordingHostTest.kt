@@ -1,5 +1,6 @@
 package com.me4hik.praktika.data.cycle
 
+import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -32,7 +33,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE, sdk = [28])
+@Config(application = Application::class, sdk = [28], qualifiers = "ru")
 class CycleRepositoryQuestionWordingHostTest {
     private lateinit var context: Context
     private lateinit var database: PraktikaDatabase
@@ -52,6 +53,7 @@ class CycleRepositoryQuestionWordingHostTest {
             database,
             timeProvider,
             NoOpBackupMutationRequestSink,
+            context,
             wordingModeSource = QuestionWordingModeSource { wordingMode.get() },
         )
     }
@@ -101,6 +103,20 @@ class CycleRepositoryQuestionWordingHostTest {
             "Question 1",
             database.questionOccurrenceDao().getIncompleteOrdered().single().questionTextSnapshot,
         )
+    }
+
+    @Test
+    fun applyAppLanguage_updatesAnyIncompleteAndKeepsTerminal() = runBlocking {
+        wordingMode.set(QuestionWordingMode.MASCULINE)
+        insertIncomplete(questionId = 1, snapshot = "stale RU")
+        insertTerminalAnswered(questionId = 1, snapshot = "history RU", occurrenceId = 101L)
+
+        val changed = repository.applyAppLanguage()
+        assertTrue(changed)
+        val incomplete = database.questionOccurrenceDao().getIncompleteOrdered().single()
+        assertEquals(canonical(1), incomplete.questionTextSnapshot)
+        val terminal = database.questionOccurrenceDao().getById(101L)!!
+        assertEquals("history RU", terminal.questionTextSnapshot)
     }
 
     @Test
@@ -248,19 +264,14 @@ class CycleRepositoryQuestionWordingHostTest {
             .toEpochMilli()
     }
 
-    private fun canonical(id: Int): String = when (id) {
-        2 -> "Какой настоящий я сейчас по цвету?"
-        5 -> "Какой настоящий я сейчас по запаху?"
-        8 -> "Какой настоящий я сейчас по звуку?"
-        11 -> "Какой настоящий я сейчас на ощупь?"
-        else -> error(id)
-    }
+    private fun canonical(id: Int): String =
+        QuestionDisplayTextResolver.resolve(context.resources, id, QuestionWordingMode.MASCULINE)
 
     private fun feminine(id: Int): String =
-        QuestionDisplayTextResolver.resolve(id, canonical(id), QuestionWordingMode.FEMININE)
+        QuestionDisplayTextResolver.resolve(context.resources, id, QuestionWordingMode.FEMININE)
 
     private fun neutral(id: Int): String =
-        QuestionDisplayTextResolver.resolve(id, canonical(id), QuestionWordingMode.NEUTRAL)
+        QuestionDisplayTextResolver.resolve(context.resources, id, QuestionWordingMode.NEUTRAL)
 
     private companion object {
         const val ZONE_KIEV = "Europe/Kyiv"

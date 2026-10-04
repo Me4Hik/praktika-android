@@ -1,6 +1,7 @@
 // 06.08.2026 Settings Schedule cursor by Me4Hik START - UI models Settings
 package com.me4hik.praktika.ui.settings
 
+import com.me4hik.praktika.data.preferences.AppLanguage
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 
 data class SettingsSlotUiModel(
@@ -22,6 +23,8 @@ sealed interface SettingsUiState {
         val isChangingSound: Boolean,
         val deferDurationMinutes: Int,
         val isChangingDeferDuration: Boolean,
+        val appLanguage: AppLanguage = AppLanguage.DEFAULT,
+        val isChangingAppLanguage: Boolean = false,
         val questionWordingMode: QuestionWordingMode = QuestionWordingMode.DEFAULT,
         val isChangingQuestionWording: Boolean = false,
         val isPracticePaused: Boolean,
@@ -29,6 +32,7 @@ sealed interface SettingsUiState {
         val scheduleError: SettingsScheduleError?,
         val soundError: SettingsSoundError?,
         val deferError: SettingsDeferError?,
+        val languageError: SettingsLanguageError? = null,
         val wordingError: SettingsWordingError? = null,
         val pauseError: SettingsPauseError?,
         // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
@@ -55,6 +59,10 @@ enum class SettingsDeferError {
     SAVE_FAILED,
 }
 
+enum class SettingsLanguageError {
+    SAVE_FAILED,
+}
+
 enum class SettingsWordingError {
     SAVE_FAILED,
 }
@@ -75,6 +83,7 @@ sealed interface SettingsSnackbarEvent {
     data object ScheduleSaveFailed : SettingsSnackbarEvent
     data object SoundChangeFailed : SettingsSnackbarEvent
     data object DeferDurationChangeFailed : SettingsSnackbarEvent
+    data object AppLanguageChangeFailed : SettingsSnackbarEvent
     data object QuestionWordingChangeFailed : SettingsSnackbarEvent
     data object PauseStateChangeFailed : SettingsSnackbarEvent
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
@@ -115,6 +124,11 @@ object SettingsTestTags {
     const val SETTINGS_DEFER_10 = "settings_defer_10"
     const val SETTINGS_DEFER_15 = "settings_defer_15"
     const val SETTINGS_DEFER_30 = "settings_defer_30"
+    const val SETTINGS_LANGUAGE_SECTION = "settings_language_section"
+    const val SETTINGS_LANGUAGE_RU = "settings_language_ru"
+    const val SETTINGS_LANGUAGE_UK = "settings_language_uk"
+    const val SETTINGS_LANGUAGE_EN = "settings_language_en"
+    const val SETTINGS_LANGUAGE_PL = "settings_language_pl"
     const val SETTINGS_WORDING_SECTION = "settings_wording_section"
     const val SETTINGS_WORDING_MASCULINE = "settings_wording_masculine"
     const val SETTINGS_WORDING_FEMININE = "settings_wording_feminine"

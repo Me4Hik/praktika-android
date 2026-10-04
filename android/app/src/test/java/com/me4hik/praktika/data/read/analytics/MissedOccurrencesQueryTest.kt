@@ -3,17 +3,30 @@ package com.me4hik.praktika.data.read.analytics
 
 import com.me4hik.praktika.data.local.model.AnalyticsTerminalOccurrenceRow
 import com.me4hik.praktika.data.model.QuestionOccurrenceStatus
+import com.me4hik.praktika.data.preferences.AppLanguage
+import com.me4hik.praktika.data.preferences.AppLocaleController
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.TimeZone
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class MissedOccurrencesQueryTest {
 
     private val formatter = MissedOccurrenceDateTimeFormatter()
+
+    @Before
+    fun setUp() {
+        AppLocaleController.apply(AppLanguage.RU)
+    }
 
     @Test
     fun filter_includesOnlyMissedByTime() {

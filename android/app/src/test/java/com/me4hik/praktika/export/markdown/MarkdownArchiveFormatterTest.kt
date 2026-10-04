@@ -2,6 +2,8 @@
 // 07.08.2026 Stage 20 CSV Export cursor by Me4Hik START - ExportDocument bytes regression
 package com.me4hik.praktika.export.markdown
 
+import com.me4hik.praktika.data.preferences.AppLanguage
+import com.me4hik.praktika.data.preferences.AppLocaleController
 import com.me4hik.praktika.data.read.ArchiveEntry
 import com.me4hik.praktika.export.ExportDocument
 import com.me4hik.praktika.export.ExportSelection
@@ -14,11 +16,22 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class MarkdownArchiveFormatterTest {
     private val zone = ZoneId.of("Europe/Moscow")
     private val formatter = MarkdownArchiveFormatter(ArchiveDisplayFormatter())
+
+    @Before
+    fun setUp() {
+        AppLocaleController.apply(AppLanguage.RU)
+    }
 
     @Test
     fun oneAnswerAllExport() {

@@ -36,7 +36,7 @@ class RoomBackupExporterConcurrencyTest {
                 RoomBackupExporterTestSupport.epochAt(2026, 8, 4, 11, 0),
                 RoomBackupExporterTestSupport.ZONE_KIEV,
             )
-            repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+            repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
             repository.startPractice()
         }
     }

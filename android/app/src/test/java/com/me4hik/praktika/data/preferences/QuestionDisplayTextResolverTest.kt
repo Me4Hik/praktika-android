@@ -1,37 +1,89 @@
 package com.me4hik.praktika.data.preferences
 
+import android.app.Application
+import android.content.Context
+import android.content.res.Configuration
+import androidx.test.core.app.ApplicationProvider
+import java.util.Locale
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class, sdk = [28])
 class QuestionDisplayTextResolverTest {
-    private val canonicalById: Map<Int, String> = (1..21).associateWith { id ->
-        when (id) {
-            2 -> "Какой настоящий я сейчас по цвету?"
-            5 -> "Какой настоящий я сейчас по запаху?"
-            8 -> "Какой настоящий я сейчас по звуку?"
-            11 -> "Какой настоящий я сейчас на ощупь?"
-            else -> "Question $id"
-        }
+    private lateinit var context: Context
+
+    @Before
+    fun setUp() {
+        context = ApplicationProvider.getApplicationContext()
     }
 
     @Test
     fun resolve_allQuestionsAllModes() {
+        val resources = localizedResources(Locale("ru"))
         for (id in 1..21) {
-            val canonical = canonicalById.getValue(id)
-            assertEquals(
-                canonical,
-                QuestionDisplayTextResolver.resolve(id, canonical, QuestionWordingMode.MASCULINE),
+            val masculine = QuestionDisplayTextResolver.resolve(
+                resources,
+                id,
+                QuestionWordingMode.MASCULINE,
             )
-            val feminine = QuestionDisplayTextResolver.resolve(id, canonical, QuestionWordingMode.FEMININE)
-            val neutral = QuestionDisplayTextResolver.resolve(id, canonical, QuestionWordingMode.NEUTRAL)
+            val feminine = QuestionDisplayTextResolver.resolve(
+                resources,
+                id,
+                QuestionWordingMode.FEMININE,
+            )
+            val neutral = QuestionDisplayTextResolver.resolve(
+                resources,
+                id,
+                QuestionWordingMode.NEUTRAL,
+            )
             if (id in QuestionDisplayTextResolver.WORDING_DEPENDENT_QUESTION_IDS) {
                 assertEquals(expectedFeminine(id), feminine)
                 assertEquals(expectedNeutral(id), neutral)
+                assertEquals(expectedMasculine(id), masculine)
             } else {
-                assertEquals(canonical, feminine)
-                assertEquals(canonical, neutral)
+                assertEquals(masculine, feminine)
+                assertEquals(masculine, neutral)
             }
         }
+    }
+
+    @Test
+    fun resolve_englishLocale_usesEnglishCopy() {
+        val resources = localizedResources(Locale.ENGLISH)
+        assertEquals(
+            "What color feels most like the real me right now?",
+            QuestionDisplayTextResolver.resolve(
+                resources,
+                2,
+                QuestionWordingMode.MASCULINE,
+            ),
+        )
+        assertEquals(
+            "What color describes me best right now?",
+            QuestionDisplayTextResolver.resolve(
+                resources,
+                2,
+                QuestionWordingMode.NEUTRAL,
+            ),
+        )
+    }
+
+    private fun localizedResources(locale: Locale) =
+        context.createConfigurationContext(
+            Configuration(context.resources.configuration).apply { setLocale(locale) },
+        ).resources
+
+    private fun expectedMasculine(id: Int): String = when (id) {
+        2 -> "Какой настоящий я сейчас по цвету?"
+        5 -> "Какой настоящий я сейчас по запаху?"
+        8 -> "Какой настоящий я сейчас по звуку?"
+        11 -> "Какой настоящий я сейчас на ощупь?"
+        else -> error("unexpected id $id")
     }
 
     private fun expectedFeminine(id: Int): String = when (id) {

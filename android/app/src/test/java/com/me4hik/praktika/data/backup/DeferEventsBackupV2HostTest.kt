@@ -253,7 +253,7 @@ class DeferEventsBackupV2HostTest {
             .toInstant()
             .toEpochMilli()
         val timeProvider = FakeTimeProvider(startMillis, zoneId)
-        val repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         assertEquals(CycleResult.PracticeStarted, repository.startPractice())
         val incomplete = database.questionOccurrenceDao().getIncompleteOrdered().single()
         timeProvider.setEpochMillis(incomplete.plannedAtEpochMillis)
@@ -276,7 +276,7 @@ class DeferEventsBackupV2HostTest {
             .toInstant()
             .toEpochMilli()
         val timeProvider = FakeTimeProvider(now, zoneId)
-        val repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         val result = repository.deferAvailableOccurrence(occurrenceId, durationMinutes)
         assertTrue(result is CycleResult.DeferCompleted)
     }

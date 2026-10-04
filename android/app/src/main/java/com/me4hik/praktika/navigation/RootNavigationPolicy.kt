@@ -8,7 +8,9 @@ object RootNavigationPolicy {
     ): Boolean = isPracticeStarted && currentRoute == Routes.ONBOARDING
 
     fun isRootRoute(currentRoute: String?): Boolean {
-        return currentRoute == Routes.ONBOARDING || currentRoute == Routes.HOME
+        return currentRoute == Routes.LANGUAGE ||
+            currentRoute == Routes.ONBOARDING ||
+            currentRoute == Routes.HOME
     }
 
     fun isSecondaryRoute(currentRoute: String?): Boolean {

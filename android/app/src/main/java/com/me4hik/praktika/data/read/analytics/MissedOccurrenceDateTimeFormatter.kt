@@ -1,26 +1,27 @@
-// PROMPT 149 — RU datetime lines for missed drill-down (stored event zone)
+// PROMPT 149 — datetime lines for missed drill-down (stored event zone)
 package com.me4hik.praktika.data.read.analytics
 
+import com.me4hik.praktika.data.preferences.AppLocaleController
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * Formats [MissedOccurrenceDetail.zonedDateTime] for UI.
  * Always uses the detail's already-resolved event timezone (never device default).
  */
-class MissedOccurrenceDateTimeFormatter(
-    private val locale: Locale = Locale.forLanguageTag("ru"),
-) {
-    private val weekdayDetailFormatter =
-        DateTimeFormatter.ofPattern("d MMMM yyyy · HH:mm", locale)
-    private val questionDetailFormatter =
-        DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy · HH:mm", locale)
-
+class MissedOccurrenceDateTimeFormatter {
     fun formatWeekdayDetailDateTime(detail: MissedOccurrenceDetail): String {
-        return detail.zonedDateTime.format(weekdayDetailFormatter)
+        val formatter = DateTimeFormatter.ofPattern(
+            "d MMMM yyyy · HH:mm",
+            AppLocaleController.currentLocale(),
+        )
+        return detail.zonedDateTime.format(formatter)
     }
 
     fun formatQuestionDetailDateTime(detail: MissedOccurrenceDetail): String {
-        return detail.zonedDateTime.format(questionDetailFormatter)
+        val formatter = DateTimeFormatter.ofPattern(
+            "EEEE, d MMMM yyyy · HH:mm",
+            AppLocaleController.currentLocale(),
+        )
+        return detail.zonedDateTime.format(formatter)
     }
 }

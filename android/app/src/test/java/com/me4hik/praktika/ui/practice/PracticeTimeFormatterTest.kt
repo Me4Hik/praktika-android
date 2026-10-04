@@ -1,15 +1,28 @@
 // 05.08.2026 Main Screen cursor by Me4Hik START - unit tests PracticeTimeFormatter
 package com.me4hik.praktika.ui.practice
 
+import com.me4hik.praktika.data.preferences.AppLanguage
+import com.me4hik.praktika.data.preferences.AppLocaleController
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class PracticeTimeFormatterTest {
     private val formatter = PracticeTimeFormatter()
+
+    @Before
+    fun setUp() {
+        AppLocaleController.apply(AppLanguage.RU)
+    }
 
     @Test
     fun formatEuropeKiev_containsDateAndTime() {

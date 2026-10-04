@@ -1,7 +1,9 @@
 // 05.08.2026 Answer Save cursor by Me4Hik START - JVM tests AnswerViewModel
 package com.me4hik.praktika.ui.practice
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
+import androidx.test.core.app.ApplicationProvider
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedException
 import com.me4hik.praktika.data.cycle.CycleAnswerNotAllowedReason
 import com.me4hik.praktika.data.cycle.CycleCorruptionException
@@ -26,8 +28,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class AnswerViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var readRepository: AnswerViewModelTestSupport.FakeAnswerReadRepository
@@ -438,9 +445,14 @@ class AnswerViewModelTest {
         )
         createViewModel()
         advanceUntilIdle()
+        val resources = ApplicationProvider.getApplicationContext<Context>().resources
         assertEquals(
             "Наполнен",
-            MoodCopyResolver.resolve(MoodLevel.GREAT, viewModel.moodCheckInUiState.value.wordingMode).title,
+            MoodCopyResolver.resolve(
+                resources,
+                MoodLevel.GREAT,
+                viewModel.moodCheckInUiState.value.wordingMode,
+            ).title,
         )
         wordingPreferenceRepository.emit(QuestionWordingMode.FEMININE)
         advanceUntilIdle()
@@ -449,7 +461,7 @@ class AnswerViewModelTest {
         assertEquals(QuestionWordingMode.FEMININE, mood.wordingMode)
         assertEquals(
             "Наполнена",
-            MoodCopyResolver.resolve(MoodLevel.GREAT, mood.wordingMode).title,
+            MoodCopyResolver.resolve(resources, MoodLevel.GREAT, mood.wordingMode).title,
         )
     }
 

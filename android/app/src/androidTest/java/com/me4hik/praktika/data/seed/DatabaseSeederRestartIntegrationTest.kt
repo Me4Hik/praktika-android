@@ -57,6 +57,7 @@ class DatabaseSeederRestartIntegrationTest {
             db,
             FakeTimeProvider(epochAt(8, 0, 0), TEST_ZONE_ID),
             com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
+            context,
         )
         repository.startPractice()
 
@@ -94,6 +95,7 @@ class DatabaseSeederRestartIntegrationTest {
             db,
             FakeTimeProvider(epochAt(11, 0, 0), TEST_ZONE_ID),
             com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
+            context,
         )
         repository.startPractice()
 

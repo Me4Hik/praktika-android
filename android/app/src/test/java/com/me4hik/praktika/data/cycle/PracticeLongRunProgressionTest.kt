@@ -64,7 +64,7 @@ class PracticeLongRunProgressionTest {
             .build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(8, 0, 0), ZONE_KIEV)
-        cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
+        cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         alarmScheduler = RecordingPlatformAlarmScheduler()
         val initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }
         initializer.completeActivityInit(true)

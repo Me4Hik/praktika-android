@@ -54,7 +54,7 @@ class AcceleratedUiTestHarness(
             realAnchorElapsedRealtimeMillis = 0L,
         )
         timeProvider = AcceleratedTimeProvider(initialState, storage, monotonic)
-        val cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         foregroundDriver = AcceleratedCycleDriver(cycleRepository, timeProvider)
         val soundPreferenceRepository = DataStoreSoundPreferenceRepository(context)
         runtime = TestPraktikaRuntimeBuilder.build(

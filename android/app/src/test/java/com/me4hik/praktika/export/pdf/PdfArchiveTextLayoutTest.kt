@@ -1,6 +1,9 @@
 // PROMPT 176 — host tests for PDF wrap / pagination / selection label
 package com.me4hik.praktika.export.pdf
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.me4hik.praktika.R
 import com.me4hik.praktika.data.read.ArchiveEntry
 import com.me4hik.praktika.export.ExportSelection
 import com.me4hik.praktika.ui.archive.ArchiveDisplayFormatter
@@ -10,6 +13,9 @@ import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 class PdfArchiveTextLayoutTest {
     @Test
@@ -60,15 +66,19 @@ class PdfArchiveTextLayoutTest {
     }
 }
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class PdfArchiveSelectionLabelTest {
     private val zone = ZoneId.of("Europe/Moscow")
     private val formatter = ArchiveDisplayFormatter()
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun allSelectionLabel() {
         assertEquals(
-            "Все ответы",
+            context.getString(R.string.pdf_selection_all),
             PdfArchiveSelectionLabel.forSelection(
+                context,
                 ExportSelection.All,
                 zone,
                 formatter,
@@ -84,6 +94,7 @@ class PdfArchiveSelectionLabelTest {
         assertEquals(
             formatter.formatDate(expectedMillis, zone),
             PdfArchiveSelectionLabel.forSelection(
+                context,
                 ExportSelection.Day(day),
                 zone,
                 formatter,
@@ -97,6 +108,7 @@ class PdfArchiveSelectionLabelTest {
         val start = LocalDate.of(2026, 8, 1).toEpochDay()
         val end = LocalDate.of(2026, 8, 7).toEpochDay()
         val label = PdfArchiveSelectionLabel.forSelection(
+            context,
             ExportSelection.Range(start, end),
             zone,
             formatter,
@@ -123,8 +135,9 @@ class PdfArchiveSelectionLabelTest {
             cyclePosition = 1,
         )
         assertEquals(
-            "Вопрос 3: Как дела?",
+            context.getString(R.string.pdf_selection_question_with_text, 3, "Как дела?"),
             PdfArchiveSelectionLabel.forSelection(
+                context,
                 ExportSelection.Question(3),
                 zone,
                 formatter,

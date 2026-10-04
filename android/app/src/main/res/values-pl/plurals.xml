@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Locale-07 imported PL plurals -->
+<resources>
+    <plurals name="archive_occurrence_deferred_count">
+        <item quantity="one">Odłożono %d raz</item>
+        <item quantity="few">Odłożono %d razy</item>
+        <item quantity="many">Odłożono %d razy</item>
+        <item quantity="other">Odłożono %d razy</item>
+    </plurals>
+</resources>

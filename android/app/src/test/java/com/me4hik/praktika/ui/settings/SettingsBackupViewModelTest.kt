@@ -15,8 +15,10 @@ import com.me4hik.praktika.data.backup.settings.BackupSettingsSetupVerifyResult
 import com.me4hik.praktika.data.backup.setup.SetupCandidateClassification
 import com.me4hik.praktika.data.cycle.ScheduleUpdateResult
 import com.me4hik.praktika.data.local.entity.PracticeStateEntity
+import com.me4hik.praktika.data.preferences.AppLanguage
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.LanguagePreferenceRepository
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
@@ -121,6 +123,13 @@ class SettingsBackupViewModelTest {
             deferDurationPreferenceRepository = object : DeferDurationPreferenceRepository {
                 override val deferDurationMinutes: Flow<Int> = flowOf(DeferDurationOptions.DEFAULT_MINUTES)
                 override suspend fun setDeferDurationMinutes(minutes: Int) = Unit
+            },
+            languagePreferenceRepository = object : LanguagePreferenceRepository {
+                override val language: Flow<AppLanguage> = flowOf(AppLanguage.DEFAULT)
+                override val languageSelected: Flow<Boolean> = flowOf(true)
+                override suspend fun setLanguage(language: AppLanguage) = Unit
+                override suspend fun markLanguageSelected() = Unit
+                override suspend fun ensureExistingUserDefault(isPracticeStarted: Boolean) = Unit
             },
             questionWordingPreferenceRepository = object : QuestionWordingPreferenceRepository {
                 override val wordingMode: Flow<QuestionWordingMode> = flowOf(QuestionWordingMode.DEFAULT)

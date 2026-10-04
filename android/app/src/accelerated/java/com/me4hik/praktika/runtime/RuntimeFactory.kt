@@ -10,6 +10,7 @@ import com.me4hik.praktika.accelerated.AndroidMonotonicTimeSource
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.preferences.DataStoreDeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.DataStoreLanguagePreferenceRepository
 import com.me4hik.praktika.data.preferences.DataStoreQuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.DataStoreSoundPreferenceRepository
 import com.me4hik.praktika.data.preferences.QuestionWordingModeSource
@@ -95,11 +96,13 @@ object RuntimeFactory {
         val timeProvider = AcceleratedTimeProvider(adjustedState, storage, monotonic)
         val soundPreferenceRepository = DataStoreSoundPreferenceRepository(appContext)
         val deferDurationPreferenceRepository = DataStoreDeferDurationPreferenceRepository(appContext)
+        val languagePreferenceRepository = DataStoreLanguagePreferenceRepository(appContext)
         val questionWordingPreferenceRepository = DataStoreQuestionWordingPreferenceRepository(appContext)
         val cycleRepository = CycleRepository(
             database,
             timeProvider,
             backupMutationRequestSink,
+            appContext,
             wordingModeSource = QuestionWordingModeSource {
                 questionWordingPreferenceRepository.wordingMode.first()
             },
@@ -153,6 +156,7 @@ object RuntimeFactory {
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
+            languagePreferenceRepository = languagePreferenceRepository,
             questionWordingPreferenceRepository = questionWordingPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,

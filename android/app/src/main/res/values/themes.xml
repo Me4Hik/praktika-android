@@ -2,10 +2,14 @@
 <!-- 04.08.2026 Reminder App cursor by Me4Hik START - тема Activity -->
 <resources>
     <!-- 07.08.2026 Stage 24 Final Design cursor by Me4Hik START - dark-only window theme -->
-    <style name="Theme.Praktika" parent="android:Theme.Material.NoActionBar">
+    <!-- AppCompat parent required for AppCompatDelegate.setApplicationLocales (Compose host). -->
+    <style name="Theme.Praktika" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="colorPrimary">@android:color/black</item>
+        <item name="colorPrimaryDark">@android:color/black</item>
+        <item name="colorAccent">@android:color/white</item>
     </style>
     <!-- 07.08.2026 Stage 24 Final Design cursor by Me4Hik END -->
 </resources>

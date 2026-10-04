@@ -9,10 +9,10 @@ package com.me4hik.praktika
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -34,7 +34,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : ComponentActivity() {
+/**
+ * Must be [AppCompatActivity] so [androidx.appcompat.app.AppCompatDelegate.setApplicationLocales]
+ * can sync to the platform LocaleManager (Compose hosts).
+ */
+class MainActivity : AppCompatActivity() {
 
     // 06.08.2026 Stage 12 Notification Tap Proof cursor by Me4Hik START - activity instance marker for onNewIntent proof
     private val activityInstanceId = nextActivityInstanceId.incrementAndGet()

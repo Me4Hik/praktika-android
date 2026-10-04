@@ -1,6 +1,7 @@
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik START - Home permission card connected test
 package com.me4hik.praktika.ui.practice
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -43,9 +44,7 @@ class HomeNotificationCardProductionInstrumentedTest {
     @Test
     fun startedPracticeShowsRequestCardWhenPermissionNotGranted() {
         val requestInvoked = AtomicBoolean(false)
-        setContent(
-            onRequestPostNotifications = { requestInvoked.set(true) },
-        ) {
+        setContent(onRequestPostNotifications = { requestInvoked.set(true) }) {
             setUp(initialHour = 8, initialMinute = 0)
             startPractice()
         }
@@ -61,8 +60,6 @@ class HomeNotificationCardProductionInstrumentedTest {
 
     private fun setContent(
         onRequestPostNotifications: () -> Unit = {},
-        onOpenAppNotificationSettings: () -> Unit = {},
-        onOpenChannelSettings: () -> Unit = {},
         setup: suspend PracticeUiTestHarness.() -> Unit = { setUp() },
     ) {
         PracticeComposeTestSupport.ensureTestActivityResumed(composeRule)
@@ -73,12 +70,16 @@ class HomeNotificationCardProductionInstrumentedTest {
                     PracticeRootViewModelFactory(
                         owner = composeRule.activity,
                         runtime = harness.runtime,
-                        onRequestPostNotifications = onRequestPostNotifications,
-                        onOpenAppNotificationSettings = onOpenAppNotificationSettings,
-                        onOpenChannelSettings = onOpenChannelSettings,
                     )
                 }
                 val viewModel: PracticeRootViewModel = viewModel(factory = factory)
+                LaunchedEffect(viewModel) {
+                    viewModel.uiEvents.collect { event ->
+                        if (event is PracticeRootUiEvent.RequestPostNotifications) {
+                            onRequestPostNotifications()
+                        }
+                    }
+                }
                 AppNavigation(viewModel = viewModel, runtime = harness.runtime)
             }
         }

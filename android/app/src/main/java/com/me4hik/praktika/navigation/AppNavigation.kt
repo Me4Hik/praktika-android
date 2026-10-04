@@ -17,8 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,8 +81,13 @@ import com.me4hik.praktika.ui.analytics.MissedOccurrencesDetailScreen
 import com.me4hik.praktika.ui.analytics.MissedOccurrencesDetailViewModel
 import com.me4hik.praktika.ui.analytics.MissedOccurrencesDetailViewModelFactory
 import com.me4hik.praktika.data.read.analytics.MissedDetailFilter
+import com.me4hik.praktika.data.preferences.AppLocaleController
+import com.me4hik.praktika.data.preferences.LanguageBootstrapReconciler
+import com.me4hik.praktika.data.preferences.LanguageChooserContinue
+import com.me4hik.praktika.data.preferences.languageChooserContinueAfterApply
 import com.me4hik.praktika.ui.AnswerScreen
 import com.me4hik.praktika.ui.HomeScreen
+import com.me4hik.praktika.ui.LanguageScreen
 import com.me4hik.praktika.ui.OnboardingScreen
 import com.me4hik.praktika.ui.QuestionHistoryScreen
 import com.me4hik.praktika.ui.QuestionScreen
@@ -134,7 +140,10 @@ fun AppNavigation(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isPracticeStarted = uiState is PracticeUiState.Started
-    var navHostStartDestination by remember { mutableStateOf<String?>(null) }
+    var startDestination by remember { mutableStateOf<String?>(null) }
+    // Bumps when Language chooser gets LocaleApplyResult.UNCHANGED and must re-enter bootstrap.
+    var bootstrapEpoch by remember { mutableIntStateOf(0) }
+    var isSelectingLanguage by remember { mutableStateOf(false) }
 
     when (val state = uiState) {
         PracticeUiState.Loading -> {
@@ -148,29 +157,85 @@ fun AppNavigation(
             )
             return
         }
-        is PracticeUiState.NotStarted -> {
-            if (navHostStartDestination == null) {
-                navHostStartDestination = Routes.ONBOARDING
-            }
+        is PracticeUiState.NotStarted, is PracticeUiState.Started -> Unit
+    }
+
+    LaunchedEffect(uiState, bootstrapEpoch) {
+        if (startDestination != null) {
+            return@LaunchedEffect
         }
-        is PracticeUiState.Started -> {
-            if (navHostStartDestination == null) {
-                navHostStartDestination = Routes.HOME
+        val isStarted = when (uiState) {
+            is PracticeUiState.Started -> true
+            is PracticeUiState.NotStarted -> false
+            else -> return@LaunchedEffect
+        }
+        // Two-phase language bootstrap under Loading:
+        // mismatch → apply locale and await recreate; match → snapshot + notif, then destination.
+        val outcome = withContext(Dispatchers.IO) {
+            LanguageBootstrapReconciler.run(
+                isPracticeStarted = isStarted,
+                languagePreferenceRepository = runtime.languagePreferenceRepository,
+                matchesLocale = AppLocaleController::matches,
+                applyLocale = { language ->
+                    withContext(Dispatchers.Main.immediate) {
+                        AppLocaleController.apply(language)
+                    }
+                },
+                applyAppLanguage = { runtime.cycleRepository.applyAppLanguage() },
+                requestNotificationSync = {
+                    runtime.notificationSyncRequester.requestSync(NotificationSyncReason.MUTATION)
+                },
+            )
+        }
+        when (outcome) {
+            LanguageBootstrapReconciler.Outcome.AwaitRecreate -> {
+                // Stay on Loading; new Activity re-runs bootstrap after recreate.
+            }
+            is LanguageBootstrapReconciler.Outcome.Ready -> {
+                startDestination = when (outcome.destination) {
+                    LanguageBootstrapReconciler.Destination.LANGUAGE -> Routes.LANGUAGE
+                    LanguageBootstrapReconciler.Destination.ONBOARDING -> Routes.ONBOARDING
+                    LanguageBootstrapReconciler.Destination.HOME -> Routes.HOME
+                }
+                isSelectingLanguage = false
             }
         }
     }
 
-    val startDestination = navHostStartDestination ?: when (uiState) {
-        is PracticeUiState.NotStarted -> Routes.ONBOARDING
-        is PracticeUiState.Started -> Routes.HOME
-        else -> null
-    }
-
-    if (startDestination == null) {
+    val resolvedStartDestination = startDestination
+    if (resolvedStartDestination == null) {
         PracticeLoadingScreen()
         return
     }
     val navController = rememberNavController()
+    // Locale-20: restored NavController may keep LANGUAGE after locale recreate while
+    // bootstrap Ready already chose ONBOARDING/HOME — replace that stale gate once.
+    var languageRootNormalized by remember(resolvedStartDestination) { mutableStateOf(false) }
+    LaunchedEffect(navController, resolvedStartDestination) {
+        if (languageRootNormalized) {
+            return@LaunchedEffect
+        }
+        navController.currentBackStackEntryFlow.collect { entry ->
+            if (languageRootNormalized) {
+                return@collect
+            }
+            when (
+                val decision = languageRouteNormalization(
+                    computedDestination = resolvedStartDestination,
+                    currentRoute = entry.destination.route,
+                )
+            ) {
+                LanguageRouteNormalization.NoOp -> Unit
+                is LanguageRouteNormalization.ReplaceLanguageRoot -> {
+                    languageRootNormalized = true
+                    navController.navigate(decision.targetRoute) {
+                        popUpTo(Routes.LANGUAGE) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - centralized screen_open diagnostics
     DisposableEffect(navController) {
         val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
@@ -238,6 +303,9 @@ fun AppNavigation(
             exportUseCase = ArchiveExportUseCase(
                 archiveReadRepository = runtime.archiveReadRepository,
                 zoneIdProvider = archiveZoneIdProvider,
+                pdfFormatter = com.me4hik.praktika.export.pdf.PdfArchiveFormatter(
+                    context.applicationContext,
+                ),
             ),
             documentWriter = ContentResolverExportDocumentWriter(context.contentResolver),
             scope = coroutineScope,
@@ -315,6 +383,9 @@ fun AppNavigation(
             exportUseCase = ArchiveExportUseCase(
                 archiveReadRepository = runtime.archiveReadRepository,
                 zoneIdProvider = archiveZoneIdProvider,
+                pdfFormatter = com.me4hik.praktika.export.pdf.PdfArchiveFormatter(
+                    context.applicationContext,
+                ),
             ),
             tempFileStore = ShareTempFileStore.fromContext(context.applicationContext),
             scope = coroutineScope,
@@ -414,6 +485,7 @@ fun AppNavigation(
     val settingsScheduleSaveFailedMessage = stringResource(R.string.settings_schedule_save_error)
     val settingsSoundChangeFailedMessage = stringResource(R.string.settings_sound_error)
     val settingsDeferChangeFailedMessage = stringResource(R.string.settings_defer_error)
+    val settingsLanguageChangeFailedMessage = stringResource(R.string.settings_language_error)
     val settingsWordingChangeFailedMessage = stringResource(R.string.settings_wording_error)
     val settingsPauseChangeFailedMessage = stringResource(R.string.settings_pause_error)
 
@@ -506,10 +578,47 @@ fun AppNavigation(
             ) {
             NavHost(
                 navController = navController,
-                startDestination = startDestination,
+                startDestination = resolvedStartDestination,
                 modifier = Modifier.fillMaxSize(),
             ) {
         // 10.08.2026 Post-release fixes cursor by Me4Hik END
+            composable(Routes.LANGUAGE) {
+                LanguageScreen(
+                    onLanguageSelected = { language ->
+                        if (isSelectingLanguage) {
+                            return@LanguageScreen
+                        }
+                        isSelectingLanguage = true
+                        coroutineScope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    runtime.languagePreferenceRepository.setLanguage(language)
+                                    runtime.languagePreferenceRepository.markLanguageSelected()
+                                }
+                                val applyResult = withContext(Dispatchers.Main.immediate) {
+                                    AppLocaleController.apply(language)
+                                }
+                                when (languageChooserContinueAfterApply(applyResult)) {
+                                    LanguageChooserContinue.AwaitActivityRecreate -> {
+                                        // CHANGED: AppCompat recreates; do not navigate.
+                                    }
+                                    LanguageChooserContinue.ReenterBootstrap -> {
+                                        // UNCHANGED: tear down NavHost (startDestination=null → Loading)
+                                        // and re-run the same bootstrap match path.
+                                        startDestination = null
+                                        bootstrapEpoch++
+                                    }
+                                }
+                            } catch (exception: kotlinx.coroutines.CancellationException) {
+                                throw exception
+                            } catch (_: Exception) {
+                                // Stay on LANGUAGE; allow retry.
+                                isSelectingLanguage = false
+                            }
+                        }
+                    },
+                )
+            }
             composable(Routes.ONBOARDING) {
                 when (val notStarted = uiState) {
                     is PracticeUiState.NotStarted -> {
@@ -1006,6 +1115,7 @@ fun AppNavigation(
                             scheduleSaveFailed = settingsScheduleSaveFailedMessage,
                             soundChangeFailed = settingsSoundChangeFailedMessage,
                             deferChangeFailed = settingsDeferChangeFailedMessage,
+                            languageChangeFailed = settingsLanguageChangeFailedMessage,
                             wordingChangeFailed = settingsWordingChangeFailedMessage,
                             pauseChangeFailed = settingsPauseChangeFailedMessage,
                         )
@@ -1029,6 +1139,7 @@ fun AppNavigation(
                 SettingsScreen(
                     uiState = settingsUiState,
                     onSlotTimeChange = settingsViewModel::onSlotTimeChanged,
+                    onAppLanguageChanged = settingsViewModel::onAppLanguageChanged,
                     onQuestionWordingModeChanged = settingsViewModel::onQuestionWordingModeChanged,
                     onOpenNotifications = {
                         navController.navigate(Routes.SETTINGS_NOTIFICATIONS)
@@ -1112,6 +1223,7 @@ fun AppNavigation(
                             scheduleSaveFailed = settingsScheduleSaveFailedMessage,
                             soundChangeFailed = settingsSoundChangeFailedMessage,
                             deferChangeFailed = settingsDeferChangeFailedMessage,
+                            languageChangeFailed = settingsLanguageChangeFailedMessage,
                             wordingChangeFailed = settingsWordingChangeFailedMessage,
                             pauseChangeFailed = settingsPauseChangeFailedMessage,
                         )
@@ -1188,6 +1300,7 @@ private fun settingsSnackbarMessage(
     scheduleSaveFailed: String,
     soundChangeFailed: String,
     deferChangeFailed: String,
+    languageChangeFailed: String,
     wordingChangeFailed: String,
     pauseChangeFailed: String,
 ): String {
@@ -1197,6 +1310,7 @@ private fun settingsSnackbarMessage(
         SettingsSnackbarEvent.ScheduleSaveFailed -> scheduleSaveFailed
         SettingsSnackbarEvent.SoundChangeFailed -> soundChangeFailed
         SettingsSnackbarEvent.DeferDurationChangeFailed -> deferChangeFailed
+        SettingsSnackbarEvent.AppLanguageChangeFailed -> languageChangeFailed
         SettingsSnackbarEvent.QuestionWordingChangeFailed -> wordingChangeFailed
         SettingsSnackbarEvent.PauseStateChangeFailed -> pauseChangeFailed
         is SettingsSnackbarEvent.BackupMessage -> context.getString(event.messageResId)

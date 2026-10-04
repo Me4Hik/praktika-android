@@ -191,7 +191,7 @@ class PracticeReadRepositoryTest {
     @Test
     fun startPracticeEmitsConsistentStartedSnapshotWithoutTransientCorruption() = runBlocking {
         val timeProvider = FakeTimeProvider(epochAt(8, 0), ZONE)
-        val cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         val snapshots = mutableListOf<PracticeReadSnapshot>()
         var collectionError: Throwable? = null
         val job: Job = launch {
@@ -227,7 +227,7 @@ class PracticeReadRepositoryTest {
     @Test
     fun rapidSequentialTransactionsEmitOnlyValidSnapshots() = runBlocking {
         val timeProvider = FakeTimeProvider(epochAt(8, 0), ZONE)
-        val cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         val snapshots = mutableListOf<PracticeReadSnapshot>()
         var collectionError: Throwable? = null
         val job: Job = launch {

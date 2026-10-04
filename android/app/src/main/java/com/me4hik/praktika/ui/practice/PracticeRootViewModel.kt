@@ -35,8 +35,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -54,10 +57,6 @@ class PracticeRootViewModel(
     private val notificationPermissionRepository: NotificationPermissionPolicy,
     private val exactAlarmCapabilityRepository: ExactAlarmCapabilityPolicy,
     private val soundPreferenceRepository: SoundPreferenceRepository,
-    private val onRequestPostNotifications: () -> Unit,
-    private val onOpenAppNotificationSettings: () -> Unit,
-    private val onOpenChannelSettings: () -> Unit,
-    private val onOpenExactAlarmSettings: () -> Unit,
     private val savedStateHandle: SavedStateHandle,
     private val timeFormatter: PracticeTimeFormatter,
     private val commandDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -70,6 +69,9 @@ class PracticeRootViewModel(
 
     private val _uiState = MutableStateFlow<PracticeUiState>(PracticeUiState.Loading)
     val uiState: StateFlow<PracticeUiState> = _uiState.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<PracticeRootUiEvent>(extraBufferCapacity = 16)
+    val uiEvents: SharedFlow<PracticeRootUiEvent> = _uiEvents.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -197,17 +199,17 @@ class PracticeRootViewModel(
                         notificationPermissionRepository.markPermissionRequested()
                     }
                     recordPermissionRequestStarted(soundEnabled)
-                    onRequestPostNotifications()
+                    _uiEvents.emit(PracticeRootUiEvent.RequestPostNotifications)
                 }
                 NotificationPermissionUiState.RUNTIME_PERMISSION_REQUIRED -> {
                     recordPermissionRequestStarted(soundEnabled)
-                    onRequestPostNotifications()
+                    _uiEvents.emit(PracticeRootUiEvent.RequestPostNotifications)
                 }
                 NotificationPermissionUiState.APP_NOTIFICATIONS_DISABLED -> {
-                    onOpenAppNotificationSettings()
+                    _uiEvents.emit(PracticeRootUiEvent.OpenAppNotificationSettings)
                 }
                 NotificationPermissionUiState.SELECTED_CHANNEL_DISABLED -> {
-                    onOpenChannelSettings()
+                    _uiEvents.emit(PracticeRootUiEvent.OpenChannelSettings)
                 }
                 NotificationPermissionUiState.ENABLED -> Unit
             }
@@ -216,7 +218,9 @@ class PracticeRootViewModel(
 
     fun onExactAlarmCardActionClicked() {
         exactAlarmCapabilityRepository.recordSettingsCta("home_card")
-        onOpenExactAlarmSettings()
+        viewModelScope.launch {
+            _uiEvents.emit(PracticeRootUiEvent.OpenExactAlarmSettings)
+        }
     }
 
     fun retryRead() {

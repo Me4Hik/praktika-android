@@ -61,6 +61,7 @@ class BackupRestoreCoordinatorMainThreadTest {
                     zoneId = BackupRestoreFixtures.ZONE_MOSCOW,
                 ),
                 backupMutationRequestSink = com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
+                appContext = context,
             )
             storage = FakeBackupStorage(
                 slotB = SlotReadResult.Valid(

@@ -141,9 +141,6 @@ class Stage21ArchiveShareComposeAcceleratedInstrumentedTest {
                     PracticeRootViewModelFactory(
                         owner = composeRule.activity,
                         runtime = harness.runtime,
-                        onRequestPostNotifications = {},
-                        onOpenAppNotificationSettings = {},
-                        onOpenChannelSettings = {},
                     )
                 }
                 val rootViewModel: PracticeRootViewModel = viewModel(factory = factory)

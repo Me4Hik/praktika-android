@@ -5,8 +5,10 @@ import android.content.Context
 import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.TimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
+import com.me4hik.praktika.data.preferences.AppLanguage
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.LanguagePreferenceRepository
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.data.preferences.QuestionWordingModeSource
 import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
@@ -45,6 +47,8 @@ object TestPraktikaRuntimeBuilder {
             FakeDeferDurationPreferenceRepository(),
         questionWordingPreferenceRepository: QuestionWordingPreferenceRepository =
             FakeQuestionWordingPreferenceRepository(),
+        languagePreferenceRepository: LanguagePreferenceRepository =
+            FakeLanguagePreferenceRepository(),
         alarmScheduler: PlatformAlarmScheduler = NoOpPlatformAlarmScheduler(),
         notificationPresenter: PracticeNotificationPresenter = NoOpPracticeNotificationPresenter(),
         permissionRepository: NotificationPermissionPolicy? = null,
@@ -84,6 +88,7 @@ object TestPraktikaRuntimeBuilder {
             database,
             timeProvider,
             backupMutationRequestSink,
+            appContext,
             wordingModeSource = QuestionWordingModeSource {
                 questionWordingPreferenceRepository.wordingMode.first()
             },
@@ -128,6 +133,7 @@ object TestPraktikaRuntimeBuilder {
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
+            languagePreferenceRepository = languagePreferenceRepository,
             questionWordingPreferenceRepository = questionWordingPreferenceRepository,
             practiceReadRepository = practiceReadRepository,
             archiveReadRepository = archiveReadRepository,
@@ -167,6 +173,28 @@ class FakeQuestionWordingPreferenceRepository(
     override val wordingMode: Flow<QuestionWordingMode> = state
     override suspend fun setWordingMode(mode: QuestionWordingMode) {
         state.value = mode
+    }
+}
+
+class FakeLanguagePreferenceRepository(
+    initialLanguage: AppLanguage = AppLanguage.DEFAULT,
+    initiallySelected: Boolean = true,
+) : LanguagePreferenceRepository {
+    private val languageState = MutableStateFlow(initialLanguage)
+    private val selectedState = MutableStateFlow(initiallySelected)
+    override val language: Flow<AppLanguage> = languageState
+    override val languageSelected: Flow<Boolean> = selectedState
+    override suspend fun setLanguage(language: AppLanguage) {
+        languageState.value = language
+    }
+    override suspend fun markLanguageSelected() {
+        selectedState.value = true
+    }
+    override suspend fun ensureExistingUserDefault(isPracticeStarted: Boolean) {
+        if (!selectedState.value && isPracticeStarted) {
+            languageState.value = AppLanguage.DEFAULT
+            selectedState.value = true
+        }
     }
 }
 // 06.08.2026 Stage 12 Notifications cursor by Me4Hik END

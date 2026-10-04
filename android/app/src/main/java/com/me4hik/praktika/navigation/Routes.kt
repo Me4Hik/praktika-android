@@ -4,6 +4,7 @@
 package com.me4hik.praktika.navigation
 
 object Routes {
+    const val LANGUAGE = "language"
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val QUESTION_ARGUMENT = "occurrenceId"

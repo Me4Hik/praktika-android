@@ -8,15 +8,15 @@ package com.me4hik.praktika.ui
 import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.me4hik.praktika.navigation.AppNavigation
 import com.me4hik.praktika.notification.NotificationPermissionRepository
 import com.me4hik.praktika.runtime.PraktikaRuntime
+import com.me4hik.praktika.ui.practice.PracticeRootUiEventEffects
 import com.me4hik.praktika.ui.practice.PracticeRootViewModel
 import com.me4hik.praktika.ui.practice.PracticeRootViewModelFactory
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 
 @Composable
 fun PraktikaApp(
@@ -24,39 +24,26 @@ fun PraktikaApp(
     activity: ComponentActivity,
     permissionLauncher: (String) -> Unit,
 ) {
-    val factory = remember(runtime, activity) {
+    DisposableEffect(runtime, activity) {
         (runtime.notificationPermissionRepository as? NotificationPermissionRepository)
             ?.bindRationaleChecker {
                 activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
             }
+        onDispose { }
+    }
+    val factory = remember(runtime, activity) {
         PracticeRootViewModelFactory(
             owner = activity,
             runtime = runtime,
-            onRequestPostNotifications = {
-                permissionLauncher(Manifest.permission.POST_NOTIFICATIONS)
-            },
-            onOpenAppNotificationSettings = {
-                activity.startActivity(
-                    runtime.notificationPermissionRepository.createAppNotificationSettingsIntent(),
-                )
-            },
-            onOpenChannelSettings = {
-                val soundEnabled = runBlocking {
-                    runtime.soundPreferenceRepository.soundEnabled.first()
-                }
-                activity.startActivity(
-                    runtime.notificationPermissionRepository.createChannelSettingsIntent(soundEnabled),
-                )
-            },
-            onOpenExactAlarmSettings = {
-                runtime.exactAlarmCapabilityRepository.recordSettingsCta("home_card_intent")
-                activity.startActivity(
-                    runtime.exactAlarmCapabilityRepository.createRequestExactAlarmIntent(),
-                )
-            },
         )
     }
     val viewModel: PracticeRootViewModel = viewModel(factory = factory)
+    PracticeRootUiEventEffects(
+        viewModel = viewModel,
+        runtime = runtime,
+        activity = activity,
+        permissionLauncher = permissionLauncher,
+    )
     AppNavigation(viewModel = viewModel, runtime = runtime)
 }
 // 10.08.2026 Post-release fixes cursor by Me4Hik END

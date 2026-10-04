@@ -1,6 +1,8 @@
 // PROMPT 176 — selection subtitle for PDF header
 package com.me4hik.praktika.export.pdf
 
+import android.content.Context
+import com.me4hik.praktika.R
 import com.me4hik.praktika.data.read.ArchiveEntry
 import com.me4hik.praktika.export.ExportSelection
 import com.me4hik.praktika.ui.archive.ArchiveDisplayFormatter
@@ -9,13 +11,15 @@ import java.time.ZoneId
 
 internal object PdfArchiveSelectionLabel {
     fun forSelection(
+        context: Context,
         selection: ExportSelection,
         zoneId: ZoneId,
         displayFormatter: ArchiveDisplayFormatter,
         entries: List<ArchiveEntry>,
     ): String {
+        val resources = context.applicationContext.resources
         return when (selection) {
-            ExportSelection.All -> "Все ответы"
+            ExportSelection.All -> resources.getString(R.string.pdf_selection_all)
             is ExportSelection.Day -> {
                 val millis = LocalDate.ofEpochDay(selection.epochDay)
                     .atStartOfDay(zoneId)
@@ -38,9 +42,13 @@ internal object PdfArchiveSelectionLabel {
             is ExportSelection.Question -> {
                 val questionText = entries.firstOrNull()?.questionText?.trim().orEmpty()
                 if (questionText.isEmpty()) {
-                    "Вопрос ${selection.questionId}"
+                    resources.getString(R.string.pdf_selection_question_id_only, selection.questionId)
                 } else {
-                    "Вопрос ${selection.questionId}: $questionText"
+                    resources.getString(
+                        R.string.pdf_selection_question_with_text,
+                        selection.questionId,
+                        questionText,
+                    )
                 }
             }
         }

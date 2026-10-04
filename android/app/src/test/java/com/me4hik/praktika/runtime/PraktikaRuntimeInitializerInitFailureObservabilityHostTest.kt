@@ -283,7 +283,7 @@ class PraktikaRuntimeInitializerInitFailureObservabilityHostTest {
             },
             backupScope = backupScope,
         )
-        val cycleRepository = CycleRepository(database, timeProvider, backupMutationRequestSink)
+        val cycleRepository = CycleRepository(database, timeProvider, backupMutationRequestSink, ApplicationProvider.getApplicationContext())
         val scheduleReadRepository = RoomScheduleReadRepository(database)
         val practiceReadRepository = RoomPracticeReadRepository(database)
         val archiveReadRepository = RoomArchiveReadRepository(database)
@@ -391,6 +391,19 @@ class PraktikaRuntimeInitializerInitFailureObservabilityHostTest {
             scheduleReadRepository = scheduleReadRepository,
             soundPreferenceRepository = soundPreferenceRepository,
             deferDurationPreferenceRepository = deferDurationPreferenceRepository,
+            languagePreferenceRepository = object :
+                com.me4hik.praktika.data.preferences.LanguagePreferenceRepository {
+                override val language =
+                    kotlinx.coroutines.flow.MutableStateFlow(
+                        com.me4hik.praktika.data.preferences.AppLanguage.DEFAULT,
+                    )
+                override val languageSelected = kotlinx.coroutines.flow.MutableStateFlow(true)
+                override suspend fun setLanguage(
+                    language: com.me4hik.praktika.data.preferences.AppLanguage,
+                ) = Unit
+                override suspend fun markLanguageSelected() = Unit
+                override suspend fun ensureExistingUserDefault(isPracticeStarted: Boolean) = Unit
+            },
             questionWordingPreferenceRepository = object :
                 com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository {
                 override val wordingMode =

@@ -1,24 +1,26 @@
 // 07.08.2026 Stage 15 Archive By Date cursor by Me4Hik START - форматирование даты/времени архива
 package com.me4hik.praktika.ui.archive
 
-import com.me4hik.praktika.ui.practice.PracticeTimeFormatException
+import com.me4hik.praktika.data.preferences.AppLocaleController
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
-class ArchiveDisplayFormatter(
-    private val locale: Locale = Locale.forLanguageTag("ru"),
-) {
-    private val dateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy", locale)
-    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", locale)
-
+class ArchiveDisplayFormatter {
     fun formatDate(epochMillis: Long, zoneId: ZoneId): String {
-        return instantAt(epochMillis, zoneId).format(dateFormatter)
+        val formatter = DateTimeFormatter.ofPattern(
+            "d MMMM yyyy",
+            AppLocaleController.currentLocale(),
+        )
+        return instantAt(epochMillis, zoneId).format(formatter)
     }
 
     fun formatTime(epochMillis: Long, zoneId: ZoneId): String {
-        return instantAt(epochMillis, zoneId).format(timeFormatter)
+        val formatter = DateTimeFormatter.ofPattern(
+            "HH:mm",
+            AppLocaleController.currentLocale(),
+        )
+        return instantAt(epochMillis, zoneId).format(formatter)
     }
 
     fun formatDateTimeLine(epochMillis: Long, zoneId: ZoneId): String {

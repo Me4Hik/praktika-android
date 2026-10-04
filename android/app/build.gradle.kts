@@ -198,6 +198,7 @@ fun sanitizeConnectedAndroidTestArtifacts(taskName: String) {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     // 05.08.2026 Main Screen cursor by Me4Hik START - ViewModel и collectAsStateWithLifecycle
     implementation(libs.androidx.lifecycle.viewmodel.compose)

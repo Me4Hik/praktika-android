@@ -35,7 +35,7 @@ class CycleRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, PraktikaDatabase::class.java).build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(8, 0, 0), ZONE_KIEV)
-        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
     }
 
     @After
@@ -509,6 +509,7 @@ class CycleRepositoryTest {
                 persistentDatabase,
                 FakeTimeProvider(epochAt(14, 0, 0), ZONE_KIEV),
                 com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink,
+                context,
             )
             persistentRepository.startPractice()
             persistentRepository.reconcile()

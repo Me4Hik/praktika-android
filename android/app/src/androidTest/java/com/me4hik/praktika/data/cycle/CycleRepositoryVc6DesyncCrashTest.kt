@@ -31,7 +31,7 @@ class CycleRepositoryVc6DesyncCrashTest {
             Vc6CursorDesyncFixtureSupport.reconcileNowEpochMillis(),
             Vc6CursorDesyncFixtureSupport.ZONE_KIEV,
         )
-        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
     }
 
     @After

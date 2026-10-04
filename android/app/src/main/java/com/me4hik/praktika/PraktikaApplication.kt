@@ -10,6 +10,8 @@ class PraktikaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         DiagnosticBootstrap.initialize(this)
+        // Locale apply is owned by MainActivity/AppNavigation bootstrap (main thread) after
+        // DataStore + existing-user default. Do not block Application.onCreate on DataStore.
         PraktikaRuntimeHolder.initialize(this)
     }
 }

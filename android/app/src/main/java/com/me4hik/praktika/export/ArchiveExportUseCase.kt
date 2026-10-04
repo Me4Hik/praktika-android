@@ -18,7 +18,7 @@ class ArchiveExportUseCase(
     private val zoneIdProvider: ArchiveZoneIdProvider,
     private val markdownFormatter: MarkdownArchiveFormatter = MarkdownArchiveFormatter(),
     private val csvFormatter: CsvArchiveFormatter = CsvArchiveFormatter(),
-    private val pdfFormatter: PdfArchiveFormatter = PdfArchiveFormatter(),
+    private val pdfFormatter: PdfArchiveFormatter? = null,
     // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
     private val xlsxFormatter: XlsxArchiveFormatter = XlsxArchiveFormatter(),
     // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END
@@ -37,7 +37,12 @@ class ArchiveExportUseCase(
                 val document = when (format) {
                     ExportFormat.MARKDOWN -> markdownFormatter.format(selection, entries, zoneId)
                     ExportFormat.CSV -> csvFormatter.format(selection, entries, zoneId)
-                    ExportFormat.PDF -> pdfFormatter.format(selection, entries, zoneId)
+                    ExportFormat.PDF -> {
+                        val formatter = requireNotNull(pdfFormatter) {
+                            "PdfArchiveFormatter is required for PDF export"
+                        }
+                        formatter.format(selection, entries, zoneId)
+                    }
                     // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik START
                     ExportFormat.XLSX -> xlsxFormatter.format(selection, entries, zoneId)
                     // 06.09.2026 Android Sheets XLSX Export cursor by Me4Hik END

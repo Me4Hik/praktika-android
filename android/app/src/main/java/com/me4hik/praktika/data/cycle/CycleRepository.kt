@@ -1,6 +1,7 @@
 // 04.08.2026 Cycle Engine cursor by Me4Hik START - Room-транзакции цикла
 package com.me4hik.praktika.data.cycle
 
+import android.content.Context
 import android.util.Log
 import com.me4hik.praktika.data.backup.write.BackupMutationRequestSink
 import com.me4hik.praktika.data.backup.write.BackupRequestReason
@@ -29,13 +30,18 @@ class CycleRepository(
     // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.2C mutation sink
     private val backupMutationRequestSink: BackupMutationRequestSink,
     // 10.08.2026 Post-release fixes cursor by Me4Hik END
+    appContext: Context,
     private val scheduleCalculator: ScheduleCalculator = ScheduleCalculator(),
     private val wordingModeSource: QuestionWordingModeSource = QuestionWordingModeSource {
         QuestionWordingMode.DEFAULT
     },
 ) {
+    private val appContext = appContext.applicationContext
     private val mutex = Mutex()
     private var lockedWordingMode: QuestionWordingMode = QuestionWordingMode.DEFAULT
+
+    /** Fresh Resources after AppCompat per-app locale changes (do not cache). */
+    private fun resources() = appContext.resources
 
     /**
      * Applies [mode] to the single incomplete occurrence when its questionId is wording-dependent.
@@ -53,9 +59,36 @@ class CycleRepository(
                     "Incomplete occurrence ${incomplete.id} references missing questionId=${incomplete.questionId}",
                 )
             val resolved = QuestionDisplayTextResolver.resolve(
+                resources = resources(),
                 questionId = question.id,
-                canonicalText = question.text,
                 mode = mode,
+            )
+            if (resolved == incomplete.questionTextSnapshot) {
+                return@runCycleTransaction false
+            }
+            database.questionOccurrenceDao().update(
+                incomplete.copy(questionTextSnapshot = resolved),
+            )
+            true
+        }
+    }
+
+    /**
+     * Rewrites the incomplete occurrence snapshot for the current app language / wording mode.
+     * Applies to all question ids (not only wording-dependent). Terminal rows are never rewritten.
+     */
+    suspend fun applyAppLanguage(): Boolean = withCycleMutex {
+        runCycleTransaction {
+            val incomplete = database.questionOccurrenceDao().getIncompleteOrdered().singleOrNull()
+                ?: return@runCycleTransaction false
+            val question = database.questionDao().getById(incomplete.questionId)
+                ?: throw CycleCorruptionException(
+                    "Incomplete occurrence ${incomplete.id} references missing questionId=${incomplete.questionId}",
+                )
+            val resolved = QuestionDisplayTextResolver.resolve(
+                resources = resources(),
+                questionId = question.id,
+                mode = lockedWordingMode,
             )
             if (resolved == incomplete.questionTextSnapshot) {
                 return@runCycleTransaction false
@@ -102,8 +135,8 @@ class CycleRepository(
                 QuestionOccurrenceEntity(
                     questionId = question.id,
                     questionTextSnapshot = QuestionDisplayTextResolver.resolve(
+                        resources = resources(),
                         questionId = question.id,
-                        canonicalText = question.text,
                         mode = lockedWordingMode,
                     ),
                     cycleNumber = 1,
@@ -1221,10 +1254,10 @@ class CycleRepository(
             QuestionOccurrenceEntity(
                 questionId = question.id,
                 questionTextSnapshot = QuestionDisplayTextResolver.resolve(
-                        questionId = question.id,
-                        canonicalText = question.text,
-                        mode = lockedWordingMode,
-                    ),
+                    resources = resources(),
+                    questionId = question.id,
+                    mode = lockedWordingMode,
+                ),
                 cycleNumber = cycleNumber,
                 cyclePosition = cyclePosition,
                 scheduleSlotIndex = plannedMoment.slotIndex,

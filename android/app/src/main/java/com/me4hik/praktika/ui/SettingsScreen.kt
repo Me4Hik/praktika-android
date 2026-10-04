@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.PlayCircle
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.me4hik.praktika.BuildConfig
 import com.me4hik.praktika.R
+import com.me4hik.praktika.data.preferences.AppLanguage
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.ui.components.PracticeBackground
 import com.me4hik.praktika.ui.components.PracticeBackgroundStyle
@@ -93,6 +95,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 fun SettingsScreen(
     uiState: SettingsUiState,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
+    onAppLanguageChanged: (AppLanguage) -> Unit = {},
     onQuestionWordingModeChanged: (QuestionWordingMode) -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onTogglePauseState: () -> Unit,
@@ -165,6 +168,7 @@ fun SettingsScreen(
             SettingsContentScreen(
                 content = uiState,
                 onSlotTimeChange = onSlotTimeChange,
+                onAppLanguageChanged = onAppLanguageChanged,
                 onQuestionWordingModeChanged = onQuestionWordingModeChanged,
                 onOpenNotifications = onOpenNotifications,
                 onTogglePauseState = onTogglePauseState,
@@ -236,6 +240,7 @@ fun SettingsScreen(
 private fun SettingsContentScreen(
     content: SettingsUiState.Content,
     onSlotTimeChange: (slotIndex: Int, timeOfDayMinutes: Int) -> Unit,
+    onAppLanguageChanged: (AppLanguage) -> Unit,
     onQuestionWordingModeChanged: (QuestionWordingMode) -> Unit,
     onOpenNotifications: () -> Unit,
     onTogglePauseState: () -> Unit,
@@ -340,6 +345,65 @@ private fun SettingsContentScreen(
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.testTag(SettingsTestTags.SETTINGS_SCHEDULE_ERROR),
+                    )
+                }
+            }
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.testTag(SettingsTestTags.SETTINGS_LANGUAGE_SECTION),
+            ) {
+                PracticeSectionHeader(
+                    title = stringResource(R.string.settings_language_section),
+                    icon = Icons.Outlined.Language,
+                )
+                PracticeSurface {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        AppLanguage.DISPLAY_ORDER.forEach { language ->
+                            val tag = when (language) {
+                                AppLanguage.RU -> SettingsTestTags.SETTINGS_LANGUAGE_RU
+                                AppLanguage.UK -> SettingsTestTags.SETTINGS_LANGUAGE_UK
+                                AppLanguage.EN -> SettingsTestTags.SETTINGS_LANGUAGE_EN
+                                AppLanguage.PL -> SettingsTestTags.SETTINGS_LANGUAGE_PL
+                            }
+                            val selected = content.appLanguage == language
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = selected,
+                                        enabled = !content.isChangingAppLanguage,
+                                        role = Role.RadioButton,
+                                        onClick = { onAppLanguageChanged(language) },
+                                    )
+                                    .padding(vertical = 4.dp)
+                                    .testTag(tag),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = selected,
+                                    onClick = null,
+                                    enabled = !content.isChangingAppLanguage,
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = AccentViolet,
+                                        unselectedColor = TextMuted,
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(language.optionLabelRes()),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = TextPrimary,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                content.languageError?.let {
+                    Text(
+                        text = stringResource(R.string.settings_language_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }

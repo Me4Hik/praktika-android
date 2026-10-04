@@ -194,9 +194,6 @@ class SettingsNavigationProductionInstrumentedTest {
                     PracticeRootViewModelFactory(
                         owner = composeRule.activity,
                         runtime = harness.runtime,
-                        onRequestPostNotifications = {},
-                        onOpenAppNotificationSettings = {},
-                        onOpenChannelSettings = {},
                     )
                 }
                 val viewModel: PracticeRootViewModel = viewModel(factory = factory)

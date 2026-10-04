@@ -128,7 +128,7 @@ class MoodCheckInsBackupV3HostTest {
             .toInstant()
             .toEpochMilli()
         val timeProvider = FakeTimeProvider(startMillis, zoneId)
-        val repository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
+        val repository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         assertEquals(CycleResult.PracticeStarted, repository.startPractice())
         val incomplete = database.questionOccurrenceDao().getIncompleteOrdered().single()
         timeProvider.setEpochMillis(incomplete.plannedAtEpochMillis)

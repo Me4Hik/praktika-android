@@ -63,7 +63,7 @@ class ProductionGeneratedBackupRestoreTest {
             .toInstant()
             .toEpochMilli()
         val timeProvider = FakeTimeProvider(startMillis, zoneId)
-        val sourceRepository = CycleRepository(sourceDatabase, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val sourceRepository = CycleRepository(sourceDatabase, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
 
         assertEquals(CycleResult.PracticeStarted, sourceRepository.startPractice())
 
@@ -103,7 +103,7 @@ class ProductionGeneratedBackupRestoreTest {
         }
 
         val targetTimeProvider = FakeTimeProvider(startMillis, zoneId)
-        val targetRepository = CycleRepository(targetDatabase, targetTimeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        val targetRepository = CycleRepository(targetDatabase, targetTimeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         val readRepository = RoomPracticeReadRepository(targetDatabase)
 
         val reconcileResult = targetRepository.syncEnvironmentAndReconcile()

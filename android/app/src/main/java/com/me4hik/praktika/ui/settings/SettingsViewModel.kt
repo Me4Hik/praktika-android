@@ -12,8 +12,11 @@ import com.me4hik.praktika.data.cycle.ScheduleSlotUpdate
 import com.me4hik.praktika.data.cycle.ScheduleUpdateResult
 import com.me4hik.praktika.data.cycle.ScheduleValidationException
 import com.me4hik.praktika.data.cycle.ScheduleValidationReason
+import com.me4hik.praktika.data.preferences.AppLanguage
+import com.me4hik.praktika.data.preferences.AppLocaleController
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.LanguagePreferenceRepository
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
@@ -54,6 +57,7 @@ class SettingsViewModel(
     private val resumePracticeCommand: ResumePracticeCommand,
     private val soundPreferenceRepository: SoundPreferenceRepository,
     private val deferDurationPreferenceRepository: DeferDurationPreferenceRepository,
+    private val languagePreferenceRepository: LanguagePreferenceRepository,
     private val questionWordingPreferenceRepository: QuestionWordingPreferenceRepository,
     private val applyQuestionWordingMode: suspend (QuestionWordingMode) -> Boolean,
     private val notificationPermissionRepository: NotificationPermissionPolicy,
@@ -89,6 +93,7 @@ class SettingsViewModel(
     private var pendingAutosaveAfterCurrent = false
     private var isChangingSound = false
     private var isChangingDeferDuration = false
+    private var isChangingAppLanguage = false
     private var isChangingQuestionWording = false
     private var isChangingPauseState = false
 
@@ -128,15 +133,21 @@ class SettingsViewModel(
                         deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
                     )
                 },
-                questionWordingPreferenceRepository.wordingMode,
-            ) { partial, wordingMode ->
+                combine(
+                    questionWordingPreferenceRepository.wordingMode,
+                    languagePreferenceRepository.language,
+                ) { wordingMode, appLanguage ->
+                    wordingMode to appLanguage
+                },
+            ) { partial, wordingAndLanguage ->
                 SettingsSourceSnapshot(
                     slots = partial.slots,
                     isPracticePaused = partial.isPracticePaused,
                     soundEnabled = partial.soundEnabled,
                     selectedSoundId = partial.selectedSoundId,
                     deferDurationMinutes = partial.deferDurationMinutes,
-                    questionWordingMode = wordingMode,
+                    questionWordingMode = wordingAndLanguage.first,
+                    appLanguage = wordingAndLanguage.second,
                 )
             }.collect { source ->
                 onSourcesUpdated(
@@ -146,6 +157,7 @@ class SettingsViewModel(
                     selectedSoundId = source.selectedSoundId,
                     deferDurationMinutes = source.deferDurationMinutes,
                     questionWordingMode = source.questionWordingMode,
+                    appLanguage = source.appLanguage,
                 )
             }
         }
@@ -166,6 +178,7 @@ class SettingsViewModel(
         val selectedSoundId: String,
         val deferDurationMinutes: Int,
         val questionWordingMode: QuestionWordingMode,
+        val appLanguage: AppLanguage,
     )
 
     fun draftMinutesBySlotIndex(): Map<Int, Int> {
@@ -275,6 +288,61 @@ class SettingsViewModel(
                     isPracticePaused = currentPauseState(),
                     soundEnabled = currentSoundEnabled(),
                     deferDurationMinutes = currentDeferDurationMinutes(),
+                )
+            }
+        }
+    }
+
+    fun onAppLanguageChanged(language: AppLanguage) {
+        if (isChangingAppLanguage) {
+            return
+        }
+        val content = _uiState.value as? SettingsUiState.Content ?: return
+        if (language == content.appLanguage) {
+            return
+        }
+        isChangingAppLanguage = true
+        publishContentFromDraft(
+            isPracticePaused = content.isPracticePaused,
+            soundEnabled = content.soundEnabled,
+            deferDurationMinutes = content.deferDurationMinutes,
+            appLanguage = language,
+            isChangingAppLanguage = true,
+            languageError = null,
+        )
+
+        viewModelScope.launch {
+            try {
+                withContext(commandDispatcher) {
+                    languagePreferenceRepository.setLanguage(language)
+                    languagePreferenceRepository.markLanguageSelected()
+                }
+                // Persist + apply only. Snapshot/notification reconcile is bootstrap's job after recreate.
+                // Never treat work after setApplicationLocales as guaranteed (viewModelScope cancels).
+                withContext(Dispatchers.Main.immediate) {
+                    AppLocaleController.apply(language)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "App language preference save failed", exception)
+                publishContentFromDraft(
+                    isPracticePaused = content.isPracticePaused,
+                    soundEnabled = content.soundEnabled,
+                    deferDurationMinutes = content.deferDurationMinutes,
+                    appLanguage = content.appLanguage,
+                    languageError = SettingsLanguageError.SAVE_FAILED,
+                )
+                viewModelScope.launch {
+                    snackbarEvents.emit(SettingsSnackbarEvent.AppLanguageChangeFailed)
+                }
+            } finally {
+                isChangingAppLanguage = false
+                publishContentFromDraft(
+                    isPracticePaused = currentPauseState(),
+                    soundEnabled = currentSoundEnabled(),
+                    deferDurationMinutes = currentDeferDurationMinutes(),
+                    appLanguage = currentAppLanguage(),
                 )
             }
         }
@@ -615,6 +683,7 @@ class SettingsViewModel(
         selectedSoundId: String,
         deferDurationMinutes: Int,
         questionWordingMode: QuestionWordingMode,
+        appLanguage: AppLanguage,
     ) {
         try {
             latestSelectedSoundId = selectedSoundId
@@ -639,6 +708,7 @@ class SettingsViewModel(
                 soundEnabled = soundEnabled,
                 deferDurationMinutes = deferDurationMinutes,
                 questionWordingMode = questionWordingMode,
+                appLanguage = appLanguage,
             )
         } catch (_: CycleCorruptionException) {
             _uiState.value = SettingsUiState.FatalError(SettingsFatalError.SCHEDULE_CORRUPTION)
@@ -650,14 +720,17 @@ class SettingsViewModel(
         soundEnabled: Boolean,
         deferDurationMinutes: Int = currentDeferDurationMinutes(),
         questionWordingMode: QuestionWordingMode = currentQuestionWordingMode(),
+        appLanguage: AppLanguage = currentAppLanguage(),
         isSavingSchedule: Boolean = this.isSavingSchedule,
         isChangingSound: Boolean = this.isChangingSound,
         isChangingDeferDuration: Boolean = this.isChangingDeferDuration,
+        isChangingAppLanguage: Boolean = this.isChangingAppLanguage,
         isChangingQuestionWording: Boolean = this.isChangingQuestionWording,
         isChangingPauseState: Boolean = this.isChangingPauseState,
         scheduleError: SettingsScheduleError? = null,
         soundError: SettingsSoundError? = null,
         deferError: SettingsDeferError? = null,
+        languageError: SettingsLanguageError? = null,
         wordingError: SettingsWordingError? = null,
         pauseError: SettingsPauseError? = null,
     ) {
@@ -687,6 +760,8 @@ class SettingsViewModel(
             isChangingSound = isChangingSound,
             deferDurationMinutes = DeferDurationOptions.sanitize(deferDurationMinutes),
             isChangingDeferDuration = isChangingDeferDuration,
+            appLanguage = appLanguage,
+            isChangingAppLanguage = isChangingAppLanguage,
             questionWordingMode = questionWordingMode,
             isChangingQuestionWording = isChangingQuestionWording,
             isPracticePaused = isPracticePaused,
@@ -694,6 +769,7 @@ class SettingsViewModel(
             scheduleError = resolvedScheduleError,
             soundError = soundError,
             deferError = deferError,
+            languageError = languageError,
             wordingError = wordingError,
             pauseError = pauseError,
             // 10.08.2026 Post-release fixes cursor by Me4Hik START - Data Vault Stage 6.3B Settings backup UI
@@ -772,6 +848,11 @@ class SettingsViewModel(
     private fun currentQuestionWordingMode(): QuestionWordingMode {
         return (_uiState.value as? SettingsUiState.Content)?.questionWordingMode
             ?: QuestionWordingMode.DEFAULT
+    }
+
+    private fun currentAppLanguage(): AppLanguage {
+        return (_uiState.value as? SettingsUiState.Content)?.appLanguage
+            ?: AppLanguage.DEFAULT
     }
 
     private companion object {

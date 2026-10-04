@@ -40,7 +40,7 @@ class DeferEventPersistenceHostTest {
             .build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(11, 0, 0), ZONE_KIEV)
-        repository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
+        repository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
     }
 
     @After
@@ -155,7 +155,7 @@ class DeferEventPersistenceHostTest {
             .build()
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(11, 0, 0), ZONE_KIEV)
-        repository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
+        repository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
 
         timeProvider.setEpochMillis(epochAt(11, 0, 0))
         repository.startPractice()

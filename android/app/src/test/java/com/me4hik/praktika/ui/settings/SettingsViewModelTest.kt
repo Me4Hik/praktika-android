@@ -14,8 +14,10 @@ import com.me4hik.praktika.data.read.PracticeReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleReadRepository
 import com.me4hik.praktika.data.read.ScheduleReadSnapshot
 import com.me4hik.praktika.data.read.ScheduleSlotReadModel
+import com.me4hik.praktika.data.preferences.AppLanguage
 import com.me4hik.praktika.data.preferences.DeferDurationOptions
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.LanguagePreferenceRepository
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
@@ -99,6 +101,7 @@ class SettingsViewModelTest {
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
             deferDurationPreferenceRepository = deferDurationRepository,
+            languagePreferenceRepository = MutableFakeLanguagePreferenceRepository(),
             questionWordingPreferenceRepository = wordingRepository,
             applyQuestionWordingMode = { mode ->
                 applyWordingCalls.add(mode)
@@ -203,6 +206,7 @@ class SettingsViewModelTest {
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
             deferDurationPreferenceRepository = deferDurationRepository,
+            languagePreferenceRepository = MutableFakeLanguagePreferenceRepository(),
             questionWordingPreferenceRepository = wordingRepository,
             applyQuestionWordingMode = { mode ->
                 applyWordingCalls.add(mode)
@@ -300,6 +304,7 @@ class SettingsViewModelTest {
             resumePracticeCommand = resumePracticeCommand,
             soundPreferenceRepository = soundRepository,
             deferDurationPreferenceRepository = deferDurationRepository,
+            languagePreferenceRepository = MutableFakeLanguagePreferenceRepository(),
             questionWordingPreferenceRepository = wordingRepository,
             applyQuestionWordingMode = { mode ->
                 applyWordingCalls.add(mode)
@@ -677,6 +682,20 @@ class SettingsViewModelTest {
         override suspend fun setWordingMode(mode: QuestionWordingMode) {
             state.value = mode
         }
+    }
+
+    private class MutableFakeLanguagePreferenceRepository : LanguagePreferenceRepository {
+        private val languageState = MutableStateFlow(AppLanguage.DEFAULT)
+        private val selectedState = MutableStateFlow(true)
+        override val language = languageState
+        override val languageSelected = selectedState
+        override suspend fun setLanguage(language: AppLanguage) {
+            languageState.value = language
+        }
+        override suspend fun markLanguageSelected() {
+            selectedState.value = true
+        }
+        override suspend fun ensureExistingUserDefault(isPracticeStarted: Boolean) = Unit
     }
 
     private class MutableFakeDeferDurationPreferenceRepository : DeferDurationPreferenceRepository {

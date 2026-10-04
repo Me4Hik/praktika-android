@@ -10,6 +10,7 @@ import com.me4hik.praktika.data.cycle.CycleRepository
 import com.me4hik.praktika.data.cycle.TimeProvider
 import com.me4hik.praktika.data.local.PraktikaDatabase
 import com.me4hik.praktika.data.preferences.DeferDurationPreferenceRepository
+import com.me4hik.praktika.data.preferences.LanguagePreferenceRepository
 import com.me4hik.praktika.data.preferences.QuestionWordingPreferenceRepository
 import com.me4hik.praktika.data.preferences.SoundPreferenceRepository
 import com.me4hik.praktika.data.delete.AnswerDeleteRepository
@@ -35,6 +36,7 @@ data class PraktikaRuntime(
     val scheduleReadRepository: ScheduleReadRepository,
     val soundPreferenceRepository: SoundPreferenceRepository,
     val deferDurationPreferenceRepository: DeferDurationPreferenceRepository,
+    val languagePreferenceRepository: LanguagePreferenceRepository,
     val questionWordingPreferenceRepository: QuestionWordingPreferenceRepository,
     val practiceReadRepository: PracticeReadRepository,
     val archiveReadRepository: ArchiveReadRepository,

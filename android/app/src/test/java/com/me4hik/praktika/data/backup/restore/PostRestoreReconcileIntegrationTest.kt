@@ -1,6 +1,7 @@
 // 11.08.2026 DATA VAULT Stage 4.3 cursor by Me4Hik START - post-restore runtime compatibility
 package com.me4hik.praktika.data.backup.restore
 
+import androidx.test.core.app.ApplicationProvider
 import com.me4hik.praktika.data.backup.export.BackupExportResult
 import com.me4hik.praktika.data.backup.export.RoomBackupExporter
 import com.me4hik.praktika.data.backup.model.PraktikaBackupPayload
@@ -67,7 +68,7 @@ class PostRestoreReconcileIntegrationTest : RestoreRoomTestSupport() {
             epochMillis = BackupRestoreFixtures.acceptanceReconcileNowMillis(),
             zoneId = BackupRestoreFixtures.ZONE_MOSCOW,
         )
-        cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         practiceReadRepository = RoomPracticeReadRepository(database)
     }
 
@@ -157,7 +158,7 @@ class ZeroIncompleteRuntimeContractTest : RestoreRoomTestSupport() {
             epochMillis = BackupRestoreFixtures.acceptanceReconcileNowMillis(),
             zoneId = BackupRestoreFixtures.ZONE_MOSCOW,
         )
-        cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        cycleRepository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         practiceReadRepository = RoomPracticeReadRepository(database)
     }
 

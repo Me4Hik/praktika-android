@@ -41,7 +41,7 @@ class RoomBackupExporterTest {
             RoomBackupExporterTestSupport.epochAt(2026, 8, 4, 8, 0),
             RoomBackupExporterTestSupport.ZONE_KIEV,
         )
-        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
+        repository = CycleRepository(database, timeProvider, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         deleteRepository = RoomAnswerDeleteRepository(database, com.me4hik.praktika.data.backup.write.NoOpBackupMutationRequestSink)
     }
 

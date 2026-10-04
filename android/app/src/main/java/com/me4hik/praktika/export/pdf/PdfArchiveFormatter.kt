@@ -1,10 +1,12 @@
 // PROMPT 176 — PDF archive formatter via android.graphics.pdf.PdfDocument
 package com.me4hik.praktika.export.pdf
 
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import com.me4hik.praktika.R
 import com.me4hik.praktika.data.read.ArchiveEntry
 import com.me4hik.praktika.export.ArchiveExportFilenamePolicy
 import com.me4hik.praktika.export.ExportDocument
@@ -15,8 +17,11 @@ import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 
 open class PdfArchiveFormatter(
+    context: Context? = null,
     private val displayFormatter: ArchiveDisplayFormatter = ArchiveDisplayFormatter(),
 ) {
+    private val appContext = context?.applicationContext
+
     open fun format(
         selection: ExportSelection,
         entries: List<ArchiveEntry>,
@@ -42,6 +47,9 @@ open class PdfArchiveFormatter(
         entries: List<ArchiveEntry>,
         zoneId: ZoneId,
     ): ByteArray {
+        val resources = requireNotNull(appContext) {
+            "Context is required for PDF archive rendering"
+        }.resources
         val titlePaint = createPaint(TITLE_TEXT_SIZE, bold = true)
         val subtitlePaint = createPaint(SUBTITLE_TEXT_SIZE, bold = false)
         val metaPaint = createPaint(META_TEXT_SIZE, bold = true)
@@ -84,10 +92,11 @@ open class PdfArchiveFormatter(
                 }
             }
 
-            drawWrapped(TITLE, titlePaint, TITLE_LINE_HEIGHT)
+            drawWrapped(resources.getString(R.string.pdf_archive_title), titlePaint, TITLE_LINE_HEIGHT)
             y += SECTION_GAP
 
             val selectionLabel = PdfArchiveSelectionLabel.forSelection(
+                context = appContext,
                 selection = selection,
                 zoneId = zoneId,
                 displayFormatter = displayFormatter,
@@ -95,6 +104,9 @@ open class PdfArchiveFormatter(
             )
             drawWrapped(selectionLabel, subtitlePaint, SUBTITLE_LINE_HEIGHT)
             y += SECTION_GAP * 1.5f
+
+            val questionLabel = resources.getString(R.string.pdf_label_question)
+            val answerLabel = resources.getString(R.string.pdf_label_answer)
 
             entries.forEachIndexed { index, entry ->
                 if (index > 0) {
@@ -107,11 +119,11 @@ open class PdfArchiveFormatter(
                 drawWrapped(dateTime, metaPaint, META_LINE_HEIGHT)
                 y += FIELD_GAP
 
-                drawWrapped("Вопрос", labelPaint, LABEL_LINE_HEIGHT)
+                drawWrapped(questionLabel, labelPaint, LABEL_LINE_HEIGHT)
                 drawWrapped(entry.questionText, bodyPaint, BODY_LINE_HEIGHT)
                 y += FIELD_GAP
 
-                drawWrapped("Ответ", labelPaint, LABEL_LINE_HEIGHT)
+                drawWrapped(answerLabel, labelPaint, LABEL_LINE_HEIGHT)
                 drawWrapped(entry.answerText, bodyPaint, BODY_LINE_HEIGHT)
             }
 
@@ -155,7 +167,6 @@ open class PdfArchiveFormatter(
 
     companion object {
         const val MIME_TYPE = "application/pdf"
-        const val TITLE = "Практика — Архив"
 
         // A4 @ 72 dpi
         const val PAGE_WIDTH = 595f

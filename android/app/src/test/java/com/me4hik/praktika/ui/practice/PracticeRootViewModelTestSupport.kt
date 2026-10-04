@@ -275,10 +275,6 @@ internal object PracticeRootViewModelTestSupport {
         notificationPermissionRepository: NotificationPermissionPolicy = FakeNotificationPermissionPolicy(),
         exactAlarmCapabilityRepository: ExactAlarmCapabilityPolicy = FakeExactAlarmCapabilityPolicy(),
         soundPreferenceRepository: FakeSoundPreferenceRepository = FakeSoundPreferenceRepository(),
-        onRequestPostNotifications: () -> Unit = {},
-        onOpenAppNotificationSettings: () -> Unit = {},
-        onOpenChannelSettings: () -> Unit = {},
-        onOpenExactAlarmSettings: () -> Unit = {},
     ): PracticeRootViewModel {
         return PracticeRootViewModel(
             readRepository = readRepository,
@@ -288,10 +284,6 @@ internal object PracticeRootViewModelTestSupport {
             notificationPermissionRepository = notificationPermissionRepository,
             exactAlarmCapabilityRepository = exactAlarmCapabilityRepository,
             soundPreferenceRepository = soundPreferenceRepository,
-            onRequestPostNotifications = onRequestPostNotifications,
-            onOpenAppNotificationSettings = onOpenAppNotificationSettings,
-            onOpenChannelSettings = onOpenChannelSettings,
-            onOpenExactAlarmSettings = onOpenExactAlarmSettings,
             savedStateHandle = savedStateHandle,
             timeFormatter = PracticeTimeFormatter(),
             commandDispatcher = commandDispatcher,

@@ -54,7 +54,7 @@ class Stage62CMutationBackupWiringTest {
         seedBaseData()
         timeProvider = FakeTimeProvider(epochAt(8, 0, 0), ZONE_KIEV)
         sink = RecordingBackupMutationRequestSink()
-        repository = CycleRepository(database, timeProvider, sink)
+        repository = CycleRepository(database, timeProvider, sink, ApplicationProvider.getApplicationContext())
     }
 
     @After
@@ -88,7 +88,7 @@ class Stage62CMutationBackupWiringTest {
     @Test
     fun saveAnswer_sinkOrdinaryFailure_preservesMutation() = runBlocking {
         val throwing = ThrowingBackupMutationRequestSink()
-        val repo = CycleRepository(database, timeProvider, throwing)
+        val repo = CycleRepository(database, timeProvider, throwing, ApplicationProvider.getApplicationContext())
         timeProvider.setEpochMillis(epochAt(11, 0, 0))
         repo.startPractice()
         val occurrence = database.questionOccurrenceDao().getIncompleteOrdered().single()
@@ -360,7 +360,7 @@ class Stage62CMutationBackupWiringTest {
         harness.resolver.resultFor = mapOf(folder to AuthorizedStorageResolveResult.Ready(storage))
 
         val authorizedSink = AuthorizedBackupMutationRequestSink(harness.service)
-        val repo = CycleRepository(database, timeProvider, authorizedSink)
+        val repo = CycleRepository(database, timeProvider, authorizedSink, ApplicationProvider.getApplicationContext())
         harness.service.beginInitialization()
         timeProvider.setEpochMillis(epochAt(8, 0, 0))
         repo.startPractice()
@@ -395,7 +395,7 @@ class Stage62CMutationBackupWiringTest {
         harness.resolver.resultFor = mapOf(folder to AuthorizedStorageResolveResult.Ready(storage))
 
         val authorizedSink = AuthorizedBackupMutationRequestSink(harness.service)
-        val repo = CycleRepository(database, timeProvider, authorizedSink)
+        val repo = CycleRepository(database, timeProvider, authorizedSink, ApplicationProvider.getApplicationContext())
         harness.service.beginRestoreSession()
         timeProvider.setEpochMillis(epochAt(11, 0, 0))
         repo.startPractice()

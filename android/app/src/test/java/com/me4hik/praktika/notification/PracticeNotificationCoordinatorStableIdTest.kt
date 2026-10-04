@@ -877,7 +877,7 @@ class PracticeNotificationCoordinatorStableIdTest {
     // 01.10.2026 Archive Acceptance F deferred boot host cursor by Me4Hik END
 
     private fun wireRepositoriesAndCoordinator() {
-        cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink)
+        cycleRepository = CycleRepository(database, timeProvider, NoOpBackupMutationRequestSink, ApplicationProvider.getApplicationContext())
         archiveReadRepository = RoomArchiveReadRepository(database)
         val initializer = PraktikaRuntimeInitializer(context) { error("runtime unused") }
         initializer.completeActivityInit(true)

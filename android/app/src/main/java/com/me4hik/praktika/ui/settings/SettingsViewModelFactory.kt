@@ -45,6 +45,7 @@ class SettingsViewModelFactory(
                 },
                 soundPreferenceRepository = runtime.soundPreferenceRepository,
                 deferDurationPreferenceRepository = runtime.deferDurationPreferenceRepository,
+                languagePreferenceRepository = runtime.languagePreferenceRepository,
                 questionWordingPreferenceRepository = runtime.questionWordingPreferenceRepository,
                 applyQuestionWordingMode = { mode ->
                     runtime.cycleRepository.applyQuestionWordingMode(mode)

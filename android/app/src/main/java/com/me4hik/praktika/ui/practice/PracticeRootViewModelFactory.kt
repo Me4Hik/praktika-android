@@ -15,10 +15,6 @@ import com.me4hik.praktika.ui.settings.UpdateScheduleCommand
 class PracticeRootViewModelFactory(
     owner: SavedStateRegistryOwner,
     private val runtime: PraktikaRuntime,
-    private val onRequestPostNotifications: () -> Unit,
-    private val onOpenAppNotificationSettings: () -> Unit,
-    private val onOpenChannelSettings: () -> Unit,
-    private val onOpenExactAlarmSettings: () -> Unit = {},
 ) : AbstractSavedStateViewModelFactory(owner, null) {
 
     @Suppress("UNCHECKED_CAST")
@@ -44,10 +40,6 @@ class PracticeRootViewModelFactory(
                 notificationPermissionRepository = runtime.notificationPermissionRepository,
                 exactAlarmCapabilityRepository = runtime.exactAlarmCapabilityRepository,
                 soundPreferenceRepository = runtime.soundPreferenceRepository,
-                onRequestPostNotifications = onRequestPostNotifications,
-                onOpenAppNotificationSettings = onOpenAppNotificationSettings,
-                onOpenChannelSettings = onOpenChannelSettings,
-                onOpenExactAlarmSettings = onOpenExactAlarmSettings,
                 savedStateHandle = handle,
                 timeFormatter = PracticeTimeFormatter(),
             ) as T

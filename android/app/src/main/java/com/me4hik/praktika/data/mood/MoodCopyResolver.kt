@@ -1,5 +1,7 @@
 package com.me4hik.praktika.data.mood
 
+import android.content.res.Resources
+import com.me4hik.praktika.R
 import com.me4hik.praktika.data.model.MoodLevel
 import com.me4hik.praktika.data.preferences.QuestionWordingMode
 
@@ -7,53 +9,92 @@ import com.me4hik.praktika.data.preferences.QuestionWordingMode
  * Gender-aware mood presentation copy. Domain stores only [MoodLevel].
  */
 object MoodCopyResolver {
-    fun resolve(level: MoodLevel, mode: QuestionWordingMode): MoodCopy {
-        val variant = when (mode) {
-            QuestionWordingMode.FEMININE -> FEMININE
-            QuestionWordingMode.MASCULINE -> MASCULINE
-            QuestionWordingMode.NEUTRAL -> NEUTRAL
+    private const val EMOJI_VERY_LOW = "😣"
+    private const val EMOJI_LOW = "🙁"
+    private const val EMOJI_NEUTRAL = "😐"
+    private const val EMOJI_GOOD = "🙂"
+    private const val EMOJI_GREAT = "🤩"
+
+    fun resolve(
+        resources: Resources,
+        level: MoodLevel,
+        mode: QuestionWordingMode,
+    ): MoodCopy {
+        val (titleRes, explanationRes) = stringIds(level, mode)
+        return MoodCopy(
+            level = level,
+            emoji = emojiFor(level),
+            title = resources.getString(titleRes),
+            explanation = resources.getString(explanationRes),
+        )
+    }
+
+    fun all(resources: Resources, mode: QuestionWordingMode): List<MoodCopy> {
+        return MoodLevel.entries.map { resolve(resources, it, mode) }
+    }
+
+    private fun emojiFor(level: MoodLevel): String = when (level) {
+        MoodLevel.VERY_LOW -> EMOJI_VERY_LOW
+        MoodLevel.LOW -> EMOJI_LOW
+        MoodLevel.NEUTRAL -> EMOJI_NEUTRAL
+        MoodLevel.GOOD -> EMOJI_GOOD
+        MoodLevel.GREAT -> EMOJI_GREAT
+    }
+
+    private fun stringIds(
+        level: MoodLevel,
+        mode: QuestionWordingMode,
+    ): Pair<Int, Int> = when (mode) {
+        QuestionWordingMode.FEMININE -> when (level) {
+            MoodLevel.VERY_LOW ->
+                R.string.content_mood_very_low_feminine_title to
+                    R.string.content_mood_very_low_feminine_explanation
+            MoodLevel.LOW ->
+                R.string.content_mood_low_feminine_title to
+                    R.string.content_mood_low_feminine_explanation
+            MoodLevel.NEUTRAL ->
+                R.string.content_mood_neutral_feminine_title to
+                    R.string.content_mood_neutral_feminine_explanation
+            MoodLevel.GOOD ->
+                R.string.content_mood_good_feminine_title to
+                    R.string.content_mood_good_feminine_explanation
+            MoodLevel.GREAT ->
+                R.string.content_mood_great_feminine_title to
+                    R.string.content_mood_great_feminine_explanation
         }
-        return variant.getValue(level)
-    }
-
-    fun all(mode: QuestionWordingMode): List<MoodCopy> {
-        return MoodLevel.entries.map { resolve(it, mode) }
-    }
-
-    private data class Variant(val emoji: String, val title: String, val explanation: String)
-
-    private fun Map<MoodLevel, Variant>.toCopies(): Map<MoodLevel, MoodCopy> {
-        return mapValues { (level, variant) ->
-            MoodCopy(
-                level = level,
-                emoji = variant.emoji,
-                title = variant.title,
-                explanation = variant.explanation,
-            )
+        QuestionWordingMode.MASCULINE -> when (level) {
+            MoodLevel.VERY_LOW ->
+                R.string.content_mood_very_low_masculine_title to
+                    R.string.content_mood_very_low_masculine_explanation
+            MoodLevel.LOW ->
+                R.string.content_mood_low_masculine_title to
+                    R.string.content_mood_low_masculine_explanation
+            MoodLevel.NEUTRAL ->
+                R.string.content_mood_neutral_masculine_title to
+                    R.string.content_mood_neutral_masculine_explanation
+            MoodLevel.GOOD ->
+                R.string.content_mood_good_masculine_title to
+                    R.string.content_mood_good_masculine_explanation
+            MoodLevel.GREAT ->
+                R.string.content_mood_great_masculine_title to
+                    R.string.content_mood_great_masculine_explanation
+        }
+        QuestionWordingMode.NEUTRAL -> when (level) {
+            MoodLevel.VERY_LOW ->
+                R.string.content_mood_very_low_neutral_title to
+                    R.string.content_mood_very_low_neutral_explanation
+            MoodLevel.LOW ->
+                R.string.content_mood_low_neutral_title to
+                    R.string.content_mood_low_neutral_explanation
+            MoodLevel.NEUTRAL ->
+                R.string.content_mood_neutral_neutral_title to
+                    R.string.content_mood_neutral_neutral_explanation
+            MoodLevel.GOOD ->
+                R.string.content_mood_good_neutral_title to
+                    R.string.content_mood_good_neutral_explanation
+            MoodLevel.GREAT ->
+                R.string.content_mood_great_neutral_title to
+                    R.string.content_mood_great_neutral_explanation
         }
     }
-
-    private val FEMININE: Map<MoodLevel, MoodCopy> = mapOf(
-        MoodLevel.VERY_LOW to Variant("😣", "Тяжело", "Потеряла опору"),
-        MoodLevel.LOW to Variant("🙁", "Хрупко", "Уязвима"),
-        MoodLevel.NEUTRAL to Variant("😐", "Ровно", "Прислушиваюсь к себе"),
-        MoodLevel.GOOD to Variant("🙂", "Светло", "В контакте с собой"),
-        MoodLevel.GREAT to Variant("🤩", "Наполнена", "Расцветаю"),
-    ).toCopies()
-
-    private val MASCULINE: Map<MoodLevel, MoodCopy> = mapOf(
-        MoodLevel.VERY_LOW to Variant("😣", "Тяжело", "Потерял опору"),
-        MoodLevel.LOW to Variant("🙁", "Хрупко", "Уязвим"),
-        MoodLevel.NEUTRAL to Variant("😐", "Ровно", "Прислушиваюсь к себе"),
-        MoodLevel.GOOD to Variant("🙂", "Светло", "В контакте с собой"),
-        MoodLevel.GREAT to Variant("🤩", "Наполнен", "Полон сил и энергии"),
-    ).toCopies()
-
-    private val NEUTRAL: Map<MoodLevel, MoodCopy> = mapOf(
-        MoodLevel.VERY_LOW to Variant("😣", "Тяжело", "Теряю опору"),
-        MoodLevel.LOW to Variant("🙁", "Хрупко", "Чувствую уязвимость"),
-        MoodLevel.NEUTRAL to Variant("😐", "Ровно", "Прислушиваюсь к себе"),
-        MoodLevel.GOOD to Variant("🙂", "Светло", "В контакте с собой"),
-        MoodLevel.GREAT to Variant("🤩", "Наполненность", "Ощущаю наполненность"),
-    ).toCopies()
 }
