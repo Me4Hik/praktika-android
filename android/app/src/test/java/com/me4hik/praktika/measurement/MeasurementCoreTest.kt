@@ -60,7 +60,7 @@ class MeasurementCoreTest {
     }
 
     @Test
-    fun routingPolicy_metaExcludesMoodAndDebugOnly() {
+    fun routingPolicy_metaExcludesMoodLanguageAndDebugOnly() {
         val policy = AnalyticsRoutingPolicy(
             configuredProviders = setOf(
                 AnalyticsProviderId.DEBUG,
@@ -71,6 +71,9 @@ class MeasurementCoreTest {
         val mood = ProductAnalyticsEvents.moodCheckinSaved()
         assertFalse(policy.intendedProviders(mood).contains(AnalyticsProviderId.META))
         assertTrue(policy.intendedProviders(mood).contains(AnalyticsProviderId.FIREBASE))
+
+        val language = ProductAnalyticsEvents.languageSelected("en")
+        assertFalse(policy.intendedProviders(language).contains(AnalyticsProviderId.META))
 
         val answer = ProductAnalyticsEvents.answerSaved(1)
         assertTrue(policy.intendedProviders(answer).contains(AnalyticsProviderId.META))

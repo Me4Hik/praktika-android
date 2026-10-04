@@ -10,6 +10,7 @@ import com.me4hik.praktika.runtime.PraktikaRuntime
 class AnalyticsDiagnosticsViewModel(
     private val tracker: AnalyticsTracker,
     private val debugProvider: DebugAnalyticsProvider,
+    val metaConfigured: Boolean,
 ) : ViewModel() {
     val entries = debugProvider.entries
 
@@ -31,6 +32,7 @@ class AnalyticsDiagnosticsViewModelFactory(
             return AnalyticsDiagnosticsViewModel(
                 tracker = runtime.analyticsTracker,
                 debugProvider = runtime.debugAnalyticsProvider,
+                metaConfigured = runtime.metaAnalyticsConfigured,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

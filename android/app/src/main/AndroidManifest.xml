@@ -28,6 +28,15 @@
         <meta-data
             android:name="androidx.appcompat.app.AppCompatDelegate.autoStoreLocales"
             android:value="true" />
+        <meta-data
+            android:name="com.facebook.sdk.AutoInitEnabled"
+            android:value="false" />
+        <meta-data
+            android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
+            android:value="false" />
+        <meta-data
+            android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled"
+            android:value="false" />
         <!-- Required for AppCompat autoStoreLocales + early Application context for LocaleManager sync. -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

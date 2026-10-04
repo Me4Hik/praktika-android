@@ -233,6 +233,7 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
+    implementation(libs.facebook.core)
 
     // 04.08.2026 Cycle Engine cursor by Me4Hik START - coreLibraryDesugaring для java.time на minSdk 24
     coreLibraryDesugaring(libs.desugar.jdk.libs)

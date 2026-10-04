@@ -7,6 +7,7 @@ data class MeasurementRuntime(
     val debugProvider: DebugAnalyticsProvider,
     val routingPolicy: AnalyticsRoutingPolicy,
     val firebaseProvider: FirebaseAnalyticsProvider? = null,
+    val metaProvider: MetaAppEventsProvider? = null,
 )
 
 object MeasurementRuntimeFactory {
@@ -22,6 +23,7 @@ object MeasurementRuntimeFactory {
             debugProvider = debugProvider,
             routingPolicy = routingPolicy,
             firebaseProvider = null,
+            metaProvider = null,
         )
     }
 
@@ -41,6 +43,36 @@ object MeasurementRuntimeFactory {
             debugProvider = debugProvider,
             routingPolicy = routingPolicy,
             firebaseProvider = firebaseProvider,
+            metaProvider = null,
+        )
+    }
+
+    fun createPhase3(appContext: Context): MeasurementRuntime =
+        createPhase3(
+            firebaseClient = DefaultFirebaseAnalyticsClient(appContext.applicationContext),
+            metaClient = DefaultMetaAppEventsClient(
+                context = appContext.applicationContext,
+            ),
+        )
+
+    fun createPhase3(
+        firebaseClient: FirebaseAnalyticsClient,
+        metaClient: MetaAppEventsClient,
+    ): MeasurementRuntime {
+        val routingPolicy = AnalyticsRoutingPolicy.phase3()
+        val debugProvider = DebugAnalyticsProvider(routingPolicy = routingPolicy)
+        val firebaseProvider = FirebaseAnalyticsProvider(firebaseClient)
+        val metaProvider = MetaAppEventsProvider(metaClient)
+        val tracker = CompositeAnalyticsTracker(
+            providers = listOf(debugProvider, firebaseProvider, metaProvider),
+            routingPolicy = routingPolicy,
+        )
+        return MeasurementRuntime(
+            tracker = tracker,
+            debugProvider = debugProvider,
+            routingPolicy = routingPolicy,
+            firebaseProvider = firebaseProvider,
+            metaProvider = metaProvider,
         )
     }
 }

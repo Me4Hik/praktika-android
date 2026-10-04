@@ -2,7 +2,7 @@ package com.me4hik.praktika.measurement
 
 /**
  * Routes product events to provider ids.
- * Phase 2 activates Debug + Firebase; Meta remains encoded but not configured.
+ * Phase 3 activates Debug + Firebase + Meta (when Meta is configured).
  */
 class AnalyticsRoutingPolicy(
     private val configuredProviders: Set<AnalyticsProviderId>,
@@ -25,10 +25,9 @@ class AnalyticsRoutingPolicy(
 
     companion object {
         /**
-         * Future Meta ads contour only. Explicitly excludes mood and most product detail.
+         * Lean Meta ads contour. No language/mood/archive/export/backup detail.
          */
         val META_ELIGIBLE_EVENTS: Set<String> = setOf(
-            AnalyticsEventNames.LANGUAGE_SELECTED,
             AnalyticsEventNames.PRACTICE_STARTED,
             AnalyticsEventNames.ANSWER_SAVED,
             AnalyticsEventNames.NOTIFICATION_OPENED,
@@ -42,6 +41,15 @@ class AnalyticsRoutingPolicy(
                 configuredProviders = setOf(
                     AnalyticsProviderId.DEBUG,
                     AnalyticsProviderId.FIREBASE,
+                ),
+            )
+
+        fun phase3(): AnalyticsRoutingPolicy =
+            AnalyticsRoutingPolicy(
+                configuredProviders = setOf(
+                    AnalyticsProviderId.DEBUG,
+                    AnalyticsProviderId.FIREBASE,
+                    AnalyticsProviderId.META,
                 ),
             )
     }

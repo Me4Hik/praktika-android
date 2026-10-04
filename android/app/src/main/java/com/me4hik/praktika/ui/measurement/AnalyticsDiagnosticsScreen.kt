@@ -85,7 +85,13 @@ fun AnalyticsDiagnosticsScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = stringResource(R.string.analytics_diagnostics_provider_meta_not_configured),
+                text = stringResource(
+                    if (viewModel.metaConfigured) {
+                        R.string.analytics_diagnostics_provider_meta_active
+                    } else {
+                        R.string.analytics_diagnostics_provider_meta_not_configured
+                    },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
             TextButton(

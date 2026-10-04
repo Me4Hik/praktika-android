@@ -35,6 +35,7 @@ data class PraktikaRuntime(
     val timeProvider: TimeProvider,
     val analyticsTracker: AnalyticsTracker,
     val debugAnalyticsProvider: DebugAnalyticsProvider,
+    val metaAnalyticsConfigured: Boolean = false,
     val cycleRepository: CycleRepository,
     val foregroundDriver: RuntimeForegroundDriver,
     val scheduleReadRepository: ScheduleReadRepository,

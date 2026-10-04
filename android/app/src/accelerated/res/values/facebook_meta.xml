@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Meta Dev app for accelerated package only. Do not use App Secret here. -->
+    <string name="facebook_app_id" translatable="false">1081046044810625</string>
+    <string name="facebook_client_token" translatable="false">56f658ce7825e82cc6cf82956c033558</string>
+</resources>

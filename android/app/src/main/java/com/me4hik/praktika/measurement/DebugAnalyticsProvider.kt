@@ -34,7 +34,8 @@ class DebugAnalyticsProvider(
     private val listeners = CopyOnWriteArrayList<(DebugAnalyticsEntry) -> Unit>()
 
     override fun track(event: AnalyticsEvent) {
-        val intended = routingPolicy.intendedProviders(event)
+        // Actual configured delivery targets (not merely intended/future providers).
+        val delivered = routingPolicy.providersFor(event)
             .map { it.name }
             .sorted()
         val entry = synchronized(lock) {
@@ -43,7 +44,7 @@ class DebugAnalyticsProvider(
                 timestampEpochMillis = clock(),
                 eventName = event.name,
                 params = event.params.asMap(),
-                routedProviders = intended,
+                routedProviders = delivered,
                 deliveryStatus = STATUS_RECORDED,
                 debugOnly = event.debugOnly,
             )

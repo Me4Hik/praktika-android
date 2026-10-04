@@ -403,6 +403,7 @@
     <string name="analytics_diagnostics_provider_debug_active">Debug: active</string>
     <string name="analytics_diagnostics_provider_firebase_active">Firebase: active</string>
     <string name="analytics_diagnostics_provider_firebase_not_configured">Firebase: not configured</string>
+    <string name="analytics_diagnostics_provider_meta_active">Meta: active</string>
     <string name="analytics_diagnostics_provider_meta_not_configured">Meta: not configured</string>
     <string name="analytics_diagnostics_send_test">Send test event</string>
     <string name="analytics_diagnostics_clear">Clear</string>

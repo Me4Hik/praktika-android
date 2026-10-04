@@ -30,6 +30,7 @@ robolectric = "4.14.1"
 # 04.08.2026 DB Refactoring cursor by Me4Hik END
 googleServices = "4.5.0"
 firebaseBom = "34.18.0"
+facebookCore = "18.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -73,6 +74,7 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 # 04.08.2026 DB Refactoring cursor by Me4Hik END
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+facebook-core = { group = "com.facebook.android", name = "facebook-core", version.ref = "facebookCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
