@@ -4,6 +4,10 @@
 package com.me4hik.praktika.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,13 +33,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlin.math.max
 import com.me4hik.praktika.R
 import com.me4hik.praktika.data.model.MoodLevel
 import com.me4hik.praktika.data.mood.MoodCopyResolver
@@ -177,6 +194,8 @@ private fun AnswerInteractiveContent(
     onMoodLevelSelected: (MoodLevel) -> Unit,
 ) {
     val moodEnabled = !uiState.isSaving && !moodUiState.isSaving
+    val scrollState = rememberScrollState()
+    var scrollViewportBottomPx by remember { mutableFloatStateOf(0f) }
     Column(modifier = Modifier.fillMaxSize()) {
         AnswerTopBar(
             onBack = onBack,
@@ -186,7 +205,11 @@ private fun AnswerInteractiveContent(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .onGloballyPositioned { coordinates ->
+                    val top = coordinates.positionInWindow().y
+                    scrollViewportBottomPx = top + coordinates.size.height
+                }
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -214,6 +237,8 @@ private fun AnswerInteractiveContent(
             AnswerMoodSection(
                 moodUiState = moodUiState,
                 enabled = moodEnabled,
+                scrollState = scrollState,
+                scrollViewportBottomPx = scrollViewportBottomPx,
                 onEntryClick = onMoodEntryClick,
                 onLevelSelected = onMoodLevelSelected,
             )
@@ -248,6 +273,8 @@ private fun AnswerInteractiveContent(
 private fun AnswerMoodSection(
     moodUiState: AnswerMoodUiState,
     enabled: Boolean,
+    scrollState: ScrollState,
+    scrollViewportBottomPx: Float,
     onEntryClick: () -> Unit,
     onLevelSelected: (MoodLevel) -> Unit,
 ) {
@@ -262,7 +289,75 @@ private fun AnswerMoodSection(
         )
         stringResource(R.string.answer_mood_selected, copy.emoji, copy.title)
     }
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val density = LocalDensity.current
+    val breathingRoomPx = with(density) { 12.dp.toPx() }
+    var pickerHeightPx by remember { mutableIntStateOf(0) }
+    var sectionBottomPx by remember { mutableFloatStateOf(0f) }
+    val latestViewportBottomPx by rememberUpdatedState(scrollViewportBottomPx)
+    // Key only on expand edge: collapse cancels; a new expand replaces any pending reveal.
+    LaunchedEffect(moodUiState.isExpanded) {
+        if (!moodUiState.isExpanded) {
+            pickerHeightPx = 0
+            return@LaunchedEffect
+        }
+        // Wait until the picker has measured, then require the mood *section*
+        // bottom to stay stable for 2 frames so AnimatedVisibility finish
+        // (picker height can jump to full size while the section is still growing).
+        while (pickerHeightPx <= 0) {
+            withFrameNanos { }
+        }
+        var previousSectionBottom = Float.NaN
+        var previousPickerHeight = -1
+        var stableFrames = 0
+        while (stableFrames < 2) {
+            withFrameNanos { }
+            val currentSectionBottom = sectionBottomPx
+            if (currentSectionBottom > 0f) {
+                if (previousSectionBottom == currentSectionBottom) {
+                    stableFrames++
+                } else {
+                    stableFrames = 0
+                    previousSectionBottom = currentSectionBottom
+                }
+            } else {
+                // Host tests may not publish window geometry; settle on picker height.
+                val currentPickerHeight = pickerHeightPx
+                if (currentPickerHeight == previousPickerHeight) {
+                    stableFrames++
+                } else {
+                    stableFrames = 0
+                    previousPickerHeight = currentPickerHeight
+                }
+            }
+        }
+        val viewportBottom = latestViewportBottomPx
+        val sectionBottom = sectionBottomPx
+        val neededPx = if (viewportBottom > 0f && sectionBottom > 0f) {
+            max(0f, sectionBottom - viewportBottom + breathingRoomPx)
+        } else {
+            // Window bounds can be unavailable in host tests; animate toward end instead.
+            max(0f, (scrollState.maxValue - scrollState.value).toFloat())
+        }
+        if (neededPx > 0f) {
+            scrollState.animateScrollBy(
+                value = neededPx,
+                animationSpec = tween(
+                    durationMillis = 280,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                // Use unclipped layout bottom; boundsInWindow() is clipped by the
+                // scroll viewport and would under-report overflow while expanding.
+                val top = coordinates.positionInWindow().y
+                sectionBottomPx = top + coordinates.size.height
+            },
+    ) {
         TextButton(
             onClick = onEntryClick,
             enabled = enabled,
@@ -283,7 +378,9 @@ private fun AnswerMoodSection(
                 selectedLevel = selectedLevel,
                 enabled = enabled,
                 onLevelSelected = onLevelSelected,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .onSizeChanged { pickerHeightPx = it.height },
             )
         }
     }
